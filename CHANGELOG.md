@@ -7,6 +7,19 @@ Versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.3.5] - 2026-05-27
+
+### Added
+- Self-bootstrapped `wtcraft` routing and harness files to the repository (dogfooding).
+- Dedicated architectural guide on Multi-Agent Handoff and future plans for triggers/automations (`docs/handoff-automation.md`).
+- Conditional execution for CI integration tests to run only on push to `main` branch, optimizing PR build speed.
+
+### Fixed
+- Added Windows platform support via Git Bash detection (`shutil.which("bash")`).
+- Added symlink resolution in the shell wrapper to support global npm/Homebrew installations.
+- Fixed missing `contents: read` permissions in NPM publishing workflow to enable OIDC provenance.
+- Simplified and optimized NPM/PyPI keywords with high-frequency, un-compounded search terms (e.g., `agent`, `ai`, `llm`, `token`).
+
 ## [0.3.4] - 2026-05-27
 
 ### Changed
@@ -69,7 +82,8 @@ Versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - `.agent-harness/` starter docs and templates (planner, executor, finisher)
 - Initial public repository and vision docs
 
-[Unreleased]: https://github.com/zywkloo/wtcraft/compare/v0.3.4...HEAD
+[Unreleased]: https://github.com/zywkloo/wtcraft/compare/v0.3.5...HEAD
+[0.3.5]: https://github.com/zywkloo/wtcraft/compare/v0.3.4...v0.3.5
 [0.3.4]: https://github.com/zywkloo/wtcraft/compare/v0.3.3...v0.3.4
 [0.3.3]: https://github.com/zywkloo/wtcraft/compare/v0.3.2...v0.3.3
 [0.3.2]: https://github.com/zywkloo/wtcraft/compare/v0.3.1...v0.3.2
