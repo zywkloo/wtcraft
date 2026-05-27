@@ -72,6 +72,13 @@ Use `--patch-agent-files` to append managed routing stubs to existing files.
 - [Roadmap](./docs/roadmap.md)
 - [Principles](./docs/principles.md)
 
+## Testing
+
+```bash
+chmod +x tests/smoke.sh
+tests/smoke.sh
+```
+
 ## License
 
 Apache-2.0. See [LICENSE](./LICENSE).

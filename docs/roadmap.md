@@ -17,14 +17,16 @@ It provides a contract and guardrail layer for parallel task execution.
 
 ## Phase 1: MVP (Target: 1-3 hours)
 
+Status: completed
+
 Goal: usable with near-zero setup, no package manager install.
 
 Deliverables:
-- `scripts/wtcraft` shell entrypoint
-- `wtcraft init`: scaffold harness files into a target repo
-- `wtcraft status`: list active worktree task files and statuses
-- `wtcraft check <worktree>`: compare changed files against Scope and Off-limits
-- `.agent-harness/` starter docs and templates
+- [x] `scripts/wtcraft` shell entrypoint
+- [x] `wtcraft init`: scaffold harness files into a target repo
+- [x] `wtcraft status`: list active worktree task files and statuses
+- [x] `wtcraft check <worktree>`: compare changed files against Scope and Off-limits
+- [x] `.agent-harness/` starter docs and templates
 
 Out of scope:
 - npm or Homebrew packaging
@@ -33,29 +35,37 @@ Out of scope:
 
 ## Phase 2: Practical Solo-Dev Tooling (Target: half day)
 
+Status: in progress
+
 Goal: good day-to-day workflow for a single developer using multiple agents.
 
 Deliverables:
-- `wtcraft new <type/name>`: create worktree from base branch + seed task contract
-- `wtcraft verify <worktree>`: run verification commands from task contract
-- cleaner parser for task sections
-- minimal test fixtures for parser and scope checks
-- docs for Claude/Codex role split:
+- [x] `wtcraft new <type/name>`: create worktree from base branch + seed task contract
+- [x] `wtcraft verify <worktree>`: run verification commands from task contract
+- [x] cleaner parser for task sections
+- [x] minimal test fixtures for parser and scope checks
+- [x] docs for Claude/Codex role split:
   - planner
   - executor
   - finisher
 
+Next in Phase 2:
+- [ ] `check` matching improvements for scoped patterns
+- [ ] richer `verify` output for easier CI diagnostics
+
 ## Phase 3: Public Package (Target: 1-2 days)
+
+Status: in progress
 
 Goal: easy install and repeatable behavior across machines.
 
 Deliverables:
 - package distribution (`npm` first)
 - semantic versioning and changelog
-- CI checks (lint + tests)
+- [x] CI checks (lint + tests)
 - command help and error messages
 - migration notes for existing repos
-- optional routing-stub injection for existing `CLAUDE.md` / `AGENTS.md`
+- [x] optional routing-stub injection for existing `CLAUDE.md` / `AGENTS.md`
 
 Routing-stub policy:
 - default: do not modify `CLAUDE.md` or `AGENTS.md`

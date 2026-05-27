@@ -22,25 +22,5 @@ jobs:
       - name: Run CLI smoke checks
         run: |
           chmod +x scripts/wtcraft
-          scripts/wtcraft --help
-          scripts/wtcraft init
-          scripts/wtcraft status
-
-      - name: Test --patch-agent-files and idempotency
-        run: |
-          tmpdir="$(mktemp -d)"
-          cd "$tmpdir"
-          git init -q
-          printf "# local claude\n" > CLAUDE.md
-          printf "# local agents\n" > AGENTS.md
-
-          /bin/bash "${GITHUB_WORKSPACE}/scripts/wtcraft" init --patch-agent-files
-          /bin/bash "${GITHUB_WORKSPACE}/scripts/wtcraft" init --patch-agent-files
-
-          grep -q "<!-- wtcraft:claude:start -->" CLAUDE.md
-          grep -q "<!-- wtcraft:claude:end -->" CLAUDE.md
-          grep -q "<!-- wtcraft:agents:start -->" AGENTS.md
-          grep -q "<!-- wtcraft:agents:end -->" AGENTS.md
-
-          test "$(grep -c 'wtcraft:claude:start' CLAUDE.md)" -eq 1
-          test "$(grep -c 'wtcraft:agents:start' AGENTS.md)" -eq 1
+          chmod +x tests/smoke.sh
+          tests/smoke.sh
