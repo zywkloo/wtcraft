@@ -20,6 +20,7 @@ wtcraft - git-native harness helper
 Usage:
   wtcraft init [--patch-agent-files]
   wtcraft status
+  wtcraft cost [--all]
   wtcraft new <type/name>
   wtcraft check <worktree-path-or-name>
   wtcraft verify <worktree-path-or-name>
@@ -54,6 +55,28 @@ wtcraft status
 
   List active worktree task files and their frontmatter metadata.
   Shows: task file path, status, agent, and priority.
+EOF
+}
+
+usage_cost() {
+  cat <<'EOF'
+wtcraft cost [--all]
+
+  Show Claude Code token usage and estimated cost per branch.
+  Reads ~/.claude/projects/**/*.jsonl — no API key required.
+
+  Default: branches visible in the current repo's active worktrees.
+
+  Options:
+    --all   Show every branch recorded in Claude Code sessions.
+
+  Columns:
+    BRANCH    Git branch name from the recorded session
+    TURNS     Number of assistant responses in that branch
+    IN        Input tokens (non-cached)
+    OUT       Output tokens
+    CACHE_R   Cache-read tokens (already paid for; shown for reference)
+    COST_USD  Estimated cost (Claude only; Codex/Antigravity not yet tracked)
 EOF
 }
 
@@ -114,6 +137,7 @@ cmd_help() {
   case "$1" in
     init)   usage_init ;;
     status) usage_status ;;
+    cost)   usage_cost ;;
     new)    usage_new ;;
     check)  usage_check ;;
     verify) usage_verify ;;
