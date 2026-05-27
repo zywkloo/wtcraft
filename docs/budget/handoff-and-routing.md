@@ -8,6 +8,15 @@
 > for usage reporting, and an explicit handoff/routing state machine
 > on top of the existing tracker.
 
+> ⚠️ **Maintenance required.** This doc contains concrete model identifiers
+> (e.g. `claude-opus-4-7`, `codex-gpt-5.3`, `gemini-3.5-flash`) in the D5
+> routing example. **Model names and tier mappings rot fast** — new variants
+> ship every few months, old ones get renamed or retired. Any time you read
+> this doc more than ~90 days after the last commit, **assume the example
+> values are stale** and verify against current vendor naming before copying
+> them into a contract. The long-term fix is the alias-resolution scheme
+> proposed in D5 and tracked in the model-identifier Investigation TODO.
+
 ## Why a second doc
 
 The current implementation (per [`budget.md`](budget.md)) answers
@@ -133,6 +142,25 @@ in order and records the routing decision in the task's
 This is the real value of budget-aware orchestration over naive
 role-bound spawning — and it is the next layer on top of the existing
 cost tracker, which only observes, not routes.
+
+**On model-identifier rot — alias resolution proposal.** Pinned ids like
+`claude-opus-4-7` get stale within months. The contract should support
+aliases the runtime resolves at handoff time:
+
+```yaml
+roles:
+  planner:
+    preferred: claude-opus-latest         # resolves at runtime
+    fallback: [gpt-best-reasoning-latest, gemini-pro-latest]
+```
+
+`wtcraft` ships an updatable mapping table (e.g. `.wtcraft/models.yaml`,
+refreshable via `wtcraft sync-models`) that maps semantic aliases
+(`claude-opus-latest`, `*-best-reasoning-*`, `*-cheapest-fast-*`) to the
+current canonical model id. Contracts stay readable across model
+generations; the registry is the single point of maintenance instead of
+every task file. See the model-identifier Investigation TODO below for
+the open scoping questions.
 
 ### D6 — No daemon, no fs-watch
 
