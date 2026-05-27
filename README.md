@@ -62,12 +62,11 @@ Current scope:
 |---|---|---|
 | bash | yes | macOS / Linux |
 | git | yes | worktree support (git ≥ 2.5) |
-| Claude Code CLI | no | optional planner / finisher agent |
-| Codex CLI | no | optional executor agent |
-| Node.js / npm | no | only needed for `npm install` distribution |
+| Claude + Codex access | yes (for full workflow) | both are expected for planner/finisher + executor roles; either CLI or App usage is acceptable |
+| Package manager (npm / pipx\|pip / Homebrew) | yes (choose one) | use at least one installation path |
 
-Claude Code and Codex are agent tools that *use* wtcraft — they are not
-prerequisites for the CLI itself.
+For the full multi-agent workflow in this repo, both Claude and Codex are expected.
+You can use their CLI variants or app-based workflows, but the role split assumes both tools are available.
 
 ## Install
 
