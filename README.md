@@ -1,9 +1,9 @@
 # wtcraft
 
-[![npm version](https://img.shields.io/npm/v/wtcraft.svg?logo=npm)](https://www.npmjs.com/package/wtcraft)
-[![PyPI version](https://img.shields.io/pypi/v/wtcraft.svg?logo=pypi)](https://pypi.org/project/wtcraft/)
+[![npm version](https://img.shields.io/npm/v/wtcraft.svg?logo=npm&maxAge=300)](https://www.npmjs.com/package/wtcraft)
+[![PyPI version](https://img.shields.io/pypi/v/wtcraft.svg?logo=pypi&maxAge=300)](https://pypi.org/project/wtcraft/)
 [![CI](https://github.com/zywkloo/wtcraft/actions/workflows/ci.yml/badge.svg)](https://github.com/zywkloo/wtcraft/actions/workflows/ci.yml)
-[![GitHub release](https://img.shields.io/github/v/release/zywkloo/wtcraft?logo=github)](https://github.com/zywkloo/wtcraft/releases)
+[![GitHub release](https://img.shields.io/github/v/release/zywkloo/wtcraft?logo=github&maxAge=300)](https://github.com/zywkloo/wtcraft/releases)
 [![License](https://img.shields.io/github/license/zywkloo/wtcraft)](./LICENSE)
 
 **Budget-Aware Multi-Agent Harness**
