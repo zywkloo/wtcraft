@@ -55,6 +55,13 @@ Deliverables:
 - CI checks (lint + tests)
 - command help and error messages
 - migration notes for existing repos
+- optional routing-stub injection for existing `CLAUDE.md` / `AGENTS.md`
+
+Routing-stub policy:
+- default: do not modify `CLAUDE.md` or `AGENTS.md`
+- opt-in only: `--patch-agent-files`
+- append-only managed block with markers for safe rollback
+- never overwrite existing agent instructions
 
 ## Phase 4: Integrations (Target: incremental)
 
