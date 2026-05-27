@@ -1,4 +1,6 @@
-# wtcraft - Worktree Craft
+# wtcraft
+
+**Budget-Aware Multi-Agent Coding Harness**
 
 <p align="center">
   <img src="https://raw.githubusercontent.com/zywkloo/wtcraft/main/wtcraft-icon.PNG" alt="wtcraft icon" width="120" />

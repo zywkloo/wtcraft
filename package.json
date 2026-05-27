@@ -1,7 +1,7 @@
 {
   "name": "wtcraft",
   "version": "0.3.3",
-  "description": "Craft bounded multi-agent workflows with git-native worktrees",
+  "description": "Budget-Aware Multi-Agent Coding Harness for git-native worktrees",
   "license": "MIT",
   "bin": {
     "wtcraft": "scripts/wtcraft"
