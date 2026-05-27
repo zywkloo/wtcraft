@@ -12,6 +12,7 @@ jobs:
     environment: prod
     permissions:
       id-token: write   # required for npm OIDC trusted publisher
+      contents: read    # required for actions/checkout to read repository contents
 
     steps:
       - uses: actions/checkout@v4
