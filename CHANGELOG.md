@@ -68,3 +68,12 @@ Versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - `wtcraft check <worktree>`: compare changed files against Scope and Off-limits
 - `.agent-harness/` starter docs and templates (planner, executor, finisher)
 - Initial public repository and vision docs
+
+[Unreleased]: https://github.com/zywkloo/wtcraft/compare/v0.3.4...HEAD
+[0.3.4]: https://github.com/zywkloo/wtcraft/compare/v0.3.3...v0.3.4
+[0.3.3]: https://github.com/zywkloo/wtcraft/compare/v0.3.2...v0.3.3
+[0.3.2]: https://github.com/zywkloo/wtcraft/compare/v0.3.1...v0.3.2
+[0.3.1]: https://github.com/zywkloo/wtcraft/compare/v0.3.0...v0.3.1
+[0.3.0]: https://github.com/zywkloo/wtcraft/compare/v0.2.0...v0.3.0
+[0.2.0]: https://github.com/zywkloo/wtcraft/compare/v0.1.0...v0.2.0
+[0.1.0]: https://github.com/zywkloo/wtcraft/releases/tag/v0.1.0
