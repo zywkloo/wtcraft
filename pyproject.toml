@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "wtcraft"
-version = "0.3.0"
+version = "0.3.1"
 description = "Craft bounded multi-agent workflows with git-native worktrees"
 license = { text = "MIT" }
 requires-python = ">=3.9"

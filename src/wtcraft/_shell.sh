@@ -383,7 +383,7 @@ file_matches_scope_item() {
 
   # Glob pattern: in bash [[ ]], * matches any characters including '/'
   # This makes src/*.ts, src/**/*.ts, and *.md all work as expected.
-  # shellcheck disable=SC2254
+  # shellcheck disable=SC2053
   [[ "$file" == $pattern ]] && return 0
   return 1
 }

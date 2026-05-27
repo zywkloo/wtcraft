@@ -7,6 +7,14 @@ Versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.3.1] - 2026-05-27
+
+### Fixed
+- `pyproject.toml`: use `setuptools.build_meta` backend (legacy path unavailable in CI)
+- `package.json`: remove leading `./` from npm bin path
+- `publish.yml`: add `workflow_dispatch` trigger for manual PyPI releases
+- `publish-npm.yml`: automated npm publishing via OIDC trusted publisher
+
 ## [0.3.0] - 2026-05-26
 
 ### Added
