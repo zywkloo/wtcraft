@@ -79,6 +79,7 @@ Goal: stay composable with existing tools and protect developer budgets.
 
 Prioritized Feature:
 - **[Budget & Token Tracker](./budget/budget.md) (Token Budget AI Assistant):** Direct cost and token-use projection, velocity diagnostics, and cache-optimization suggestions parsed from local agent session logs.
+- **[Handoff & Routing — design notes](./budget/handoff-and-routing.md):** Forward-looking design layered on top of the tracker — vendor-agnostic skill protocol, source-tagged usage reports, and quota-aware handoff routing. Planning-stage, not yet implemented.
 
 Possible integrations:
 - `workmux` session orchestration
