@@ -2,6 +2,8 @@
 
 `wtcraft` is a lightweight, git-native harness for solo developers orchestrating multiple coding agents on a limited budget.
 
+**Keywords:** `Solo Dev` · `Budget-Aware` · `Agent Handoff` · `Boundaries` · `Lightweight`
+
 The goal is simple:
 - keep agent work isolated with `git worktree`
 - make agent handoffs explicit with a task contract
