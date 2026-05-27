@@ -169,6 +169,7 @@ Fowler describes *what* harness engineering is. Stripe and OpenAI describe *how*
 
 - [Roadmap](./docs/roadmap.md)
 - [Principles](./docs/principles.md)
+- [Token Budget — Positioning and User Narratives](./docs/token-budget.md)
 - [Migration Notes](./docs/migration.md)
 - [Changelog](./CHANGELOG.md)
 
