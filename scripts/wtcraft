@@ -14,6 +14,7 @@ Usage:
   wtcraft status
   wtcraft new <type/name>
   wtcraft check <worktree-path-or-name>
+  wtcraft verify <worktree-path-or-name>
 EOF
 }
 
@@ -160,6 +161,24 @@ collect_section_items() {
   ' "$file"
 }
 
+collect_verification_commands() {
+  local file="$1"
+  awk '
+    BEGIN { in_section=0 }
+    /^##[[:space:]]+Verification$/ { in_section=1; next }
+    in_section==1 && /^##[[:space:]]+/ { in_section=0 }
+    in_section==1 {
+      line=$0
+      if (line ~ /^[[:space:]]*-[[:space:]]*\[[ xX]\][[:space:]]+/) {
+        sub(/^[[:space:]]*-[[:space:]]*\[[ xX]\][[:space:]]+/, "", line)
+        gsub(/`/, "", line)
+        gsub(/[[:space:]]+$/, "", line)
+        if (line != "") print line
+      }
+    }
+  ' "$file"
+}
+
 resolve_worktree_path() {
   local arg="$1"
   if [ -d "$arg" ]; then
@@ -239,6 +258,50 @@ cmd_check() {
   fi
 }
 
+cmd_verify() {
+  ensure_repo_root
+  [ $# -eq 1 ] || die "verify expects exactly one argument"
+  local wt_path
+  wt_path="$(resolve_worktree_path "$1")" || die "worktree not found: $1"
+
+  local task_file="${wt_path}/.worktree-task.md"
+  [ -f "$task_file" ] || die "missing task file: ${task_file}"
+
+  local commands=()
+  local line
+  while IFS= read -r line; do
+    commands+=("$line")
+  done < <(collect_verification_commands "$task_file")
+
+  if [ "${#commands[@]}" -eq 0 ]; then
+    die "no verification commands found in ${task_file}"
+  fi
+
+  local failures=0
+  local i=0
+  for cmd in "${commands[@]}"; do
+    i=$((i + 1))
+    echo "[${i}/${#commands[@]}] running: ${cmd}"
+    set +e
+    (cd "$wt_path" && bash -lc "$cmd")
+    local exit_code=$?
+    set -e
+    if [ "$exit_code" -ne 0 ]; then
+      failures=$((failures + 1))
+      echo "FAILED (${exit_code}): ${cmd}"
+    else
+      echo "PASSED: ${cmd}"
+    fi
+  done
+
+  if [ "$failures" -ne 0 ]; then
+    echo "Verification failed: ${failures} command(s) failed."
+    exit 3
+  fi
+
+  echo "Verification passed: all ${#commands[@]} command(s) succeeded."
+}
+
 main() {
   [ $# -ge 1 ] || { usage; exit 1; }
   local cmd="$1"
@@ -249,6 +312,7 @@ main() {
     status) cmd_status "$@" ;;
     new) cmd_new "$@" ;;
     check) cmd_check "$@" ;;
+    verify) cmd_verify "$@" ;;
     -h|--help|help) usage ;;
     *) usage; die "unknown command: ${cmd}" ;;
   esac

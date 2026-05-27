@@ -49,6 +49,7 @@ chmod +x scripts/wtcraft
 ./scripts/wtcraft new feat/my-task
 ./scripts/wtcraft status
 ./scripts/wtcraft check <worktree-name-or-path>
+./scripts/wtcraft verify <worktree-name-or-path>
 ```
 
 What `init` scaffolds:
