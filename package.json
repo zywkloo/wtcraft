@@ -1,0 +1,30 @@
+{
+  "name": "wtcraft",
+  "version": "0.3.0",
+  "description": "Craft bounded multi-agent workflows with git-native worktrees",
+  "license": "MIT",
+  "bin": {
+    "wtcraft": "./scripts/wtcraft"
+  },
+  "files": [
+    "scripts/",
+    "templates/"
+  ],
+  "keywords": [
+    "git",
+    "worktree",
+    "agents",
+    "orchestration",
+    "multi-agent",
+    "claude",
+    "codex"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/zywkloo/wtcraft.git"
+  },
+  "bugs": {
+    "url": "https://github.com/zywkloo/wtcraft/issues"
+  },
+  "homepage": "https://github.com/zywkloo/wtcraft#readme"
+}

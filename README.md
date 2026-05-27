@@ -46,18 +46,61 @@ Current scope:
 - starter contract and command specs
 - CLI MVP available (`init`, `status`, `check`)
 
-## Quick Start
+## Requirements
 
-Run directly from the repo:
+| Dependency | Required | Notes |
+|---|---|---|
+| bash | yes | macOS / Linux |
+| git | yes | worktree support (git ≥ 2.5) |
+| Claude Code CLI | no | optional planner / finisher agent |
+| Codex CLI | no | optional executor agent |
+| Node.js / npm | no | only needed for `npm install` distribution |
+
+Claude Code and Codex are agent tools that *use* wtcraft — they are not
+prerequisites for the CLI itself.
+
+## Install
+
+**npm (global):**
 
 ```bash
-chmod +x scripts/wtcraft
-./scripts/wtcraft init
-./scripts/wtcraft init --patch-agent-files
-./scripts/wtcraft new feat/my-task
-./scripts/wtcraft status
-./scripts/wtcraft check <worktree-name-or-path>
-./scripts/wtcraft verify <worktree-name-or-path>
+npm install -g wtcraft
+```
+
+**pip / pipx:**
+
+```bash
+pipx install wtcraft        # recommended — isolated venv, no conflicts
+# or
+pip install --user wtcraft
+```
+
+**Homebrew (tap):**
+
+```bash
+brew tap zywkloo/wtcraft https://github.com/zywkloo/wtcraft
+brew install wtcraft
+```
+
+**From source (no package manager needed):**
+
+```bash
+git clone https://github.com/zywkloo/wtcraft.git
+chmod +x wtcraft/scripts/wtcraft
+# add wtcraft/scripts to PATH, or run directly:
+wtcraft/scripts/wtcraft init
+```
+
+## Quick Start
+
+```bash
+wtcraft init                            # scaffold harness into current repo
+wtcraft init --patch-agent-files        # also append routing stubs to CLAUDE.md / AGENTS.md
+wtcraft new feat/my-task                # create worktree + task contract
+wtcraft status                          # list active worktree contracts
+wtcraft check <worktree-name-or-path>   # verify Scope / Off-limits
+wtcraft verify <worktree-name-or-path>  # run Verification commands
+wtcraft help [command]                  # per-command usage
 ```
 
 What `init` scaffolds:
@@ -78,6 +121,8 @@ Use `--patch-agent-files` to append managed routing stubs to existing files.
 
 - [Roadmap](./docs/roadmap.md)
 - [Principles](./docs/principles.md)
+- [Migration Notes](./docs/migration.md)
+- [Changelog](./CHANGELOG.md)
 
 ## Testing
 

@@ -35,7 +35,7 @@ Out of scope:
 
 ## Phase 2: Practical Solo-Dev Tooling (Target: half day)
 
-Status: in progress
+Status: completed
 
 Goal: good day-to-day workflow for a single developer using multiple agents.
 
@@ -50,21 +50,21 @@ Deliverables:
   - finisher
 
 Next in Phase 2:
-- [ ] `check` matching improvements for scoped patterns
-- [ ] richer `verify` output for easier CI diagnostics
+- [x] `check` matching improvements for scoped patterns (glob: `*.md`, `src/**/*.ts`)
+- [x] richer `verify` output for easier CI diagnostics (timing, exit codes, summary table)
 
 ## Phase 3: Public Package (Target: 1-2 days)
 
-Status: in progress
+Status: completed
 
 Goal: easy install and repeatable behavior across machines.
 
 Deliverables:
-- package distribution (`npm` first)
-- semantic versioning and changelog
+- [x] package distribution (`npm` first) — `package.json` with `bin` field
+- [x] semantic versioning and changelog — `CHANGELOG.md` (keep-a-changelog format)
 - [x] CI checks (lint + tests)
-- command help and error messages
-- migration notes for existing repos
+- [x] command help and error messages — `wtcraft help [command]`
+- [x] migration notes for existing repos — `docs/migration.md`
 - [x] optional routing-stub injection for existing `CLAUDE.md` / `AGENTS.md`
 
 Routing-stub policy:

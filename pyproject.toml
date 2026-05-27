@@ -1,0 +1,36 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.backends.legacy:build"
+
+[project]
+name = "wtcraft"
+version = "0.3.0"
+description = "Craft bounded multi-agent workflows with git-native worktrees"
+license = { text = "MIT" }
+requires-python = ">=3.9"
+keywords = ["git", "worktree", "agents", "orchestration", "multi-agent", "claude", "codex"]
+readme = "README.md"
+
+[project.urls]
+Repository = "https://github.com/zywkloo/wtcraft"
+Issues     = "https://github.com/zywkloo/wtcraft/issues"
+
+[project.scripts]
+wtcraft = "wtcraft._cli:main"
+
+# ── package discovery ────────────────────────────────────────────────────────
+[tool.setuptools.packages.find]
+where = ["src"]
+
+# Explicitly list every bundled data file.
+# Setuptools skips hidden files/dirs by default, so we name them directly.
+[tool.setuptools.package-data]
+wtcraft = [
+  "_shell.sh",
+  "templates/.agent-harness/planner.md",
+  "templates/.agent-harness/executor.md",
+  "templates/.agent-harness/finisher.md",
+  "templates/.claude/commands/planwt.md",
+  "templates/.claude/commands/finishwt.md",
+  "templates/worktrees/.worktree-task.md",
+]
