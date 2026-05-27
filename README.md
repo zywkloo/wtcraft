@@ -6,6 +6,8 @@
 [![GitHub release](https://img.shields.io/github/v/release/zywkloo/wtcraft?logo=github&maxAge=300)](https://github.com/zywkloo/wtcraft/releases)
 [![License](https://img.shields.io/github/license/zywkloo/wtcraft)](./LICENSE)
 
+> 💡 **Looking for a lightweight, zero-bloat multi-agent control flow?** If you want explicit, budget-aware orchestration without Codex/Claude Desktop app installations, you're in the right place! `wtcraft` is a git-native harness designed to give you precise control with minimal overhead.
+
 **Budget-Aware Multi-Agent Harness**
 
 <p align="center">
