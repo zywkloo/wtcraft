@@ -4,7 +4,7 @@
   "description": "Craft bounded multi-agent workflows with git-native worktrees",
   "license": "MIT",
   "bin": {
-    "wtcraft": "./scripts/wtcraft"
+    "wtcraft": "scripts/wtcraft"
   },
   "files": [
     "scripts/",
