@@ -78,7 +78,7 @@ Routing-stub policy:
 Goal: stay composable with existing tools and protect developer budgets.
 
 Prioritized Feature:
-- **[Budget & Token Tracker](./budget.md) (Token Budget AI Assistant):** Direct cost and token-use projection, velocity diagnostics, and cache-optimization suggestions parsed from local agent session logs.
+- **[Budget & Token Tracker](./budget/budget.md) (Token Budget AI Assistant):** Direct cost and token-use projection, velocity diagnostics, and cache-optimization suggestions parsed from local agent session logs.
 
 Possible integrations:
 - `workmux` session orchestration

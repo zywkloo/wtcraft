@@ -1,0 +1,2 @@
+description = "Plan a new wtcraft worktree task"
+prompt = "You are planning a worktree task. Read .agent-harness/planner.md. For the user request: {{args}}, produce or update a bounded .worktree-task.md."

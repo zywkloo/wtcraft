@@ -21,6 +21,7 @@ Usage:
   wtcraft init [--patch-agent-files]
   wtcraft status
   wtcraft cost [--all]
+  wtcraft budget [--days 7] [--detail]
   wtcraft new <type/name>
   wtcraft check <worktree-path-or-name>
   wtcraft verify <worktree-path-or-name>
@@ -77,6 +78,20 @@ wtcraft cost [--all]
     OUT       Output tokens
     CACHE_R   Cache-read tokens (already paid for; shown for reference)
     COST_USD  Estimated cost (Claude only; Codex/Antigravity not yet tracked)
+EOF
+}
+
+usage_budget() {
+  cat <<'EOF'
+wtcraft budget [--days 7] [--detail]
+
+  Show the Token Budget AI Assistant report.
+  Parses local session logs, projects token burn rates, and recommends
+  cost-saving configurations.
+
+  Options:
+    --days <N>   Analyze logs across the last N days (default: 7)
+    --detail     Show granular token breakdown (cache write, read, output)
 EOF
 }
 
@@ -138,6 +153,7 @@ cmd_help() {
     init)   usage_init ;;
     status) usage_status ;;
     cost)   usage_cost ;;
+    budget) usage_budget ;;
     new)    usage_new ;;
     check)  usage_check ;;
     verify) usage_verify ;;
@@ -153,6 +169,17 @@ die() {
 
 ensure_repo_root() {
   git rev-parse --show-toplevel >/dev/null 2>&1 || die "not inside a git repository"
+}
+
+resolve_python_script() {
+  local script_name="$1"
+  if [ -f "${SELF_DIR}/${script_name}" ]; then
+    echo "${SELF_DIR}/${script_name}"
+  elif [ -f "${ROOT_DIR}/src/wtcraft/${script_name}" ]; then
+    echo "${ROOT_DIR}/src/wtcraft/${script_name}"
+  else
+    die "cannot locate Python script ${script_name}"
+  fi
 }
 
 copy_if_missing() {
@@ -190,9 +217,11 @@ patch_agent_files() {
   local repo_root="$1"
   local claude_file="${repo_root}/CLAUDE.md"
   local agents_file="${repo_root}/AGENTS.md"
+  local gemini_file="${repo_root}/GEMINI.md"
 
   local claude_start="<!-- wtcraft:claude:start -->"
   local agents_start="<!-- wtcraft:agents:start -->"
+  local gemini_start="<!-- wtcraft:gemini:start -->"
 
   local claude_block
   claude_block="$(cat <<'EOF'
@@ -213,8 +242,19 @@ If `.worktree-task.md` exists in the current worktree root, read `.agent-harness
 EOF
 )"
 
+  local gemini_block
+  gemini_block="$(cat <<'EOF'
+<!-- wtcraft:gemini:start -->
+## wtcraft routing
+For complex or parallel tasks, read `.agent-harness/planner.md`.
+For worktree finishing, read `.agent-harness/finisher.md`.
+<!-- wtcraft:gemini:end -->
+EOF
+)"
+
   append_managed_block_if_missing "$claude_file" "$claude_block" "$claude_start"
   append_managed_block_if_missing "$agents_file" "$agents_block" "$agents_start"
+  append_managed_block_if_missing "$gemini_file" "$gemini_block" "$gemini_start"
 }
 
 cmd_init() {
@@ -236,6 +276,8 @@ cmd_init() {
   copy_if_missing "${TEMPLATE_DIR}/.agent-harness/finisher.md" "${repo_root}/.agent-harness/finisher.md"
   copy_if_missing "${TEMPLATE_DIR}/.claude/commands/planwt.md" "${repo_root}/.claude/commands/planwt.md"
   copy_if_missing "${TEMPLATE_DIR}/.claude/commands/finishwt.md" "${repo_root}/.claude/commands/finishwt.md"
+  copy_if_missing "${TEMPLATE_DIR}/.gemini/commands/planwt.toml" "${repo_root}/.gemini/commands/planwt.toml"
+  copy_if_missing "${TEMPLATE_DIR}/.gemini/commands/finishwt.toml" "${repo_root}/.gemini/commands/finishwt.toml"
   copy_if_missing "${TEMPLATE_DIR}/worktrees/.worktree-task.md" "${repo_root}/.worktree-task.template.md"
 
   cat <<'EOF'
@@ -245,6 +287,8 @@ Initialized wtcraft harness files (existing files were left untouched):
   .agent-harness/finisher.md
   .claude/commands/planwt.md
   .claude/commands/finishwt.md
+  .gemini/commands/planwt.toml
+  .gemini/commands/finishwt.toml
   .worktree-task.template.md
 EOF
 
@@ -341,6 +385,8 @@ Created worktree:
 Created task contract:
   ${task_file}
 EOF
+
+  python3 "$(resolve_python_script "_budget.py")" hook-new "$branch" || true
 }
 
 collect_section_items() {
@@ -430,6 +476,8 @@ cmd_check() {
   local task_file="${wt_path}/.worktree-task.md"
   [ -f "$task_file" ] || die "missing task file: ${task_file}"
 
+  python3 "$(resolve_python_script "_budget.py")" hook-pre "$wt_path" || true
+
   local base_branch
   base_branch="$(extract_frontmatter "$task_file" "base")"
   base_branch="${base_branch:-develop}"
@@ -480,6 +528,7 @@ cmd_check() {
 
   if [ "$has_violations" -eq 0 ]; then
     echo "Check passed: no Scope/Off-limits violations detected against ${base_branch}...HEAD."
+    python3 "$(resolve_python_script "_budget.py")" hook-post "$wt_path" || true
   else
     exit 2
   fi
@@ -493,6 +542,8 @@ cmd_verify() {
 
   local task_file="${wt_path}/.worktree-task.md"
   [ -f "$task_file" ] || die "missing task file: ${task_file}"
+
+  python3 "$(resolve_python_script "_budget.py")" hook-pre "$wt_path" || true
 
   local commands=()
   local line
@@ -548,6 +599,15 @@ cmd_verify() {
 
   echo ""
   echo "Verification PASSED: all ${total} command(s) succeeded."
+  python3 "$(resolve_python_script "_budget.py")" hook-post "$wt_path" || true
+}
+
+cmd_cost() {
+  python3 "$(resolve_python_script "_cost.py")" "$@"
+}
+
+cmd_budget() {
+  python3 "$(resolve_python_script "_budget.py")" budget "$@"
 }
 
 main() {
@@ -558,6 +618,8 @@ main() {
   case "$cmd" in
     init)        cmd_init "$@" ;;
     status)      cmd_status "$@" ;;
+    cost)        cmd_cost "$@" ;;
+    budget)      cmd_budget "$@" ;;
     new)         cmd_new "$@" ;;
     check)       cmd_check "$@" ;;
     verify)      cmd_verify "$@" ;;

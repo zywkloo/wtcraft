@@ -1,0 +1,2 @@
+description = "Finish a wtcraft worktree task"
+prompt = "You are finishing a worktree task. Read .agent-harness/finisher.md and worktrees/{{args}}/.worktree-task.md. Run verification, check boundaries, and report results."
