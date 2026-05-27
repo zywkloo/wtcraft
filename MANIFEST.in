@@ -2,3 +2,6 @@
 # They are tracked in git for README display only.
 exclude *.PNG
 exclude *.png
+recursive-exclude tests *
+recursive-exclude docs *
+recursive-exclude Formula *

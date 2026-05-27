@@ -6,6 +6,7 @@ into the environment, then exec-replaces itself with bash.
 """
 
 import os
+import shutil
 import sys
 
 
@@ -34,7 +35,8 @@ def main() -> None:
     env = os.environ.copy()
     env["WTCRAFT_TEMPLATE_DIR"] = tmpl_dir
 
-    os.execve("/bin/bash", ["/bin/bash", shell_path] + sys.argv[1:], env)
+    bash = shutil.which("bash") or r"C:\Program Files\Git\bin\bash.exe"
+    os.execve(bash, [bash, shell_path] + sys.argv[1:], env)
 
 
 if __name__ == "__main__":

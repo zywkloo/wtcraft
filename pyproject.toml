@@ -7,7 +7,7 @@ name = "wtcraft"
 version = "0.3.4"
 description = "Budget-Aware Multi-Agent Coding Harness for git-native worktrees"
 license = { text = "Apache-2.0" }
-requires-python = ">=3.9"
+requires-python = ">=3.7"
 keywords = ["git", "worktree", "agents", "orchestration", "multi-agent", "claude", "codex"]
 readme = "README.md"
 authors = [

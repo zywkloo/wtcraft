@@ -1,7 +1,14 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-SELF_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# Resolve symlinks so this works when installed as a global npm/homebrew symlink
+SOURCE="${BASH_SOURCE[0]}"
+while [ -h "$SOURCE" ]; do
+  DIR="$( cd -P "$( dirname "$SOURCE" )" && pwd )"
+  SOURCE="$(readlink "$SOURCE")"
+  [[ $SOURCE != /* ]] && SOURCE="$DIR/$SOURCE"
+done
+SELF_DIR="$( cd -P "$( dirname "$SOURCE" )" && pwd )"
 ROOT_DIR="$(cd "${SELF_DIR}/.." && pwd)"
 # WTCRAFT_TEMPLATE_DIR overrides the default; pip/Homebrew installs set this.
 TEMPLATE_DIR="${WTCRAFT_TEMPLATE_DIR:-${ROOT_DIR}/templates}"
