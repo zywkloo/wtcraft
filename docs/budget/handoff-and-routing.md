@@ -89,24 +89,46 @@ Skill instruction explicitly forbids estimation when no authoritative
 source is available. Better to surface the gap than to record a
 plausible-looking lie that pollutes the budget log.
 
-### D5 — Roles are preferences with fallback, not hard bindings
+### D5 — Roles are preferences with fallback, **at the model level, not the vendor level**
+
+Vendor-name routing (`preferred: claude`) is too coarse to be useful.
+Within one vendor family, Haiku / Sonnet / Opus differ by reasoning
+depth, throughput, and price by an order of magnitude — putting them
+in one bucket throws away the most important routing signal.
 
 Contract frontmatter extends from a fixed role-to-agent map to
-preference + fallback:
+**model-level** preference + fallback:
 
 ```yaml
 roles:
-  executor: { preferred: codex, fallback: [claude] }
-  verifier: { preferred: claude, fallback: [gemini] }
+  planner:
+    preferred: claude-opus-4-7          # strong reasoning, few calls — premium worth it
+    fallback: [gpt-5.5, gemini-3.1-pro]
+  executor:
+    preferred: codex-gpt-5.3            # main workhorse; JSON event stream eases tracking
+    fallback: [claude-sonnet-4-6, gemini-3.5-flash]
+  verifier:
+    preferred: gemini-3.5-flash         # long-context diff reading, cheapest tier
+    fallback: [claude-sonnet-4-6]
+  finisher:
+    preferred: claude-opus-4-7          # commit message / PR body quality
+    fallback: [gpt-5.5]
 budget:
   rate_limit_strategy: route_to_available
 ```
 
-When `wtcraft handoff` is about to spawn `roles.executor`, it checks
-recent `wtcraft cost` data and 429 history for the preferred agent. If
-the agent looks exhausted (heuristic: N handoffs within the current
-quota window, or last call returned 429), it routes to the next fallback
-and records the routing decision in the task's `## Iteration Log`.
+This pattern is intentional: **the priciest model goes where call count
+is lowest (planner, finisher); the cheapest model goes where bulk
+reading happens (verifier).** Same-vendor fallback is also enabled
+(Opus → Sonnet within Claude) — quota-aware routing matters as much
+within a family as across families.
+
+When `wtcraft handoff` is about to spawn a role, it checks recent
+`wtcraft cost` data and 429 history for the preferred model. If the
+model looks exhausted (heuristic: N handoffs within the current quota
+window, or last call returned 429), it routes to the next fallback
+in order and records the routing decision in the task's
+`## Iteration Log`.
 
 This is the real value of budget-aware orchestration over naive
 role-bound spawning — and it is the next layer on top of the existing
@@ -163,6 +185,16 @@ Open questions where actual data is needed before locking in.
 - [ ] **`WTCRAFT_USAGE_REPORT` regex spec** — lock the exact regex
       (model-string alphabet, integer bounds, `UNKNOWN` sentinel).
       Publish as a small contract that the skill template references.
+- [ ] **Model identifier scheme** — D5 routes at the model level
+      (`claude-opus-4-7`, `codex-gpt-5.3`, `gemini-3.5-flash`, …) but
+      there is no canonical wtcraft-side mapping from a CLI invocation
+      to a model string yet. Open questions: who owns the mapping
+      table (per-agent skill? central registry?), how to handle
+      version aliases (`claude-opus-latest` → pinned id), how to detect
+      and warn when a model name in a contract no longer exists, and
+      whether to normalize across vendors (e.g. canonical
+      `provider/family/variant/version` quadruple). Until this lands,
+      routing examples in D5 are documentation-only.
 
 ## Implementation TODO
 
