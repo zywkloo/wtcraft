@@ -46,6 +46,7 @@ Run directly from the repo:
 ```bash
 chmod +x scripts/wtcraft
 ./scripts/wtcraft init
+./scripts/wtcraft new feat/my-task
 ./scripts/wtcraft status
 ./scripts/wtcraft check <worktree-name-or-path>
 ```
@@ -59,6 +60,8 @@ What `init` scaffolds:
 - `.worktree-task.template.md`
 
 `init` is non-destructive: existing files are not overwritten.
+
+`new` defaults to base branch `develop`. Set `WTCRAFT_BASE_BRANCH=main` (or another branch) when needed.
 
 ## Docs
 

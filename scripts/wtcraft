@@ -12,6 +12,7 @@ wtcraft - git-native harness helper
 Usage:
   wtcraft init
   wtcraft status
+  wtcraft new <type/name>
   wtcraft check <worktree-path-or-name>
 EOF
 }
@@ -86,9 +87,14 @@ cmd_status() {
   printf "%-45s %-12s %-10s %-8s\n" "---------" "------" "-----" "--------"
 
   local found=0
-  while IFS= read -r task; do
+  while IFS= read -r wt; do
+    [ -z "$wt" ] && continue
+    # Skip the primary worktree (repo root), keep only linked worktrees.
+    [ "$wt" = "$repo_root" ] && continue
+    local task rel status agent priority
+    task="${wt}/.worktree-task.md"
+    [ -f "$task" ] || continue
     found=1
-    local rel status agent priority
     rel="${task#${repo_root}/}"
     status="$(extract_frontmatter "$task" "status")"
     agent="$(extract_frontmatter "$task" "agent")"
@@ -97,11 +103,44 @@ cmd_status() {
     agent="${agent:-unknown}"
     priority="${priority:-unknown}"
     printf "%-45s %-12s %-10s %-8s\n" "$rel" "$status" "$agent" "$priority"
-  done < <(find "${repo_root}/worktrees" -type f -name ".worktree-task.md" 2>/dev/null | sort)
+  done < <(git -C "$repo_root" worktree list --porcelain | awk '/^worktree /{sub(/^worktree /,"",$0); print}')
 
   if [ "$found" -eq 0 ]; then
     echo "No worktree task files found under worktrees/."
   fi
+}
+
+cmd_new() {
+  ensure_repo_root
+  [ $# -eq 1 ] || die "new expects exactly one argument: <type/name>"
+  local branch="$1"
+  local repo_root base_branch wt_path
+  repo_root="$(git rev-parse --show-toplevel)"
+  base_branch="${WTCRAFT_BASE_BRANCH:-develop}"
+  wt_path="${repo_root}/worktrees/${branch}"
+
+  [ ! -e "$wt_path" ] || die "worktree path already exists: ${wt_path}"
+  git -C "$repo_root" show-ref --verify --quiet "refs/heads/${branch}" && die "branch already exists: ${branch}"
+
+  mkdir -p "${repo_root}/worktrees"
+  git -C "$repo_root" worktree add "$wt_path" -b "$branch" "$base_branch"
+
+  local task_file="${wt_path}/.worktree-task.md"
+  cp "${TEMPLATE_DIR}/worktrees/.worktree-task.md" "$task_file"
+
+  local today
+  today="$(date +%F)"
+  sed -i.bak "s|^branch: .*|branch: ${branch}|" "$task_file"
+  sed -i.bak "s|^created: .*|created: ${today}|" "$task_file"
+  sed -i.bak "s|^base: .*|base: ${base_branch}|" "$task_file"
+  rm -f "${task_file}.bak"
+
+  cat <<EOF
+Created worktree:
+  ${wt_path}
+Created task contract:
+  ${task_file}
+EOF
 }
 
 collect_section_items() {
@@ -149,9 +188,22 @@ cmd_check() {
   base_branch="$(extract_frontmatter "$task_file" "base")"
   base_branch="${base_branch:-develop}"
 
-  mapfile -t changed_files < <(git -C "$wt_path" diff --name-only "${base_branch}...HEAD")
-  mapfile -t scope_items < <(collect_section_items "$task_file" "Scope")
-  mapfile -t offlimits_items < <(collect_section_items "$task_file" "Off-limits")
+  local changed_files=()
+  local scope_items=()
+  local offlimits_items=()
+  local line
+
+  while IFS= read -r line; do
+    changed_files+=("$line")
+  done < <(git -C "$wt_path" diff --name-only "${base_branch}...HEAD")
+
+  while IFS= read -r line; do
+    scope_items+=("$line")
+  done < <(collect_section_items "$task_file" "Scope")
+
+  while IFS= read -r line; do
+    offlimits_items+=("$line")
+  done < <(collect_section_items "$task_file" "Off-limits")
 
   local has_violations=0
 
@@ -195,6 +247,7 @@ main() {
   case "$cmd" in
     init) cmd_init "$@" ;;
     status) cmd_status "$@" ;;
+    new) cmd_new "$@" ;;
     check) cmd_check "$@" ;;
     -h|--help|help) usage ;;
     *) usage; die "unknown command: ${cmd}" ;;
