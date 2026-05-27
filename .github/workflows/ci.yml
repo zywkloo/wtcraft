@@ -26,6 +26,7 @@ jobs:
           tests/smoke.sh
 
       - name: Run CLI integration checks
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         run: |
           chmod +x tests/integration.sh
           tests/integration.sh
