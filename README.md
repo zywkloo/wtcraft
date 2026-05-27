@@ -122,13 +122,32 @@ What `init` scaffolds:
 - `.agent-harness/planner.md`
 - `.agent-harness/executor.md`
 - `.agent-harness/finisher.md`
-- `.claude/commands/planwt.md`
-- `.claude/commands/finishwt.md`
+- `.claude/commands/planwt.md` → becomes the `/planwt` slash command in Claude Code
+- `.claude/commands/finishwt.md` → becomes the `/finishwt` slash command in Claude Code
 - `.worktree-task.template.md`
 
 `init` is non-destructive: existing files are not overwritten.
 By default `init` does not modify `CLAUDE.md` or `AGENTS.md`.
 Use `--patch-agent-files` to append managed routing stubs. If `CLAUDE.md` or `AGENTS.md` do not exist, wtcraft will create them with a managed stub.
+
+### Claude Code slash commands
+
+After running `wtcraft init`, restart Claude Code to load the new commands:
+
+| Command | What it does |
+|---|---|
+| `/planwt <task description>` | Reads `.agent-harness/planner.md` and produces a bounded `.worktree-task.md` for the task |
+| `/finishwt <worktree-name>` | Reads `.agent-harness/finisher.md`, runs verification, checks boundaries, and reports results |
+
+**Typical workflow:**
+
+```
+/planwt add oauth login flow        # 1. plan the task → .worktree-task.md
+wtcraft new feat/oauth-login        # 2. create worktree + seed contract
+# agent works inside the worktree
+wtcraft check feat/oauth-login      # 3. verify Scope / Off-limits
+/finishwt feat/oauth-login          # 4. run verification and finish
+```
 
 `new` defaults to base branch `develop`. Set `WTCRAFT_BASE_BRANCH=main` (or another branch) when needed.
 
