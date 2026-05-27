@@ -10,7 +10,7 @@ usage() {
 wtcraft - git-native harness helper
 
 Usage:
-  wtcraft init
+  wtcraft init [--patch-agent-files]
   wtcraft status
   wtcraft new <type/name>
   wtcraft check <worktree-path-or-name>
@@ -37,8 +37,67 @@ copy_if_missing() {
   cp "$src" "$dst"
 }
 
+append_managed_block_if_missing() {
+  local file="$1"
+  local block="$2"
+  local start_marker="$3"
+
+  if [ ! -f "$file" ]; then
+    echo "Skipped (not found): ${file}"
+    return 0
+  fi
+
+  if grep -qF "$start_marker" "$file"; then
+    echo "Already patched: ${file}"
+    return 0
+  fi
+
+  printf "\n%s\n" "$block" >>"$file"
+  echo "Patched: ${file}"
+}
+
+patch_agent_files() {
+  local repo_root="$1"
+  local claude_file="${repo_root}/CLAUDE.md"
+  local agents_file="${repo_root}/AGENTS.md"
+
+  local claude_start="<!-- wtcraft:claude:start -->"
+  local agents_start="<!-- wtcraft:agents:start -->"
+
+  local claude_block
+  claude_block="$(cat <<'EOF'
+<!-- wtcraft:claude:start -->
+## wtcraft routing
+For complex or parallel tasks, read `.agent-harness/planner.md`.
+For worktree finishing, read `.agent-harness/finisher.md`.
+<!-- wtcraft:claude:end -->
+EOF
+)"
+
+  local agents_block
+  agents_block="$(cat <<'EOF'
+<!-- wtcraft:agents:start -->
+## wtcraft routing
+If `.worktree-task.md` exists in the current worktree root, read `.agent-harness/executor.md` first and follow task Scope, Off-limits, and Verification.
+<!-- wtcraft:agents:end -->
+EOF
+)"
+
+  append_managed_block_if_missing "$claude_file" "$claude_block" "$claude_start"
+  append_managed_block_if_missing "$agents_file" "$agents_block" "$agents_start"
+}
+
 cmd_init() {
   ensure_repo_root
+  local patch_agent=false
+  while [ $# -gt 0 ]; do
+    case "$1" in
+      --patch-agent-files) patch_agent=true ;;
+      *) die "unknown init option: $1" ;;
+    esac
+    shift
+  done
+
   local repo_root
   repo_root="$(git rev-parse --show-toplevel)"
 
@@ -58,6 +117,16 @@ Initialized wtcraft harness files (existing files were left untouched):
   .claude/commands/finishwt.md
   .worktree-task.template.md
 EOF
+
+  if [ "$patch_agent" = true ]; then
+    echo
+    echo "Applying optional routing stubs to agent files..."
+    patch_agent_files "$repo_root"
+  else
+    echo
+    echo "Agent files were not modified (default behavior)."
+    echo "Use: wtcraft init --patch-agent-files"
+  fi
 }
 
 extract_frontmatter() {
