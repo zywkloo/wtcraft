@@ -1,4 +1,4 @@
-# wtcraft
+# wtcraft - Worktree Craft
 
 `wtcraft` is a git-native harness for bounded multi-agent coding in local repositories.
 
