@@ -1,22 +1,24 @@
 # wtcraft - Worktree Craft
 
-`wtcraft` is a git-native harness for bounded multi-agent coding in local repositories.
+`wtcraft` is a lightweight, git-native harness for solo developers orchestrating multiple coding agents on a limited budget.
 
 The goal is simple:
 - keep agent work isolated with `git worktree`
-- make task boundaries explicit with a task contract
-- stay lightweight for solo developers who use CLI + any IDE
+- make agent handoffs explicit with a task contract
+- keep file and task boundaries easy to verify
+- stay usable from CLI + any IDE
 
 No hosted platform is required. No custom runtime is required.
 
 ## Why
 
-Parallel agents are useful, but raw parallelism creates three common problems:
+Parallel agents are useful, but raw parallelism creates four common problems:
+- unclear handoff between planner and executor agents
 - context pollution across tasks
 - file ownership collisions
 - review overload from too many noisy PRs
 
-`wtcraft` focuses on boundaries and sequencing, not maximum concurrency.
+`wtcraft` focuses on handoff, boundaries, and budget-aware sequencing, not maximum concurrency.
 
 For the design story behind this project, read:
 [Beyond Worktrees: A Budget-Aware Multi-Agent Coding Harness for Solo Developers](https://zywkloo.github.io/blog/beyond-worktrees-budget-aware-multi-agent-coding-harness/).
