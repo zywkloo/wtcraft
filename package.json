@@ -13,11 +13,19 @@
   "keywords": [
     "git",
     "worktree",
+    "agent",
     "agents",
-    "orchestration",
-    "multi-agent",
+    "ai",
+    "llm",
+    "harness",
+    "cli",
+    "code",
+    "coding",
     "claude",
-    "codex"
+    "codex",
+    "budget",
+    "sandbox",
+    "token"
   ],
   "repository": {
     "type": "git",
