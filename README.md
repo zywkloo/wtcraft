@@ -1,5 +1,11 @@
 # wtcraft
 
+[![npm version](https://img.shields.io/npm/v/wtcraft.svg?logo=npm)](https://www.npmjs.com/package/wtcraft)
+[![PyPI version](https://img.shields.io/pypi/v/wtcraft.svg?logo=pypi)](https://pypi.org/project/wtcraft/)
+[![CI](https://github.com/zywkloo/wtcraft/actions/workflows/ci.yml/badge.svg)](https://github.com/zywkloo/wtcraft/actions/workflows/ci.yml)
+[![GitHub release](https://img.shields.io/github/v/release/zywkloo/wtcraft?logo=github)](https://github.com/zywkloo/wtcraft/releases)
+[![License](https://img.shields.io/github/license/zywkloo/wtcraft)](./LICENSE)
+
 **Budget-Aware Multi-Agent Harness**
 
 <p align="center">
@@ -60,7 +66,7 @@ Current scope:
 
 | Dependency | Required | Notes |
 |---|---|---|
-| bash | yes | macOS / Linux |
+| bash | yes | macOS / Linux only (Windows is currently not supported) |
 | git | yes | worktree support (git ≥ 2.5) |
 | Claude + Codex access | yes (for full workflow) | both are expected for planner/finisher + executor roles; either CLI or App usage is acceptable |
 | Package manager (npm / pipx\|pip / Homebrew) | yes (choose one) | use at least one installation path |
