@@ -66,7 +66,7 @@ Current scope:
 
 | Dependency | Required | Notes |
 |---|---|---|
-| bash | yes | macOS / Linux only (Windows is currently not supported) |
+| bash | yes | macOS / Linux native; Windows requires [Git for Windows](https://git-scm.com/download/win) (includes Git Bash) |
 | git | yes | worktree support (git ≥ 2.5) |
 | Claude + Codex access | yes (for full workflow) | both are expected for planner/finisher + executor roles; either CLI or App usage is acceptable |
 | Package manager (npm / pipx\|pip / Homebrew) | yes (choose one) | use at least one installation path |
