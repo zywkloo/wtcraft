@@ -4,7 +4,7 @@ class Wtcraft < Formula
   # Update url + sha256 for each release:
   #   curl -sL <url> | shasum -a 256
   url "https://github.com/zywkloo/wtcraft/archive/refs/tags/v0.3.0.tar.gz"
-  sha256 "REPLACE_WITH_SHA256_OF_v0.3.0_TARBALL"
+  sha256 "dabaff92c5dabc4f45f58878ccf6011e43e57159404207d31cce802fabc887e1"
   license "MIT"
   head "https://github.com/zywkloo/wtcraft.git", branch: "main"
 
