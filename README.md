@@ -123,7 +123,7 @@ What `init` scaffolds:
 
 `init` is non-destructive: existing files are not overwritten.
 By default `init` does not modify `CLAUDE.md` or `AGENTS.md`.
-Use `--patch-agent-files` to append managed routing stubs to existing files.
+Use `--patch-agent-files` to append managed routing stubs. If `CLAUDE.md` or `AGENTS.md` do not exist, wtcraft will create them with a managed stub.
 
 `new` defaults to base branch `develop`. Set `WTCRAFT_BASE_BRANCH=main` (or another branch) when needed.
 

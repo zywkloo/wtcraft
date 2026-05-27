@@ -140,7 +140,9 @@ append_managed_block_if_missing() {
   local start_marker="$3"
 
   if [ ! -f "$file" ]; then
-    echo "Skipped (not found): ${file}"
+    mkdir -p "$(dirname "$file")"
+    printf "%s\n" "$block" >"$file"
+    echo "Created and patched: ${file}"
     return 0
   fi
 
