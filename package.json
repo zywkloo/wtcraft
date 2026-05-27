@@ -2,7 +2,7 @@
   "name": "wtcraft",
   "version": "0.3.3",
   "description": "Budget-Aware Multi-Agent Coding Harness for git-native worktrees",
-  "license": "MIT",
+  "license": "Apache-2.0",
   "bin": {
     "wtcraft": "scripts/wtcraft"
   },
