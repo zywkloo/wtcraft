@@ -7,6 +7,11 @@ Versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.3.4] - 2026-05-27
+
+### Changed
+- Bump package version to `0.3.4` for npm and PyPI release tagging
+
 ## [0.3.3] - 2026-05-27
 
 ### Fixed
