@@ -1,6 +1,6 @@
 # wtcraft
 
-**Budget-Aware Multi-Agent Coding Harness**
+**Budget-Aware Multi-Agent Harness**
 
 <p align="center">
   <img src="https://raw.githubusercontent.com/zywkloo/wtcraft/main/wtcraft-icon.PNG" alt="wtcraft icon" width="120" />
@@ -33,7 +33,7 @@ Parallel agents are useful, but raw parallelism creates four common problems:
 `wtcraft` focuses on handoff, boundaries, and budget-aware sequencing, not maximum concurrency.
 
 For the design story behind this project, read:
-[Beyond Worktrees: A Budget-Aware Multi-Agent Coding Harness for Solo Developers](https://zywkloo.github.io/blog/beyond-worktrees-budget-aware-multi-agent-coding-harness/).
+[wtcraft — Budget-Aware Multi-Agent Harness](https://zywkloo.github.io/blog/beyond-worktrees-budget-aware-multi-agent-coding-harness/).
 
 ## Core Model
 
