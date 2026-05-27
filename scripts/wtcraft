@@ -165,7 +165,7 @@ cmd_status() {
     task="${wt}/.worktree-task.md"
     [ -f "$task" ] || continue
     found=1
-    rel="${task#${repo_root}/}"
+    rel="${task#"${repo_root}"/}"
     status="$(extract_frontmatter "$task" "status")"
     agent="$(extract_frontmatter "$task" "agent")"
     priority="$(extract_frontmatter "$task" "priority")"
