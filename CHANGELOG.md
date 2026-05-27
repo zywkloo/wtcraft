@@ -7,6 +7,11 @@ Versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.3.2] - 2026-05-27
+
+### Changed
+- `pyproject.toml`: add authors, classifiers, and full project URLs for PyPI sidebar
+
 ## [0.3.1] - 2026-05-27
 
 ### Fixed

@@ -4,16 +4,32 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "wtcraft"
-version = "0.3.1"
+version = "0.3.2"
 description = "Craft bounded multi-agent workflows with git-native worktrees"
 license = { text = "MIT" }
 requires-python = ">=3.9"
 keywords = ["git", "worktree", "agents", "orchestration", "multi-agent", "claude", "codex"]
 readme = "README.md"
+authors = [
+  { name = "Victor Zhang", email = "zywkloo@gmail.com" }
+]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Environment :: Console",
+  "Intended Audience :: Developers",
+  "License :: OSI Approved :: MIT License",
+  "Operating System :: MacOS",
+  "Operating System :: POSIX :: Linux",
+  "Topic :: Software Development",
+  "Topic :: Software Development :: Version Control :: Git",
+  "Topic :: Utilities",
+]
 
 [project.urls]
-Repository = "https://github.com/zywkloo/wtcraft"
-Issues     = "https://github.com/zywkloo/wtcraft/issues"
+Repository  = "https://github.com/zywkloo/wtcraft"
+Issues      = "https://github.com/zywkloo/wtcraft/issues"
+Changelog   = "https://github.com/zywkloo/wtcraft/blob/main/CHANGELOG.md"
+Homepage    = "https://github.com/zywkloo/wtcraft#readme"
 
 [project.scripts]
 wtcraft = "wtcraft._cli:main"

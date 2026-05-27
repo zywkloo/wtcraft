@@ -1,6 +1,6 @@
 {
   "name": "wtcraft",
-  "version": "0.3.1",
+  "version": "0.3.2",
   "description": "Craft bounded multi-agent workflows with git-native worktrees",
   "license": "MIT",
   "bin": {
