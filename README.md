@@ -1,5 +1,9 @@
 # wtcraft - Worktree Craft
 
+<p align="center">
+  <img src="https://raw.githubusercontent.com/zywkloo/wtcraft/main/wtcraft-icon.PNG" alt="wtcraft icon" width="120" />
+</p>
+
 `wtcraft` is a lightweight, git-native harness for solo developers orchestrating multiple coding agents on a limited budget.
 
 **Keywords:** `Solo Dev` · `Budget-Aware` · `Agent Handoff` · `Boundaries` · `Lightweight`

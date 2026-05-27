@@ -1,0 +1,4 @@
+# Exclude images from the pip source distribution.
+# They are tracked in git for README display only.
+exclude *.PNG
+exclude *.png
