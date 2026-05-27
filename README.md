@@ -37,7 +37,28 @@ Early public bootstrap.
 Current scope:
 - open documentation for workflow and roadmap
 - starter contract and command specs
-- CLI MVP to follow (`init`, `status`, `check`)
+- CLI MVP available (`init`, `status`, `check`)
+
+## Quick Start
+
+Run directly from the repo:
+
+```bash
+chmod +x scripts/wtcraft
+./scripts/wtcraft init
+./scripts/wtcraft status
+./scripts/wtcraft check <worktree-name-or-path>
+```
+
+What `init` scaffolds:
+- `.agent-harness/planner.md`
+- `.agent-harness/executor.md`
+- `.agent-harness/finisher.md`
+- `.claude/commands/planwt.md`
+- `.claude/commands/finishwt.md`
+- `.worktree-task.template.md`
+
+`init` is non-destructive: existing files are not overwritten.
 
 ## Docs
 

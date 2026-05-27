@@ -1,0 +1,204 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+SELF_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+ROOT_DIR="$(cd "${SELF_DIR}/.." && pwd)"
+TEMPLATE_DIR="${ROOT_DIR}/templates"
+
+usage() {
+  cat <<'EOF'
+wtcraft - git-native harness helper
+
+Usage:
+  wtcraft init
+  wtcraft status
+  wtcraft check <worktree-path-or-name>
+EOF
+}
+
+die() {
+  echo "Error: $*" >&2
+  exit 1
+}
+
+ensure_repo_root() {
+  git rev-parse --show-toplevel >/dev/null 2>&1 || die "not inside a git repository"
+}
+
+copy_if_missing() {
+  local src="$1"
+  local dst="$2"
+  if [ -e "$dst" ]; then
+    return 0
+  fi
+  mkdir -p "$(dirname "$dst")"
+  cp "$src" "$dst"
+}
+
+cmd_init() {
+  ensure_repo_root
+  local repo_root
+  repo_root="$(git rev-parse --show-toplevel)"
+
+  copy_if_missing "${TEMPLATE_DIR}/.agent-harness/planner.md" "${repo_root}/.agent-harness/planner.md"
+  copy_if_missing "${TEMPLATE_DIR}/.agent-harness/executor.md" "${repo_root}/.agent-harness/executor.md"
+  copy_if_missing "${TEMPLATE_DIR}/.agent-harness/finisher.md" "${repo_root}/.agent-harness/finisher.md"
+  copy_if_missing "${TEMPLATE_DIR}/.claude/commands/planwt.md" "${repo_root}/.claude/commands/planwt.md"
+  copy_if_missing "${TEMPLATE_DIR}/.claude/commands/finishwt.md" "${repo_root}/.claude/commands/finishwt.md"
+  copy_if_missing "${TEMPLATE_DIR}/worktrees/.worktree-task.md" "${repo_root}/.worktree-task.template.md"
+
+  cat <<'EOF'
+Initialized wtcraft harness files (existing files were left untouched):
+  .agent-harness/planner.md
+  .agent-harness/executor.md
+  .agent-harness/finisher.md
+  .claude/commands/planwt.md
+  .claude/commands/finishwt.md
+  .worktree-task.template.md
+EOF
+}
+
+extract_frontmatter() {
+  local file="$1"
+  local key="$2"
+  awk -v key="$key" '
+    BEGIN { in_fm=0 }
+    /^---$/ {
+      if (in_fm==0) { in_fm=1; next }
+      else { in_fm=0; exit }
+    }
+    in_fm==1 {
+      if ($0 ~ "^" key ":") {
+        sub("^" key ":[[:space:]]*", "", $0)
+        print $0
+        exit
+      }
+    }
+  ' "$file"
+}
+
+cmd_status() {
+  ensure_repo_root
+  local repo_root
+  repo_root="$(git rev-parse --show-toplevel)"
+
+  printf "%-45s %-12s %-10s %-8s\n" "Task File" "Status" "Agent" "Priority"
+  printf "%-45s %-12s %-10s %-8s\n" "---------" "------" "-----" "--------"
+
+  local found=0
+  while IFS= read -r task; do
+    found=1
+    local rel status agent priority
+    rel="${task#${repo_root}/}"
+    status="$(extract_frontmatter "$task" "status")"
+    agent="$(extract_frontmatter "$task" "agent")"
+    priority="$(extract_frontmatter "$task" "priority")"
+    status="${status:-unknown}"
+    agent="${agent:-unknown}"
+    priority="${priority:-unknown}"
+    printf "%-45s %-12s %-10s %-8s\n" "$rel" "$status" "$agent" "$priority"
+  done < <(find "${repo_root}/worktrees" -type f -name ".worktree-task.md" 2>/dev/null | sort)
+
+  if [ "$found" -eq 0 ]; then
+    echo "No worktree task files found under worktrees/."
+  fi
+}
+
+collect_section_items() {
+  local file="$1"
+  local section="$2"
+  awk -v section="$section" '
+    BEGIN { in_section=0 }
+    $0 ~ "^##[[:space:]]+" section "$" { in_section=1; next }
+    in_section==1 && $0 ~ "^##[[:space:]]+" { in_section=0 }
+    in_section==1 {
+      line=$0
+      gsub(/^[[:space:]]*-[[:space:]]*/, "", line)
+      gsub(/`/, "", line)
+      gsub(/[[:space:]]+$/, "", line)
+      if (line != "" && line !~ /^#/) print line
+    }
+  ' "$file"
+}
+
+resolve_worktree_path() {
+  local arg="$1"
+  if [ -d "$arg" ]; then
+    (cd "$arg" && pwd)
+    return 0
+  fi
+  local repo_root
+  repo_root="$(git rev-parse --show-toplevel)"
+  if [ -d "${repo_root}/worktrees/${arg}" ]; then
+    echo "${repo_root}/worktrees/${arg}"
+    return 0
+  fi
+  return 1
+}
+
+cmd_check() {
+  ensure_repo_root
+  [ $# -eq 1 ] || die "check expects exactly one argument"
+  local wt_path
+  wt_path="$(resolve_worktree_path "$1")" || die "worktree not found: $1"
+
+  local task_file="${wt_path}/.worktree-task.md"
+  [ -f "$task_file" ] || die "missing task file: ${task_file}"
+
+  local base_branch
+  base_branch="$(extract_frontmatter "$task_file" "base")"
+  base_branch="${base_branch:-develop}"
+
+  mapfile -t changed_files < <(git -C "$wt_path" diff --name-only "${base_branch}...HEAD")
+  mapfile -t scope_items < <(collect_section_items "$task_file" "Scope")
+  mapfile -t offlimits_items < <(collect_section_items "$task_file" "Off-limits")
+
+  local has_violations=0
+
+  for f in "${changed_files[@]:-}"; do
+    [ -z "$f" ] && continue
+
+    local in_scope=0
+    for s in "${scope_items[@]:-}"; do
+      [ -z "$s" ] && continue
+      if [ "$f" = "$s" ] || [[ "$f" == "$s/"* ]]; then
+        in_scope=1
+        break
+      fi
+    done
+    if [ "${#scope_items[@]}" -gt 0 ] && [ "$in_scope" -eq 0 ]; then
+      echo "Scope violation: ${f}"
+      has_violations=1
+    fi
+
+    for o in "${offlimits_items[@]:-}"; do
+      [ -z "$o" ] && continue
+      if [ "$f" = "$o" ] || [[ "$f" == "$o/"* ]]; then
+        echo "Off-limits violation: ${f} (matched ${o})"
+        has_violations=1
+      fi
+    done
+  done
+
+  if [ "$has_violations" -eq 0 ]; then
+    echo "Check passed: no Scope/Off-limits violations detected against ${base_branch}...HEAD."
+  else
+    exit 2
+  fi
+}
+
+main() {
+  [ $# -ge 1 ] || { usage; exit 1; }
+  local cmd="$1"
+  shift
+
+  case "$cmd" in
+    init) cmd_init "$@" ;;
+    status) cmd_status "$@" ;;
+    check) cmd_check "$@" ;;
+    -h|--help|help) usage ;;
+    *) usage; die "unknown command: ${cmd}" ;;
+  esac
+}
+
+main "$@"
