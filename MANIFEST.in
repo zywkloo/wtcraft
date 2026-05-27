@@ -5,3 +5,8 @@ exclude *.png
 recursive-exclude tests *
 recursive-exclude docs *
 recursive-exclude Formula *
+recursive-exclude .agent-harness *
+recursive-exclude .claude *
+exclude CLAUDE.md
+exclude AGENTS.md
+exclude .worktree-task.template.md
