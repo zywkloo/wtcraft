@@ -19,7 +19,7 @@
 npm install -g wtcraft
 ```
 
-`wtcraft` is a lightweight, git-native harness that gets you parallel multi-agent coding without the premium-tier price tag. Three $20 subscriptions, coordinated, beats one $200 subscription — if the handoff between agents is bounded, verifiable, and budget-aware.
+`wtcraft` is a lightweight, git-native harness that gets you parallel multi-agent coding without the premium-tier price tag. Claude Pro ($20) + ChatGPT Plus ($20, includes Codex CLI) + Gemini (free tier) — coordinated, beats one $200 subscription, if the handoff between agents is bounded, verifiable, and budget-aware.
 
 **Keywords:** `Solo Dev` · `Budget-Aware` · `Agent Handoff` · `Boundaries` · `Lightweight`
 
