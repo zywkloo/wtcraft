@@ -73,9 +73,12 @@ Routing-stub policy:
 - append-only managed block with markers for safe rollback
 - never overwrite existing agent instructions
 
-## Phase 4: Integrations (Target: incremental)
+## Phase 4: Integrations & Budget Control (Target: incremental)
 
-Goal: stay composable with existing tools.
+Goal: stay composable with existing tools and protect developer budgets.
+
+Prioritized Feature:
+- **[Budget & Token Tracker](./budget.md) (Token Budget AI Assistant):** Direct cost and token-use projection, velocity diagnostics, and cache-optimization suggestions parsed from local agent session logs.
 
 Possible integrations:
 - `workmux` session orchestration
