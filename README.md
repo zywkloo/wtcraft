@@ -1,22 +1,25 @@
 # wtcraft
 
+> **Your Cheap Token Orchestrator (CTO).**
+> For developers who can afford 3 cheap subscriptions but not 1 expensive one.
+
 [![npm version](https://img.shields.io/npm/v/wtcraft.svg?logo=npm&maxAge=300)](https://www.npmjs.com/package/wtcraft)
 [![PyPI version](https://img.shields.io/pypi/v/wtcraft.svg?logo=pypi&maxAge=300)](https://pypi.org/project/wtcraft/)
 [![CI](https://github.com/zywkloo/wtcraft/actions/workflows/ci.yml/badge.svg)](https://github.com/zywkloo/wtcraft/actions/workflows/ci.yml)
 [![GitHub release](https://img.shields.io/github/v/release/zywkloo/wtcraft?logo=github&maxAge=300)](https://github.com/zywkloo/wtcraft/releases)
 [![License](https://img.shields.io/github/license/zywkloo/wtcraft)](./LICENSE)
 
-**Budget-Aware Multi-Agent Harness**
-
 <p align="center">
   <img src="https://raw.githubusercontent.com/zywkloo/wtcraft/main/wtcraft-icon.PNG" alt="wtcraft icon" width="120" />
 </p>
+
+**Parallel multi-agent coding on $40/month instead of $200.** Built for solo developers paying for the cheapest tier of each agent (Claude, Codex, Gemini, …) and orchestrating them as a team instead of paying premium for one.
 
 ```bash
 npm install -g wtcraft
 ```
 
-`wtcraft` is a lightweight, git-native harness for solo developers orchestrating multiple coding agents on a limited budget.
+`wtcraft` is a lightweight, git-native harness that gets you parallel multi-agent coding without the premium-tier price tag. Claude Pro ($20) + ChatGPT Plus ($20, includes Codex CLI) + Gemini (free tier) — coordinated, beats one $200 subscription, if the handoff between agents is bounded, verifiable, and budget-aware.
 
 **Keywords:** `Solo Dev` · `Budget-Aware` · `Agent Handoff` · `Boundaries` · `Lightweight`
 
