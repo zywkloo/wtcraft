@@ -81,6 +81,7 @@ Possible integrations:
 - `workmux` session orchestration
 - GitHub PR template generation
 - local dashboard-style status output
+- **Multi-Agent Handoff Automation**: Exploring trigger-based daemons and headless command orchestrations to automate agent handoffs without process nesting. Read the [Multi-Agent Handoff & Future Automation guide](file:///Users/stephen/Documents/To%20do%20list/wtcraft/docs/handoff-automation.md) for architectural details.
 
 Non-goals:
 - replacing native git

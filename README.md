@@ -118,6 +118,14 @@ wtcraft verify <worktree-name-or-path>  # run Verification commands
 wtcraft help [command]                  # per-command usage
 ```
 
+> [!IMPORTANT]
+> ### 🛡️ Safe Agent-File Patching (`--patch-agent-files`)
+> By default, `wtcraft init` will not touch files outside of `.agent-harness/`.
+> Passing the `--patch-agent-files` option is fully non-destructive and idempotent:
+> - **If `CLAUDE.md` and `AGENTS.md` do not exist**: They are created automatically with routing instructions.
+> - **If they already exist**: The stubs are appended safely at the very end of your files without overwriting any of your existing content.
+> - **If already patched**: The stubs are detected automatically and ignored on subsequent runs.
+
 What `init` scaffolds:
 - `.agent-harness/planner.md`
 - `.agent-harness/executor.md`
@@ -139,15 +147,56 @@ After running `wtcraft init`, restart Claude Code to load the new commands:
 | `/planwt <task description>` | Reads `.agent-harness/planner.md` and produces a bounded `.worktree-task.md` for the task |
 | `/finishwt <worktree-name>` | Reads `.agent-harness/finisher.md`, runs verification, checks boundaries, and reports results |
 
-**Typical workflow:**
+---
 
+### 🔄 Multi-Agent Handoff Workflow
+
+`wtcraft` separates the orchestration roles between the **Planner/Finisher (Claude Code)** and the **Executor (Codex CLI / Cursor / VSCode)** using a clear manual context switch. 
+
+```mermaid
+flowchart TD
+    subgraph "Parent Workspace (e.g. Claude Code)"
+        A["1. /planwt &lt;task&gt;"] -->|Generates Contract| B[".worktree-task.md"]
+        B --> C["2. wtcraft new feat/my-task"]
+    end
+
+    subgraph "Isolated Worktree (e.g. Codex CLI / Cursor / VSCode)"
+        C -->|cd worktrees/feat/my-task| D["3. Read .worktree-task.md & AGENTS.md"]
+        D -->|Confined Code Modification| E["4. Implement task requirements"]
+    end
+
+    subgraph "Parent Workspace (Verification & Clean PR)"
+        E -->|Work Complete| F["5. wtcraft check feat/my-task"]
+        F -->|Validate Boundaries| G["6. /finishwt feat/my-task"]
+    end
+
+    style B fill:#3a3f58,stroke:#5c6370,stroke-width:2px,color:#fff
+    style D fill:#3a3f58,stroke:#5c6370,stroke-width:2px,color:#fff
 ```
-/planwt add oauth login flow        # 1. plan the task → .worktree-task.md
-wtcraft new feat/oauth-login        # 2. create worktree + seed contract
-# agent works inside the worktree
-wtcraft check feat/oauth-login      # 3. verify Scope / Off-limits
-/finishwt feat/oauth-login          # 4. run verification and finish
-```
+
+#### Typical Handoff Walkthrough:
+
+1. **Plan & Boundary Setup (Claude Code)**
+   ```
+   /planwt add oauth login flow        # 1. plan the task → produces .worktree-task.md
+   wtcraft new feat/oauth-login        # 2. create isolated worktree + seed contract
+   ```
+2. **Execute (Codex CLI / Cursor / VSCode)**
+   Switch context into the clean worktree directory to let your executor agent work strictly within boundaries:
+   ```bash
+   cd worktrees/feat/oauth-login
+   # Launch Codex CLI or Cursor directly in this folder.
+   # The agent automatically picks up AGENTS.md and .worktree-task.md to remain sandboxed.
+   ```
+3. **Verify & Finish (Claude Code)**
+   Switch back to your main workspace, run the boundary checks, and finish the lifecycle:
+   ```
+   wtcraft check feat/oauth-login      # 3. verify Scope / Off-limits boundaries
+   /finishwt feat/oauth-login          # 4. run verification and finalize PR
+   ```
+
+> [!TIP]
+> For discussions on how we plan to optimize or automate this handoff (and why direct execution of Codex CLI inside Claude Code CLI is traditionally complex), read the [Multi-Agent Handoff & Future Automation guide](file:///Users/stephen/Documents/To%20do%20list/wtcraft/docs/handoff-automation.md).
 
 `new` defaults to base branch `develop`. Set `WTCRAFT_BASE_BRANCH=main` (or another branch) when needed.
 
