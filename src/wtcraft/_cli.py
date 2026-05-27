@@ -11,6 +11,10 @@ import sys
 
 
 def main() -> None:
+    if len(sys.argv) >= 2 and sys.argv[1] == "cost":
+        from wtcraft._cost import main as cost_main
+        sys.exit(cost_main(sys.argv[2:]))
+
     pkg_dir = os.path.dirname(os.path.abspath(__file__))
 
     shell_path = os.path.join(pkg_dir, "_shell.sh")
