@@ -18,6 +18,9 @@ Parallel agents are useful, but raw parallelism creates three common problems:
 
 `wtcraft` focuses on boundaries and sequencing, not maximum concurrency.
 
+For the design story behind this project, read:
+[Beyond Worktrees: A Budget-Aware Multi-Agent Coding Harness for Solo Developers](https://zywkloo.github.io/blog/beyond-worktrees-budget-aware-multi-agent-coding-harness/).
+
 ## Core Model
 
 1. Planner defines a bounded task contract.
