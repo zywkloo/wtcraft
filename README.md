@@ -13,7 +13,15 @@
   <img src="https://raw.githubusercontent.com/zywkloo/wtcraft/main/wtcraft-icon.PNG" alt="wtcraft icon" width="120" />
 </p>
 
-**Parallel multi-agent coding on $40/month instead of $200.** Built for solo developers paying for the cheapest tier of each agent (Claude, Codex, Gemini, …) and orchestrating them as a team instead of paying premium for one.
+Anthr… Open… Goo…
+
+**$200/month for one AI agent?**
+
+No.
+
+Use cheap tiers across Claude, Codex, and Gemini — then run them like a team.
+
+`wtcraft` coordinates multiple agents with git worktrees, task files, and clear boundaries — so one solo developer can run parallel work without depending on one premium plan.
 
 ```bash
 npm install -g wtcraft
