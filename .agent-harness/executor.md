@@ -18,16 +18,16 @@ You are the execution agent for a bounded worktree task.
 
 Use the most capable model available in your current environment:
 
-| Environment | Preferred model |
+| Environment | Preferred model (May 2026) |
 |---|---|
-| Claude Code (Anthropic CLI) | claude-sonnet-4-6 or claude-opus-4-6 |
-| Codex CLI (OpenAI) | codex (default), or gpt-4.1-mini as fallback |
+| Claude Code (Anthropic CLI) | `claude-sonnet-4-6` (default) · `claude-opus-4-7` for hard tasks |
+| Codex CLI — ChatGPT auth | `gpt-5.5` (default, switchable) |
+| Codex CLI — API key | `gpt-5.2-codex` (gpt-5.5 not yet available via API key) |
+| Codex Cloud | `gpt-5.5` (locked, not switchable) |
 | Other / unknown | Default to the host CLI's configured model |
-
-**Codex fallback:** if the Codex CLI is invoked without an explicit `--model`
-flag and the default model is unavailable, pass `--model gpt-4.1-mini` as a
-fallback. Do not attempt to call the Anthropic API from inside Codex; use
-whichever OpenAI model the CLI supports.
 
 The executor role is model-agnostic — these are recommendations, not hard
 requirements. Follow the Scope and Verification contract regardless of model.
+
+For agent loop architecture and reasoning differences between environments, see
+[`docs/agent-loop-architecture.md`](../docs/agent-loop-architecture.md).

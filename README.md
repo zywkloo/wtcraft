@@ -180,6 +180,7 @@ Fowler describes *what* harness engineering is. Stripe and OpenAI describe *how*
 
 - [Roadmap](./docs/roadmap.md)
 - [Principles](./docs/principles.md)
+- [Agent Loop Architecture](./docs/agent-loop-architecture.md)
 - [Migration Notes](./docs/migration.md)
 - [Changelog](./CHANGELOG.md)
 
