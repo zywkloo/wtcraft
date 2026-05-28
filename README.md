@@ -64,6 +64,25 @@ This supports a DAG workflow:
 - run file-disjoint tasks in parallel
 - serialize tasks that touch shared files
 
+### Stack Position
+
+wtcraft sits one layer above each agent CLI. It does not replace any agent's internal loop — it coordinates across them:
+
+```
+     wtcraft
+  (task graph · worktree isolation · scope contracts · budget routing)
+         ↓               ↓               ↓
+   Claude Code       Codex CLI       Gemini CLI
+  (loop + tools)   (loop + tools)  (loop + tools)
+         ↓               ↓               ↓
+                  actual file edits
+```
+
+Each inner agent handles its own `observe → think → act → compress → repeat` cycle.  
+wtcraft handles what none of them do: which tasks go to which agent, file ownership across agents, and handoff contracts.
+
+For the full analysis of how this maps to agent loop internals, see [Architecture](./docs/architecture.md).
+
 ## Project Status
 
 Early public bootstrap.
@@ -178,6 +197,7 @@ Fowler describes *what* harness engineering is. Stripe and OpenAI describe *how*
 
 ## Docs
 
+- [Architecture](./docs/architecture.md)
 - [Roadmap](./docs/roadmap.md)
 - [Principles](./docs/principles.md)
 - [Migration Notes](./docs/migration.md)
