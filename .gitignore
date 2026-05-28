@@ -1,0 +1,19 @@
+# Python build artifacts
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+*.egg
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Node
+node_modules/
+
+# OS
+.DS_Store
+worktrees/
