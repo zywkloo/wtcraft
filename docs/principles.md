@@ -55,3 +55,12 @@ Prefer simple commands that fail clearly:
 - `check`
 
 Expand only after these are reliable.
+
+## 8) Hybrid Orchestration: Strategic vs. Tactical
+
+When integrating `wtcraft` with agent environments (like Claude Code or Codex CLI):
+- **Strategic Actions (Slash Commands)**: Use these only for complex, multi-step orchestration workflows requiring deep planning, context gathering, or structured contract-writing (e.g., `/planwt`, `/finishwt`, `/statuswt`).
+- **Tactical Actions (Direct CLI Executions)**: Do not wrap atomic CLI commands (like `wtcraft check` or `wtcraft verify`) in custom slash commands. Since modern terminal-based agents possess shell execution capabilities, they can natively run these commands directly in the terminal as guided by their harness instructions.
+
+This hybrid model prevents agent-side command bloat while keeping the workflow flexible, reliable, and lightweight.
+
