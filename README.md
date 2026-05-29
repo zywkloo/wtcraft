@@ -44,28 +44,47 @@ No hosted platform is required. No custom runtime is required.
 `wtcraft` enables you to orchestrate a highly efficient, budget-friendly multi-agent team by assigning models to specialized roles based on their speed, reasoning power, and cost:
 
 ```
-  [ Human Developer ]
-          │
-          ▼  (Strategic Intent)
-┌──────────────────────────────────────┐
-│  Orchestrator (e.g., Gemini Flash)   │  ◄── Fast, Low-latency, Cross-Repository
-└──────────────────┬───────────────────┘
-                   │  (Subtask & Context)
-                   ▼
-┌──────────────────────────────────────┐
-│     Planner (e.g., Claude Opus)      │  ◄── High-Reasoning Strategic Architect
-└──────────────────┬───────────────────┘
-                   │  (Writes .worktree-task.md Contract)
-                   ▼
-┌──────────────────────────────────────┐
-│     Executor (e.g., Codex / Mini)    │  ◄── Precision Coding in Sandboxed Worktree
-└──────────────────────────────────────┘
+             [ Human Developer ]
+                      │
+                      ▼  (Strategic Intent + Requirement Input)
+┌─────────────────────────────────────────────────────────────┐
+│    Orchestrator (e.g., Gemini 3.5 Flash)                    │ ◄── Fast, Low-latency, Cross-Repository
+└─────────────────────┬───────────────────────────────────────┘
+                      │  (Subtask & Context)
+                      ▼
+┌─────────────────────────────────────────────────────────────┐
+│    Planner (e.g., Claude 3.5 Opus / GPT-5.5)                │ ◄── High-Reasoning Strategic Architect
+└─────────────────────┬───────────────────────────────────────┘      ▲
+                      │  (Writes .worktree-task.md Contract)         │
+                      ▼                                              │
+┌─────────────────────────────────────────────────────────────┐      │ (Re-plan / Loopback)
+│    Executor (e.g., ChatGPT 5.3-codex / Claude Sonnet)       │ ◄── Precision Coder in Sandboxed Worktree
+└─────────────────────┬───────────────────────────────────────┘      │
+                      │  (Reads task, writes code in sandbox)        │
+                      ▼                                              │
+             [ Human Developer ] (Pushes, creates PR)                │
+                      │                                              │
+                      ▼                                              │
+┌─────────────────────────────────────────────────────────────┐      │
+│    Verifier (e.g., Claude Opus / GPT-5.5 / Gemini Pro)      │ ◄── Agentic Code Review (Upcoming)
+└─────────────────────┬───────────────────────────────────────┘      │
+                      │                                              │
+                      ▼                                              │
+             [ Human Developer ] ────────────────────────────────────┘
+             (Approve OR Retry / Re-plan)
+                      │
+                      │ (If Approved -> Merge)
+                      ▼
+┌─────────────────────────────────────────────────────────────┐
+│    Finisher (e.g., Gemini 3.5 Flash / Claude Haiku)         │ ◄── Local Worktree Cleanup
+└─────────────────────────────────────────────────────────────┘
 ```
 
 * **Orchestrator (e.g., Gemini 3.5 Flash)**: Sits at the top of the workflow. Highly tool-agentic, low-latency, and exceptional at cross-repository status tracking, environmental scaffolding (`wtcraft init`), status checks (`wtcraft status`), and release management. It coordinates the overall project state and feeds clean contexts to the Planner.
 * **Planner (e.g., Claude 3.5 Sonnet / Opus)**: The slow, high-reasoning "architect". It reads the requirement, analyzes the code context, and designs the bounded execution contract (`.worktree-task.md`) specifying Scope, Off-limits, and Verification steps.
 * **Executor (e.g., Codex / gpt-4o-mini)**: The precision coder. It is budget-friendly, highly focused, and operates strictly inside the isolated worktree sandbox, adhering strictly to the contract boundaries.
-* **Finisher**: Performs deterministic boundary validation (`wtcraft check`) and test suite verification (`wtcraft verify`) before merging.
+* **Verifier (e.g., Claude Opus / Gemini Pro / GPT-5.5)**: The quality gatekeeper. It automatically conducts code reviews, checks for style/security constraints, and runs PR-level checks. If verification fails, it can trigger a feedback loop back to the Planner or Executor.
+* **Finisher**: Performs deterministic boundary validation (`wtcraft check`), test suite verification (`wtcraft verify`), and cleans up local worktree assets after a successful merge to keep the development disk clean.
 
 This layered model prevents command and context bloat, simplifies agent prompts, and maximizes code quality while keeping token expenses extremely low.
 
