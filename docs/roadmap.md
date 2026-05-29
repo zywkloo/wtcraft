@@ -91,6 +91,11 @@ Non-goals:
 
 Goal: Enable high-efficiency, budget-aware multi-agent team hierarchies.
 
+> [!IMPORTANT]
+> **Milestone Status**:
+> - **Gemini Support & Orchestrator Routing**: Not yet wired up in the current release. Slated for the next version (`v0.4.0`).
+> - **Token Telemetry**: Currently incomplete/in-progress and pending implementation in the next release.
+
 ### The Team Architecture:
 - **Orchestrator Agent (e.g., Gemini 3.5 Flash)**: Low-latency, tool-heavy, cross-repository status tracking, environment setup, and release management coordinator.
 - **Planner Agent (e.g., Claude 3.5 Sonnet / Opus)**: High-reasoning, session-based strategic task architect responsible for analyzing requirements and writing the task contract (`.worktree-task.md`).

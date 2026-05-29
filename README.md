@@ -80,6 +80,11 @@ No hosted platform is required. No custom runtime is required.
 └────────────────────────────────────────────┘
 ```
 
+> [!NOTE]
+> **Implementation Status**:
+> - **Gemini Integration & Orchestrator Routing**: Gemini CLI integration and the Orchestrator role's routing pathways are **not wired up in the current release** (deferred as a major target for the next version, `v0.4.0`).
+> - **Token Telemetry**: Token telemetry routing is **currently incomplete** and remains active on the development roadmap.
+
 * **Orchestrator (e.g., Gemini 3.5 Flash)**: Sits at the top of the workflow. Highly tool-agentic, low-latency, and coordinates the overall project state. It focuses on environment orchestration, git logistics, verification suites, and telemetry. Core features like cross-repository worktree monitoring, automated session summarization, and active agent handoff routing are **coming soon (upcoming role integration)**.
 * **Planner (e.g., Claude 3.5 Sonnet / Opus)**: The slow, high-reasoning "architect". It reads the requirement, analyzes the code context, and designs the bounded execution contract (`.worktree-task.md`) specifying Scope, Off-limits, and Verification steps.
 * **Executor (e.g., Codex / gpt-4o-mini)**: The precision coder. It is budget-friendly, highly focused, and operates strictly inside the isolated worktree sandbox, adhering strictly to the contract boundaries.
