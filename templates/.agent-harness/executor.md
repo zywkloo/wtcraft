@@ -31,3 +31,11 @@ whichever OpenAI model the CLI supports.
 
 The executor role is model-agnostic — these are recommendations, not hard
 requirements. Follow the Scope and Verification contract regardless of model.
+
+## Common Commands
+
+You can inspect the status of all active worktree task files in the project at any time by running:
+```bash
+wtcraft status
+```
+

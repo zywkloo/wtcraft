@@ -212,6 +212,7 @@ cmd_init() {
   copy_if_missing "${TEMPLATE_DIR}/.agent-harness/finisher.md" "${repo_root}/.agent-harness/finisher.md"
   copy_if_missing "${TEMPLATE_DIR}/.claude/commands/planwt.md" "${repo_root}/.claude/commands/planwt.md"
   copy_if_missing "${TEMPLATE_DIR}/.claude/commands/finishwt.md" "${repo_root}/.claude/commands/finishwt.md"
+  copy_if_missing "${TEMPLATE_DIR}/.claude/commands/statuswt.md" "${repo_root}/.claude/commands/statuswt.md"
   copy_if_missing "${TEMPLATE_DIR}/worktrees/.worktree-task.md" "${repo_root}/.worktree-task.template.md"
 
   cat <<'EOF'
@@ -221,6 +222,7 @@ Initialized wtcraft harness files (existing files were left untouched):
   .agent-harness/finisher.md
   .claude/commands/planwt.md
   .claude/commands/finishwt.md
+  .claude/commands/statuswt.md
   .worktree-task.template.md
 EOF
 

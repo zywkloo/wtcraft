@@ -64,5 +64,6 @@ wtcraft = [
   "templates/.agent-harness/finisher.md",
   "templates/.claude/commands/planwt.md",
   "templates/.claude/commands/finishwt.md",
+  "templates/.claude/commands/statuswt.md",
   "templates/worktrees/.worktree-task.md",
 ]
