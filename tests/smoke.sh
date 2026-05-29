@@ -23,6 +23,9 @@ test_help_init_status() {
   "$CLI" --help
   "$CLI" init
   "$CLI" status
+
+  # Assert Orchestrator template copy success
+  test -f .agent-harness/orchestrator.md
 }
 
 test_patch_agent_files_idempotent() {
@@ -30,6 +33,7 @@ test_patch_agent_files_idempotent() {
   cd "$repo"
   printf "# local claude\n" > CLAUDE.md
   printf "# local agents\n" > AGENTS.md
+  printf "# local gemini\n" > GEMINI.md
 
   "$CLI" init --patch-agent-files
   "$CLI" init --patch-agent-files
@@ -38,9 +42,12 @@ test_patch_agent_files_idempotent() {
   grep -q "<!-- wtcraft:claude:end -->" CLAUDE.md
   grep -q "<!-- wtcraft:agents:start -->" AGENTS.md
   grep -q "<!-- wtcraft:agents:end -->" AGENTS.md
+  grep -q "<!-- wtcraft:gemini:start -->" GEMINI.md
+  grep -q "<!-- wtcraft:gemini:end -->" GEMINI.md
 
   test "$(grep -c 'wtcraft:claude:start' CLAUDE.md)" -eq 1
   test "$(grep -c 'wtcraft:agents:start' AGENTS.md)" -eq 1
+  test "$(grep -c 'wtcraft:gemini:start' GEMINI.md)" -eq 1
 }
 
 test_new_verify_check() {
