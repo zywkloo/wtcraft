@@ -16,7 +16,7 @@ node_modules/
 
 # OS and Cache/CLI metadata
 .DS_Store
-.claude/
+/.claude/
 .antigravitycli/
 *.log
-worktrees/
+/worktrees/
