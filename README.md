@@ -98,8 +98,9 @@ Parallel agents are useful, but raw parallelism creates four common problems:
 
 `wtcraft` focuses on handoff, boundaries, and budget-aware sequencing, not maximum concurrency.
 
-For the design story behind this project, read:
-[wtcraft — Budget-Aware Multi-Agent Harness](https://zywkloo.github.io/blog/beyond-worktrees-budget-aware-multi-agent-coding-harness/).
+For the design story and engineering philosophy behind this project, read the **TokenChef Series**:
+- [Chief Token Orchestrator (Part 2): Manage Claude, Codex, and Gemini as a Structured Software Team](https://zywkloo.github.io/blog/chief-token-orchestrator-manage-layered-agent-team/)
+- [wtcraft (Part 3): A Lightweight, Git-Native Scaffolding for Bounded Multi-Agent Coding](https://zywkloo.github.io/blog/wtcraft-lightweight-git-native-multi-agent-scaffolding/)
 
 ## Core Model
 
