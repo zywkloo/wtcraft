@@ -10,7 +10,8 @@ jobs:
   update-formula:
     runs-on: ubuntu-latest
     permissions:
-      contents: write # Required to commit and push changes back to the main branch
+      contents: write
+      pull-requests: write
 
     steps:
       - name: Checkout repository
@@ -45,10 +46,37 @@ jobs:
           sed -i -E "s|url \"https://github.com/zywkloo/wtcraft/archive/refs/tags/v[0-9\.]+\.tar.gz\"|url \"$URL\"|g" Formula/wtcraft.rb
           sed -i -E "s|sha256 \"[0-9a-f]+\"|sha256 \"$SHA\"|g" Formula/wtcraft.rb
 
-      - name: Commit and Push to main
+      - name: Create Pull Request for Formula update
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          TAG="${{ github.ref_name }}"
+          # Fallback for manual trigger if workflow is run manually
+          if [[ -z "$TAG" || "$TAG" == "main" ]]; then
+            TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
+          fi
+          
+          if [[ -z "$TAG" ]]; then
+            echo "Error: No tag found to release."
+            exit 1
+          fi
+
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add Formula/wtcraft.rb
-          git commit -m "chore: bump homebrew formula to ${{ github.ref_name }}" || echo "No changes to commit"
-          git push origin main
+          
+          if ! git diff --cached --quiet; then
+            BRANCH="chore/bump-homebrew-${TAG}"
+            git checkout -b "$BRANCH"
+            git commit -m "chore: bump homebrew formula to ${TAG}"
+            git push origin "$BRANCH" --force
+            
+            # Create PR using gh CLI
+            gh pr create \
+              --title "chore: bump homebrew formula to ${TAG}" \
+              --body "Automated Homebrew Formula update for release ${TAG}." \
+              --base main \
+              --head "$BRANCH" || echo "PR already exists"
+          else
+            echo "No changes to commit"
+          fi
