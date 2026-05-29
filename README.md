@@ -39,6 +39,36 @@ The goal is simple:
 
 No hosted platform is required. No custom runtime is required.
 
+## The Layered Agent Team
+
+`wtcraft` enables you to orchestrate a highly efficient, budget-friendly multi-agent team by assigning models to specialized roles based on their speed, reasoning power, and cost:
+
+```
+  [ Human Developer ]
+          │
+          ▼  (Strategic Intent)
+┌──────────────────────────────────────┐
+│  Orchestrator (e.g., Gemini Flash)   │  ◄── Fast, Low-latency, Cross-Repository
+└──────────────────┬───────────────────┘
+                   │  (Subtask & Context)
+                   ▼
+┌──────────────────────────────────────┐
+│     Planner (e.g., Claude Opus)      │  ◄── High-Reasoning Strategic Architect
+└──────────────────┬───────────────────┘
+                   │  (Writes .worktree-task.md Contract)
+                   ▼
+┌──────────────────────────────────────┐
+│     Executor (e.g., Codex / Mini)    │  ◄── Precision Coding in Sandboxed Worktree
+└──────────────────────────────────────┘
+```
+
+* **Orchestrator (e.g., Gemini 3.5 Flash)**: Sits at the top of the workflow. Highly tool-agentic, low-latency, and exceptional at cross-repository status tracking, environmental scaffolding (`wtcraft init`), status checks (`wtcraft status`), and release management. It coordinates the overall project state and feeds clean contexts to the Planner.
+* **Planner (e.g., Claude 3.5 Sonnet / Opus)**: The slow, high-reasoning "architect". It reads the requirement, analyzes the code context, and designs the bounded execution contract (`.worktree-task.md`) specifying Scope, Off-limits, and Verification steps.
+* **Executor (e.g., Codex / gpt-4o-mini)**: The precision coder. It is budget-friendly, highly focused, and operates strictly inside the isolated worktree sandbox, adhering strictly to the contract boundaries.
+* **Finisher**: Performs deterministic boundary validation (`wtcraft check`) and test suite verification (`wtcraft verify`) before merging.
+
+This layered model prevents command and context bloat, simplifies agent prompts, and maximizes code quality while keeping token expenses extremely low.
+
 ## Why
 
 Parallel agents are useful, but raw parallelism creates four common problems:
