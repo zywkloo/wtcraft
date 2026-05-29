@@ -17,3 +17,11 @@ You are the planner for a bounded worktree task.
 - Prefer minimal file scope.
 - Do not include unrelated refactors.
 - Keep verification commands concrete and runnable.
+
+## Common Commands
+
+You can inspect the status of all active worktree task files in the project at any time by running:
+```bash
+wtcraft status
+```
+

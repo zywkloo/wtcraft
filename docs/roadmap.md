@@ -87,6 +87,22 @@ Non-goals:
 - replacing agent CLIs
 - creating a hosted control plane
 
+## Phase 5: Layered Multi-Agent Orchestration (v0.4.0)
+
+Goal: Enable high-efficiency, budget-aware multi-agent team hierarchies.
+
+### The Team Architecture:
+- **Orchestrator Agent (e.g., Gemini 3.5 Flash)**: Low-latency, tool-heavy, cross-repository status tracking, environment setup, and release management coordinator.
+- **Planner Agent (e.g., Claude 3.5 Sonnet / Opus)**: High-reasoning, session-based strategic task architect responsible for analyzing requirements and writing the task contract (`.worktree-task.md`).
+- **Executor Agent (e.g., Codex / gpt-4o-mini)**: Highly focused, budget-friendly coder working strictly inside sandboxed worktrees under contract guardrails.
+- **Finisher Agent**: Verification and cleanup script runner.
+
+### Deliverables:
+- [ ] **Orchestrator Guides**: Prompt and configuration files for fast, cross-repo Orchestrator agents.
+- [ ] **Dual-Tier Commands**: Clear division between *Strategic Actions* (Slash commands for high-level workflow orchestration) and *Tactical Actions* (direct atomic CLI commands).
+- [ ] **Context-Gathering Pipings**: Tooling to easily extract cross-repo states gathered by the Orchestrator and present them cleanly to the high-reasoning Planner.
+
+
 ## Design Constraints
 
 - Git-native first
