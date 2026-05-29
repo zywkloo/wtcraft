@@ -148,10 +148,11 @@ Current scope:
 | bash | yes | macOS / Linux native; Windows requires [Git for Windows](https://git-scm.com/download/win) (includes Git Bash) |
 | git | yes | worktree support (git ≥ 2.5) |
 | Claude + Codex access | yes (for full workflow) | both are expected for planner/finisher + executor roles; either CLI or App usage is acceptable |
+| Gemini CLI access | no (optional executor) | free tier available; use as an executor agent when Codex quota is exhausted |
 | Package manager (npm / pipx\|pip / Homebrew) | yes (choose one) | use at least one installation path |
 
-For the full multi-agent workflow in this repo, both Claude and Codex are expected.
-You can use their CLI variants or app-based workflows, but the role split assumes both tools are available.
+For the full multi-agent workflow in this repo, both Claude and Codex (or Gemini CLI as an optional third executor) are expected.
+You can use their CLI variants or app-based workflows, but the role split assumes these tools are available.
 
 ## Install
 
