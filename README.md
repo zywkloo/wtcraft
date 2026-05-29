@@ -46,38 +46,38 @@ No hosted platform is required. No custom runtime is required.
 ```
              [ Human Developer ]
                       │
-                      ▼  (Strategic Intent + Requirement Input)
-┌─────────────────────────────────────────────────────────────┐
-│    Orchestrator (e.g., Gemini 3.5 Flash)                    │ ◄── Fast, Low-latency, Cross-Repository
-└─────────────────────┬───────────────────────────────────────┘
-                      │  (Subtask & Context)
+                      ▼ (Strategic Intent)
+┌────────────────────────────────────────────┐
+│   Orchestrator (Gemini 3.5 Flash)          │ ◄── Fast, Cross-Repo
+└─────────────────────┬──────────────────────┘
+                      │ (Subtask & Context)
                       ▼
-┌─────────────────────────────────────────────────────────────┐
-│    Planner (e.g., Claude 3.5 Opus / GPT-5.5)                │ ◄── High-Reasoning Strategic Architect
-└─────────────────────┬───────────────────────────────────────┘      ▲
-                      │  (Writes .worktree-task.md Contract)         │
-                      ▼                                              │
-┌─────────────────────────────────────────────────────────────┐      │ (Re-plan / Loopback)
-│    Executor (e.g., ChatGPT 5.3-codex / Claude Sonnet)       │ ◄── Precision Coder in Sandboxed Worktree
-└─────────────────────┬───────────────────────────────────────┘      │
-                      │  (Reads task, writes code in sandbox)        │
-                      ▼                                              │
-             [ Human Developer ] (Pushes, creates PR)                │
-                      │                                              │
-                      ▼                                              │
-┌─────────────────────────────────────────────────────────────┐      │
-│    Verifier (e.g., Claude Opus / GPT-5.5 / Gemini Pro)      │ ◄── Agentic Code Review (Upcoming)
-└─────────────────────┬───────────────────────────────────────┘      │
-                      │                                              │
-                      ▼                                              │
-             [ Human Developer ] ────────────────────────────────────┘
+┌────────────────────────────────────────────┐
+│   Planner (Claude 3.5 Opus / GPT-5.5)      │ ◄── Strategic Architect
+└─────────────────────┬──────────────────────┘      ▲
+                      │ (Writes Task Contract)      │
+                      ▼                             │
+┌────────────────────────────────────────────┐      │ (Re-plan / Loopback)
+│   Executor (GPT-5.3 / Claude Sonnet)       │ ◄── Precision Coder
+└─────────────────────┬──────────────────────┘      │
+                      │ (Writes Code in Sandbox)    │
+                      ▼                             │
+             [ Human Developer ] (Pushes, Creates PR)
+                      │                             │
+                      ▼                             │
+┌────────────────────────────────────────────┐      │
+│   Verifier (Claude Opus / Gemini Pro)      │ ◄── Agentic Review (Upcoming)
+└─────────────────────┬──────────────────────┘      │
+                      │                             │
+                      ▼                             │
+             [ Human Developer ] ───────────────────┘
              (Approve OR Retry / Re-plan)
                       │
                       │ (If Approved -> Merge)
                       ▼
-┌─────────────────────────────────────────────────────────────┐
-│    Finisher (e.g., Gemini 3.5 Flash / Claude Haiku)         │ ◄── Local Worktree Cleanup
-└─────────────────────────────────────────────────────────────┘
+┌────────────────────────────────────────────┐
+│   Finisher (Gemini Flash / Claude Haiku)   │ ◄── Local Cleanup
+└────────────────────────────────────────────┘
 ```
 
 * **Orchestrator (e.g., Gemini 3.5 Flash)**: Sits at the top of the workflow. Highly tool-agentic, low-latency, and exceptional at cross-repository status tracking, environmental scaffolding (`wtcraft init`), status checks (`wtcraft status`), and release management. It coordinates the overall project state and feeds clean contexts to the Planner.
