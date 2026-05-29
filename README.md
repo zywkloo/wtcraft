@@ -48,7 +48,7 @@ No hosted platform is required. No custom runtime is required.
                       │
                       ▼ (Strategic Intent)
 ┌────────────────────────────────────────────┐
-│   Orchestrator (Gemini 3.5 Flash)          │ ◄── Fast, Cross-Repo
+│   Orchestrator (Gemini 3.5 Flash)          │ ◄── Cross-Repo Integration (Coming Soon)
 └─────────────────────┬──────────────────────┘
                       │ (Subtask & Context)
                       ▼
@@ -76,15 +76,15 @@ No hosted platform is required. No custom runtime is required.
                       │ (If Approved -> Merge)
                       ▼
 ┌────────────────────────────────────────────┐
-│   Finisher (Gemini Flash / Claude Haiku)   │ ◄── Local Cleanup
+│   Finisher (Gemini Flash / Claude Haiku)   │ ◄── Local Cleanup & Token Telemetry (Coming Soon)
 └────────────────────────────────────────────┘
 ```
 
-* **Orchestrator (e.g., Gemini 3.5 Flash)**: Sits at the top of the workflow. Highly tool-agentic, low-latency, and exceptional at cross-repository status tracking, environmental scaffolding (`wtcraft init`), status checks (`wtcraft status`), and release management. It coordinates the overall project state and feeds clean contexts to the Planner.
+* **Orchestrator (e.g., Gemini 3.5 Flash)**: Sits at the top of the workflow. Highly tool-agentic, low-latency, and coordinates the overall project state. It focuses on environment orchestration, git logistics, verification suites, and telemetry. Core features like cross-repository worktree monitoring, automated session summarization, and active agent handoff routing are **coming soon (upcoming role integration)**.
 * **Planner (e.g., Claude 3.5 Sonnet / Opus)**: The slow, high-reasoning "architect". It reads the requirement, analyzes the code context, and designs the bounded execution contract (`.worktree-task.md`) specifying Scope, Off-limits, and Verification steps.
 * **Executor (e.g., Codex / gpt-4o-mini)**: The precision coder. It is budget-friendly, highly focused, and operates strictly inside the isolated worktree sandbox, adhering strictly to the contract boundaries.
 * **Verifier (e.g., Claude Opus / Gemini Pro / GPT-5.5)**: The quality gatekeeper. It automatically conducts code reviews, checks for style/security constraints, and runs PR-level checks. If verification fails, it can trigger a feedback loop back to the Planner or Executor.
-* **Finisher**: Performs deterministic boundary validation (`wtcraft check`), test suite verification (`wtcraft verify`), and cleans up local worktree assets after a successful merge to keep the development disk clean.
+* **Finisher**: Performs deterministic boundary validation (`wtcraft check`), test suite verification (`wtcraft verify`), and cleans up local worktree assets after a successful merge to keep the development disk clean. Additionally, in an upcoming release (integrating with PR #12), the Finisher will aggregate and report **token telemetry** to track cost, budget, and API usage per agent model (**Coming Soon**).
 
 This layered model prevents command and context bloat, simplifies agent prompts, and maximizes code quality while keeping token expenses extremely low.
 
