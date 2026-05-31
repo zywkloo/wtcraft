@@ -43,6 +43,35 @@ test_patch_agent_files_idempotent() {
   test "$(grep -c 'wtcraft:agents:start' AGENTS.md)" -eq 1
 }
 
+test_patch_unpatch_roundtrip() {
+  local repo="$1"
+  cd "$repo"
+  printf '# My Project\n\nSome existing notes.\n' > CLAUDE.md
+  printf '# Agents\n\nExisting agent guidance.\n' > AGENTS.md
+  cp CLAUDE.md CLAUDE.orig
+  cp AGENTS.md AGENTS.orig
+
+  # `patch` is an explicit alias for `init --patch-agent-files`
+  "$CLI" patch
+  grep -q "<!-- wtcraft:claude:start -->" CLAUDE.md
+  grep -q "<!-- wtcraft:agents:start -->" AGENTS.md
+
+  # `unpatch` restores the files byte-for-byte (block + separator removed)
+  "$CLI" unpatch
+  ! grep -q "wtcraft:claude" CLAUDE.md
+  ! grep -q "wtcraft:agents" AGENTS.md
+  diff CLAUDE.orig CLAUDE.md
+  diff AGENTS.orig AGENTS.md
+
+  # unpatch is idempotent and a no-op when no stub is present
+  "$CLI" unpatch
+  diff CLAUDE.orig CLAUDE.md
+
+  # patch/unpatch reject extra arguments
+  ! "$CLI" patch extra 2>/dev/null
+  ! "$CLI" unpatch extra 2>/dev/null
+}
+
 test_new_verify_check() {
   local repo="$1"
   cd "$repo"
@@ -68,6 +97,7 @@ test_new_verify_check() {
 
 run_in_temp_repo test_help_init_status
 run_in_temp_repo test_patch_agent_files_idempotent
+run_in_temp_repo test_patch_unpatch_roundtrip
 run_in_temp_repo test_new_verify_check
 
 echo "Smoke tests passed."

@@ -99,7 +99,25 @@ test_pip_package_integration() {
   python3 -m venv "$venv_dir"
 
   # 2. Install the local python package inside the virtualenv
-  "$venv_dir/bin/pip" install "$REPO_ROOT" --quiet
+  local pip_log
+  pip_log="$(mktemp)"
+  if ! "$venv_dir/bin/pip" install "$REPO_ROOT" --quiet >"$pip_log" 2>&1; then
+    if grep -Eiq \
+      "Failed to establish a new connection|Temporary failure in name resolution|nodename nor servname provided|Could not find a version that satisfies the requirement setuptools>=61|No matching distribution found for setuptools>=61" \
+      "$pip_log"; then
+      echo "SKIP: pip package integration (offline/network-restricted environment)"
+      rm -f "$pip_log"
+      rm -rf "$venv_dir"
+      return 0
+    fi
+
+    echo "FAIL: pip package integration install error"
+    cat "$pip_log"
+    rm -f "$pip_log"
+    rm -rf "$venv_dir"
+    exit 1
+  fi
+  rm -f "$pip_log"
 
   # 3. Find the installed binary path
   local wt_binary="${venv_dir}/bin/wtcraft"

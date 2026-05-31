@@ -19,6 +19,8 @@ wtcraft - git-native harness helper
 
 Usage:
   wtcraft init [--patch-agent-files]
+  wtcraft patch
+  wtcraft unpatch
   wtcraft status
   wtcraft new <type/name>
   wtcraft check <worktree-path-or-name>
@@ -45,6 +47,31 @@ wtcraft init [--patch-agent-files]
     .claude/commands/planwt.md
     .claude/commands/finishwt.md
     .worktree-task.template.md
+EOF
+}
+
+usage_patch() {
+  cat <<'EOF'
+wtcraft patch
+
+  Explicit alias for `wtcraft init --patch-agent-files`.
+  Scaffolds harness files (if missing) and appends the managed wtcraft
+  routing stub to CLAUDE.md and AGENTS.md. Idempotent and append-only:
+  existing content is never overwritten, and re-running is a no-op.
+
+  Reverse with: wtcraft unpatch
+EOF
+}
+
+usage_unpatch() {
+  cat <<'EOF'
+wtcraft unpatch
+
+  Remove the managed wtcraft routing stub previously added by
+  `wtcraft patch` (or `init --patch-agent-files`) from CLAUDE.md and
+  AGENTS.md. Only the content between the wtcraft markers is removed;
+  the rest of each file is left untouched. Scaffolded harness files
+  (.agent-harness/, .claude/commands/) are NOT removed.
 EOF
 }
 
@@ -113,6 +140,8 @@ cmd_help() {
   fi
   case "$1" in
     init)   usage_init ;;
+    patch)  usage_patch ;;
+    unpatch) usage_unpatch ;;
     status) usage_status ;;
     new)    usage_new ;;
     check)  usage_check ;;
@@ -193,6 +222,53 @@ EOF
   append_managed_block_if_missing "$agents_file" "$agents_block" "$agents_start"
 }
 
+remove_managed_block() {
+  local file="$1"
+  local start_marker="$2"
+  local end_marker="$3"
+
+  if [ ! -f "$file" ]; then
+    echo "Not found (skipped): ${file}"
+    return 0
+  fi
+
+  if ! grep -qF "$start_marker" "$file"; then
+    echo "No wtcraft stub (skipped): ${file}"
+    return 0
+  fi
+
+  local tmp
+  tmp="$(mktemp)"
+  # Drop every line from the start marker through the end marker (inclusive).
+  # Lines are buffered one behind so we can also discard the single blank
+  # separator line the appender inserts before the block.
+  awk -v s="$start_marker" -v e="$end_marker" '
+    index($0, s) {
+      if (have_prev && prev !~ /^[[:space:]]*$/) print prev
+      have_prev = 0
+      skip = 1
+      next
+    }
+    skip {
+      if (index($0, e)) skip = 0
+      next
+    }
+    { if (have_prev) print prev; prev = $0; have_prev = 1 }
+    END { if (have_prev) print prev }
+  ' "$file" >"$tmp"
+
+  mv "$tmp" "$file"
+  echo "Unpatched: ${file}"
+}
+
+unpatch_agent_files() {
+  local repo_root="$1"
+  remove_managed_block "${repo_root}/CLAUDE.md" \
+    "<!-- wtcraft:claude:start -->" "<!-- wtcraft:claude:end -->"
+  remove_managed_block "${repo_root}/AGENTS.md" \
+    "<!-- wtcraft:agents:start -->" "<!-- wtcraft:agents:end -->"
+}
+
 cmd_init() {
   ensure_repo_root
   local patch_agent=false
@@ -235,6 +311,20 @@ EOF
     echo "Agent files were not modified (default behavior)."
     echo "Use: wtcraft init --patch-agent-files"
   fi
+}
+
+cmd_patch() {
+  [ $# -eq 0 ] || die "patch takes no arguments"
+  cmd_init --patch-agent-files
+}
+
+cmd_unpatch() {
+  [ $# -eq 0 ] || die "unpatch takes no arguments"
+  ensure_repo_root
+  local repo_root
+  repo_root="$(git rev-parse --show-toplevel)"
+  echo "Removing wtcraft routing stubs from agent files..."
+  unpatch_agent_files "$repo_root"
 }
 
 extract_frontmatter() {
@@ -535,6 +625,8 @@ main() {
 
   case "$cmd" in
     init)        cmd_init "$@" ;;
+    patch)       cmd_patch "$@" ;;
+    unpatch)     cmd_unpatch "$@" ;;
     status)      cmd_status "$@" ;;
     new)         cmd_new "$@" ;;
     check)       cmd_check "$@" ;;

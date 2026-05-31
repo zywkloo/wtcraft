@@ -177,6 +177,8 @@ wtcraft/scripts/wtcraft init
 ```bash
 wtcraft init                            # scaffold harness into current repo
 wtcraft init --patch-agent-files        # also append routing stubs to CLAUDE.md / AGENTS.md
+wtcraft patch                           # explicit alias for: init --patch-agent-files
+wtcraft unpatch                         # remove the routing stubs from CLAUDE.md / AGENTS.md
 wtcraft new feat/my-task                # create worktree + task contract
 wtcraft status                          # list active worktree contracts
 wtcraft check <worktree-name-or-path>   # verify Scope / Off-limits
@@ -184,17 +186,31 @@ wtcraft verify <worktree-name-or-path>  # run Verification commands
 wtcraft help [command]                  # per-command usage
 ```
 
+### Commands
+
+| Command | Arguments | What it does |
+|---|---|---|
+| `wtcraft init` | `[--patch-agent-files]` | Scaffold harness files into the current git repo. With `--patch-agent-files`, also appends managed routing stubs to `CLAUDE.md` and `AGENTS.md`. Never overwrites existing files. |
+| `wtcraft patch` | — | Explicit alias for `init --patch-agent-files`: scaffold harness files and append the managed routing stub to `CLAUDE.md` / `AGENTS.md`. Idempotent and append-only. |
+| `wtcraft unpatch` | — | Remove the managed routing stub (added by `patch`) from `CLAUDE.md` / `AGENTS.md`. Only the marked block is removed; other content and scaffolded files are left untouched. |
+| `wtcraft new` | `<type/name>` | Create a worktree and seed its `.worktree-task.md` contract. Base branch defaults to `develop` (override with `WTCRAFT_BASE_BRANCH`). |
+| `wtcraft status` | — | List active worktree task files and their frontmatter (path, status, agent, priority). |
+| `wtcraft check` | `<worktree-path-or-name>` | Verify the worktree's changes stay within the contract's Scope / Off-limits boundaries. |
+| `wtcraft verify` | `<worktree-path-or-name>` | Run the Verification commands declared in the worktree's task contract. |
+| `wtcraft help` | `[command]` | Show top-level usage, or detailed usage for a specific command. |
+
 What `init` scaffolds:
 - `.agent-harness/planner.md`
 - `.agent-harness/executor.md`
 - `.agent-harness/finisher.md`
 - `.claude/commands/planwt.md` → becomes the `/planwt` slash command in Claude Code
 - `.claude/commands/finishwt.md` → becomes the `/finishwt` slash command in Claude Code
+- `.claude/commands/statuswt.md` → becomes the `/statuswt` slash command in Claude Code
 - `.worktree-task.template.md`
 
 `init` is non-destructive: existing files are not overwritten.
 By default `init` does not modify `CLAUDE.md` or `AGENTS.md`.
-Use `--patch-agent-files` to append managed routing stubs. If `CLAUDE.md` or `AGENTS.md` do not exist, wtcraft will create them with a managed stub.
+Use `--patch-agent-files` (or the `wtcraft patch` alias) to append managed routing stubs. If `CLAUDE.md` or `AGENTS.md` do not exist, wtcraft will create them with a managed stub. Reverse it with `wtcraft unpatch`, which removes only the marked wtcraft block and leaves the rest of each file intact.
 
 ### Claude Code slash commands
 
@@ -204,6 +220,7 @@ After running `wtcraft init`, restart Claude Code to load the new commands:
 |---|---|
 | `/planwt <task description>` | Reads `.agent-harness/planner.md` and produces a bounded `.worktree-task.md` for the task |
 | `/finishwt <worktree-name>` | Reads `.agent-harness/finisher.md`, runs verification, checks boundaries, and reports results |
+| `/statuswt` | Reads `.agent-harness/` context and reports the status of all active worktree task files |
 
 **Typical workflow:**
 
