@@ -193,7 +193,7 @@ wtcraft help [command]                  # per-command usage
 | `wtcraft init` | `[--patch-agent-files]` | Scaffold harness files into the current git repo. With `--patch-agent-files`, also appends managed routing stubs to `CLAUDE.md` and `AGENTS.md`. Never overwrites existing files. |
 | `wtcraft patch` | — | Explicit alias for `init --patch-agent-files`: scaffold harness files and append the managed routing stub to `CLAUDE.md` / `AGENTS.md`. Idempotent and append-only. |
 | `wtcraft unpatch` | — | Remove the managed routing stub (added by `patch`) from `CLAUDE.md` / `AGENTS.md`. Only the marked block is removed; other content and scaffolded files are left untouched. |
-| `wtcraft new` | `<type/name>` | Create a worktree and seed its `.worktree-task.md` contract. Base branch defaults to `develop` (override with `WTCRAFT_BASE_BRANCH`). |
+| `wtcraft new` | `<type/name>` | Create a worktree and seed its local `.worktree-task.md` contract. The task contract is excluded from git in that worktree. Base branch defaults to `develop` (override with `WTCRAFT_BASE_BRANCH`). |
 | `wtcraft status` | — | List active worktree task files and their frontmatter (path, status, agent, priority). |
 | `wtcraft check` | `<worktree-path-or-name>` | Verify the worktree's changes stay within the contract's Scope / Off-limits boundaries. |
 | `wtcraft verify` | `<worktree-path-or-name>` | Run the Verification commands declared in the worktree's task contract. |
@@ -206,7 +206,6 @@ What `init` scaffolds:
 - `.claude/commands/planwt.md` → becomes the `/planwt` slash command in Claude Code
 - `.claude/commands/finishwt.md` → becomes the `/finishwt` slash command in Claude Code
 - `.claude/commands/statuswt.md` → becomes the `/statuswt` slash command in Claude Code
-- `.worktree-task.template.md`
 
 `init` is non-destructive: existing files are not overwritten.
 By default `init` does not modify `CLAUDE.md` or `AGENTS.md`.
@@ -218,18 +217,17 @@ After running `wtcraft init`, restart Claude Code to load the new commands:
 
 | Command | What it does |
 |---|---|
-| `/planwt <task description>` | Reads `.agent-harness/planner.md` and produces a bounded `.worktree-task.md` for the task |
+| `/planwt <task description>` | Reads `.agent-harness/planner.md`, writes a bounded task contract, and runs `wtcraft new <branch>` |
 | `/finishwt <worktree-name>` | Reads `.agent-harness/finisher.md`, runs verification, checks boundaries, and reports results |
 | `/statuswt` | Reads `.agent-harness/` context and reports the status of all active worktree task files |
 
 **Typical workflow:**
 
 ```
-/planwt add oauth login flow        # 1. plan the task → .worktree-task.md
-wtcraft new feat/oauth-login        # 2. create worktree + seed contract
+/planwt add oauth login flow        # 1. plan task + create worktree
 # agent works inside the worktree
-wtcraft check feat/oauth-login      # 3. verify Scope / Off-limits
-/finishwt feat/oauth-login          # 4. run verification and finish
+wtcraft check feat/oauth-login      # 2. verify Scope / Off-limits
+/finishwt feat/oauth-login          # 3. run verification and finish
 ```
 
 `new` defaults to base branch `develop`. Set `WTCRAFT_BASE_BRANCH=main` (or another branch) when needed.

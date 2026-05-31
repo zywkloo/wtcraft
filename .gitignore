@@ -20,3 +20,7 @@ node_modules/
 .antigravitycli/
 *.log
 /worktrees/
+
+# wtcraft local task state. The packaged template source lives under templates/.
+/.worktree-task.md
+/.worktree-task.template.md

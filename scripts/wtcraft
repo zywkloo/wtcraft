@@ -46,7 +46,6 @@ wtcraft init [--patch-agent-files]
     .agent-harness/finisher.md
     .claude/commands/planwt.md
     .claude/commands/finishwt.md
-    .worktree-task.template.md
 EOF
 }
 
@@ -289,7 +288,6 @@ cmd_init() {
   copy_if_missing "${TEMPLATE_DIR}/.claude/commands/planwt.md" "${repo_root}/.claude/commands/planwt.md"
   copy_if_missing "${TEMPLATE_DIR}/.claude/commands/finishwt.md" "${repo_root}/.claude/commands/finishwt.md"
   copy_if_missing "${TEMPLATE_DIR}/.claude/commands/statuswt.md" "${repo_root}/.claude/commands/statuswt.md"
-  copy_if_missing "${TEMPLATE_DIR}/worktrees/.worktree-task.md" "${repo_root}/.worktree-task.template.md"
 
   cat <<'EOF'
 Initialized wtcraft harness files (existing files were left untouched):
@@ -299,7 +297,6 @@ Initialized wtcraft harness files (existing files were left untouched):
   .claude/commands/planwt.md
   .claude/commands/finishwt.md
   .claude/commands/statuswt.md
-  .worktree-task.template.md
 EOF
 
   if [ "$patch_agent" = true ]; then
@@ -395,6 +392,14 @@ cmd_new() {
 
   local task_file="${wt_path}/.worktree-task.md"
   cp "${TEMPLATE_DIR}/worktrees/.worktree-task.md" "$task_file"
+
+  local exclude_file
+  exclude_file="$(git -C "$wt_path" rev-parse --git-path info/exclude)"
+  mkdir -p "$(dirname "$exclude_file")"
+  touch "$exclude_file"
+  if ! grep -qxF "/.worktree-task.md" "$exclude_file"; then
+    printf "\n/.worktree-task.md\n" >> "$exclude_file"
+  fi
 
   local today
   today="$(date +%F)"
@@ -523,6 +528,12 @@ cmd_check() {
 
   for f in "${changed_files[@]:-}"; do
     [ -z "$f" ] && continue
+
+    if [ "$f" = ".worktree-task.md" ]; then
+      echo "Task contract violation: .worktree-task.md is local worktree state and must not be committed or merged."
+      has_violations=1
+      continue
+    fi
 
     local in_scope=0
     for s in "${scope_items[@]:-}"; do
