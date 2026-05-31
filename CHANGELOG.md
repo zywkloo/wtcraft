@@ -7,6 +7,14 @@ Versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.3.8] - 2026-05-31
+
+### Added
+- Release guardrails in `CLAUDE.md` and `AGENTS.md`: version tags must use `v<semver>` and be created from `main` only.
+
+### Changed
+- Bumped package versions to `0.3.8` for npm and PyPI republish after immutable `0.3.7` artifacts were already published.
+
 ## [0.3.7] - 2026-05-31
 
 ### Added
@@ -93,7 +101,8 @@ Versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - `.agent-harness/` starter docs and templates (planner, executor, finisher)
 - Initial public repository and vision docs
 
-[Unreleased]: https://github.com/zywkloo/wtcraft/compare/v0.3.7...HEAD
+[Unreleased]: https://github.com/zywkloo/wtcraft/compare/v0.3.8...HEAD
+[0.3.8]: https://github.com/zywkloo/wtcraft/compare/v0.3.7...v0.3.8
 [0.3.7]: https://github.com/zywkloo/wtcraft/compare/v0.3.5...v0.3.7
 [0.3.5]: https://github.com/zywkloo/wtcraft/compare/v0.3.4...v0.3.5
 [0.3.4]: https://github.com/zywkloo/wtcraft/compare/v0.3.3...v0.3.4
