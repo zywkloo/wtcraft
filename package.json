@@ -1,6 +1,6 @@
 {
   "name": "wtcraft",
-  "version": "0.3.6",
+  "version": "0.3.7",
   "description": "Budget-Aware Multi-Agent Coding Harness for git-native worktrees",
   "license": "Apache-2.0",
   "bin": {

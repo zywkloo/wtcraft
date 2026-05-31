@@ -7,6 +7,17 @@ Versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.3.7] - 2026-05-31
+
+### Added
+- `wtcraft patch` command as explicit alias of `wtcraft init --patch-agent-files`.
+- `wtcraft unpatch` command to remove only wtcraft-managed routing stubs from `CLAUDE.md` and `AGENTS.md`.
+- Smoke test coverage for patch/unpatch roundtrip, idempotency, and argument validation.
+
+### Changed
+- Integration test now treats pip package install as `SKIP` in offline/network-restricted environments while preserving hard failures for non-network errors.
+- README command reference now includes all commands (`patch`, `unpatch`, and `statuswt` slash command docs alignment).
+
 ## [0.3.5] - 2026-05-27
 
 ### Added
@@ -82,7 +93,8 @@ Versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - `.agent-harness/` starter docs and templates (planner, executor, finisher)
 - Initial public repository and vision docs
 
-[Unreleased]: https://github.com/zywkloo/wtcraft/compare/v0.3.5...HEAD
+[Unreleased]: https://github.com/zywkloo/wtcraft/compare/v0.3.7...HEAD
+[0.3.7]: https://github.com/zywkloo/wtcraft/compare/v0.3.5...v0.3.7
 [0.3.5]: https://github.com/zywkloo/wtcraft/compare/v0.3.4...v0.3.5
 [0.3.4]: https://github.com/zywkloo/wtcraft/compare/v0.3.3...v0.3.4
 [0.3.3]: https://github.com/zywkloo/wtcraft/compare/v0.3.2...v0.3.3
