@@ -24,7 +24,9 @@ Use cheap tiers across Claude, Codex, and Gemini — then run them like a team.
 `wtcraft` coordinates multiple agents with git worktrees, task files, and clear boundaries — so one solo developer can run parallel work without depending on one premium plan.
 
 ```bash
-npm install -g wtcraft
+pipx install wtcraft       # pip / pipx (recommended — isolated venv)
+npm install -g wtcraft     # npm (global)
+brew tap zywkloo/wtcraft https://github.com/zywkloo/wtcraft && brew install wtcraft
 ```
 
 `wtcraft` is a lightweight, git-native harness that gets you parallel multi-agent coding without the premium-tier price tag. Claude Pro ($20) + ChatGPT Plus ($20, includes Codex CLI) + Gemini (free tier) — coordinated, beats one $200 subscription, if the handoff between agents is bounded, verifiable, and budget-aware.
@@ -142,26 +144,8 @@ You can use their CLI variants or app-based workflows, but the role split assume
 
 ## Install
 
-**npm (global):**
-
-```bash
-npm install -g wtcraft
-```
-
-**pip / pipx:**
-
-```bash
-pipx install wtcraft        # recommended — isolated venv, no conflicts
-# or
-pip install --user wtcraft
-```
-
-**Homebrew (tap):**
-
-```bash
-brew tap zywkloo/wtcraft https://github.com/zywkloo/wtcraft
-brew install wtcraft
-```
+Pick one of the package managers shown at the top — `pipx`/`pip`, `npm`, or Homebrew.
+`pip install --user wtcraft` works too if you'd rather not use `pipx`.
 
 **From source (no package manager needed):**
 
