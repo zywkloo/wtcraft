@@ -22,12 +22,18 @@ Use the most capable model available in your current environment:
 |---|---|
 | Claude Code (Anthropic CLI) | claude-sonnet-4-6 or claude-opus-4-6 |
 | Codex CLI (OpenAI) | codex (default), or gpt-4.1-mini as fallback |
+| Gemini CLI (Google) | gemini-2.5-pro (default), or gemini-2.5-flash as fallback |
 | Other / unknown | Default to the host CLI's configured model |
 
 **Codex fallback:** if the Codex CLI is invoked without an explicit `--model`
 flag and the default model is unavailable, pass `--model gpt-4.1-mini` as a
 fallback. Do not attempt to call the Anthropic API from inside Codex; use
 whichever OpenAI model the CLI supports.
+
+**Gemini fallback:** if the Gemini CLI is invoked without an explicit `--model`
+flag and the default model is unavailable, pass `--model gemini-2.5-flash` as a
+fallback. Do not attempt to call other APIs; use whichever Gemini model the CLI supports.
+Note that the Gemini CLI reads `GEMINI.md` for project context.
 
 The executor role is model-agnostic — these are recommendations, not hard
 requirements. Follow the Scope and Verification contract regardless of model.
