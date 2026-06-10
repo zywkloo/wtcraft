@@ -1,0 +1,29 @@
+# Role-to-model recommendations for wtcraft agent roles.
+# Update this file as new models are released or old ones are deprecated.
+# Last updated: 2026-06-10
+
+roles:
+  orchestrator:
+    primary: Gemini 3.5 Flash
+    fallback: claude-haiku
+    rationale: low-latency, tool-heavy, cross-repo coordination
+
+  planner:
+    primary: Claude Opus / GPT-5.5
+    fallback: claude-opus
+    rationale: high-reasoning, session-based strategic planning
+
+  executor:
+    primary: GPT-5.3-codex / Claude Sonnet
+    fallback: gpt-4.1-mini
+    rationale: focused coder, budget-friendly, sandboxed worktree
+
+  verifier:
+    primary: Claude Opus / Gemini Pro
+    fallback: claude-opus
+    rationale: code review, security/style checks, PR-level gating
+
+  finisher:
+    primary: Gemini Flash / Claude Haiku
+    fallback: gemini-flash
+    rationale: verification and cleanup runner
