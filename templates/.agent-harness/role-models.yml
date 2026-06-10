@@ -4,7 +4,8 @@
 # to switch to a provider-optimized configuration:
 #   cp .agent-harness/presets/preset-anthropic.yml .agent-harness/role-models.yml
 #
-# Schema (flat by design — every field is one `key: value` line, bash/awk parseable):
+# Schema (all values are single-line scalars — no YAML arrays or nested objects,
+#         making every field extractable with simple awk/grep key: value matching):
 #   cli      — binary to invoke (claude / codex / gemini). Primary routing key.
 #   model    — hint only: used when an API key is available; subscription CLIs
 #              use whatever their plan provides. Version is the trailing number.
