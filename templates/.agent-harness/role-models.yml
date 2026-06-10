@@ -1,93 +1,50 @@
-# Role-to-CLI routing for wtcraft agent roles.
+# Role-to-CLI routing for wtcraft agent roles. (STOT)
 #
 # Quick start: copy a preset from .agent-harness/presets/ over this file
 # to switch to a provider-optimized configuration:
 #   cp .agent-harness/presets/preset-anthropic.yml .agent-harness/role-models.yml
 #
-# Fields:
-#   cli    — the binary to invoke (claude / codex / gemini). Primary routing key.
-#   model  — hint only. Used when API key is available; ignored for subscription users.
-#   fallback — ordered list. Left = higher priority.
+# Schema (flat by design — every field is one `key: value` line, bash/awk parseable):
+#   cli      — binary to invoke (claude / codex / gemini). Primary routing key.
+#   model    — hint only: used when an API key is available; subscription CLIs
+#              use whatever their plan provides. Version is the trailing number.
+#   fallback — comma-separated, ordered left-to-right (left = higher priority).
+#              Each entry is `cli:Model Name Version`.
 #
-# Matching rules (applied by agents and tooling):
+# Matching rules (top-level constraints, enforced by agents and tooling):
 matching:
   fuzzy: true              # normalize spaces, dashes, underscores, case
-  freshness_tolerance: 0.2 # max version gap within same model family to count as a hit
-                           # e.g. primary 4.8 → 4.7 OK, 4.6 NOT a hit
+                           # "claude-opus-4.8" == "Claude Opus 4.8" == "claudeopus4.8"
+  freshness_tolerance: 0.2 # max version gap within the same model family to count
+                           # as a hit: primary 4.8 → 4.7 hits, 4.6 does not
 
 roles:
   orchestrator:
     cli: gemini
-    model:
-      name: Gemini 3.5 Flash
-      version: "3.5"
-    fallback:
-      - cli: claude
-        model:
-          name: Claude Haiku
-          version: "4.5"
+    model: Gemini 3.5 Flash
+    fallback: claude:Claude Sonnet 4.6, codex:GPT-5.4
     rationale: low-latency, tool-heavy, cross-repo coordination
 
   planner:
     cli: claude
-    model:
-      name: Claude Opus
-      version: "4.8"
-    fallback:
-      - cli: codex
-        model:
-          name: GPT-5.5
-          version: "5.5"
-      - cli: gemini
-        model:
-          name: Gemini Pro
-          version: "3.1"
+    model: Claude Opus 4.8
+    fallback: codex:GPT-5.5, gemini:Gemini Pro 3.1
     rationale: high-reasoning, session-based strategic planning
 
   executor:
     cli: codex
-    model:
-      name: GPT-5.4
-      version: "5.4"
-    fallback:
-      - cli: claude
-        model:
-          name: Claude Sonnet
-          version: "4.6"
-      - cli: gemini
-        model:
-          name: Gemini Pro
-          version: "3.1"
+    model: GPT-5.4
+    fallback: claude:Claude Sonnet 4.6, gemini:Gemini Pro 3.1
     rationale: focused coder, budget-friendly, sandboxed worktree
 
   verifier:
     cli: claude
-    model:
-      name: Claude Opus Fable
-      version: "5"
-    fallback:
-      - cli: claude
-        model:
-          name: Claude Opus
-          version: "4.8"
-      - cli: gemini
-        model:
-          name: Gemini Pro
-          version: "3.1"
+    model: Claude Opus Fable 5
+    fallback: claude:Claude Opus 4.8, gemini:Gemini Pro 3.1, codex:GPT-5.5
     rationale: code review, security/style checks, PR-level gating
 
   finisher:
     cli: gemini
-    model:
-      name: Gemini Flash
-      version: "3.5"
-    fallback:
-      - cli: claude
-        model:
-          name: Claude Haiku
-          version: "4.5"
-      - cli: codex
-        model:
-          name: GPT-5.4-Mini
-          version: "5.4"
-    rationale: verification and cleanup runner
+    model: Gemini Flash 3.5
+    fallback: claude:Claude Haiku 4.5, codex:GPT-5.4-Mini
+    rationale: worktree and local branch cleanup runner
