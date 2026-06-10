@@ -93,6 +93,31 @@ test_new_verify_check() {
 
   "$CLI" verify chore/smoke
   "$CLI" check chore/smoke
+
+  # verify writes its result back into the task contract frontmatter
+  grep -q "^verify_result: pass" "$task_file"
+  grep -q "^verified: " "$task_file"
+  "$CLI" status | grep -q "pass"
+
+  # a failing verification is recorded as fail
+  sed -i.bak "s|echo ok|false|" "$task_file"
+  rm -f "${task_file}.bak"
+  ! "$CLI" verify chore/smoke
+  grep -q "^verify_result: fail" "$task_file"
+
+  # check sees untracked files: out-of-scope file fails, in-scope passes
+  echo "rogue" > "${repo}/worktrees/chore/smoke/rogue.txt"
+  ! "$CLI" check chore/smoke
+  rm "${repo}/worktrees/chore/smoke/rogue.txt"
+  mkdir -p "${repo}/worktrees/chore/smoke/src"
+  echo "ok" > "${repo}/worktrees/chore/smoke/src/example.ts"
+  "$CLI" check chore/smoke
+
+  # check sees uncommitted edits to tracked files: out-of-scope edit fails
+  echo "tweak" >> "${repo}/worktrees/chore/smoke/.wtcraft-seed"
+  ! "$CLI" check chore/smoke
+  git -C "${repo}/worktrees/chore/smoke" checkout -- .wtcraft-seed
+  "$CLI" check chore/smoke
 }
 
 run_in_temp_repo test_help_init_status
