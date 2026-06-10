@@ -1,6 +1,23 @@
 # Rust Migration Plan
 
-> Status: under consideration — not yet scheduled.
+> Status: **deferred** (2026-06-10) — the premises below no longer justify the cost.
+>
+> - **Windows native as differentiation**: no longer holds. [Worktrunk](https://worktrunk.dev/)
+>   already occupies "Rust worktree CLI that runs on Windows", and the
+>   worktree-per-agent space is crowded (workmux, Claude Squad, Vibe Kanban,
+>   Composio AO; Claude Code ships native worktree isolation). workmux explicitly
+>   rejected Windows support ([issue #85](https://github.com/raine/workmux/issues/85)),
+>   but as a hobby project wtcraft is not competing for that gap.
+> - **Fragile awk/sed parsing**: real, but bats tests over the awk functions cost
+>   ~1 day vs ~3 weeks for the rewrite.
+> - **model_policy**: the matching rules in `role-models.yml` are executed by
+>   agents reading the file; no typed implementation is required.
+>
+> Deferred ≠ rejected: a contributor with interest is welcome to pick this up.
+> Revisit if (a) real Windows users show up, (b) a contributor wants to own it,
+> or (c) the goal becomes learning Rust. In any case start with `model_policy`
+> as the first module (pure functions, zero IO) to bootstrap the toolchain
+> before porting `check`/`verify`.
 
 ## Motivation
 
