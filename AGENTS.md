@@ -2,6 +2,16 @@
 ## wtcraft routing
 If `.worktree-task.md` exists in the current worktree root, read `.agent-harness/executor.md` first and follow task Scope, Off-limits, and Verification.
 
+## repo structure (wtcraft dogfooding)
+`templates/` is the source of truth for files `wtcraft init` copies to user repos.
+The corresponding live files in this repo are wtcraft's own dogfooded versions:
+
+  templates/.agent-harness/                    ↔  .agent-harness/
+  templates/.claude/commands/                  ↔  .claude/commands/
+  templates/worktrees/.worktree-task.md        ↔  .worktree-task.template.md
+
+When changing harness behavior: update both the template AND the live file.
+
 ## release guardrails
 - Version tags must use `v<semver>` format (example: `v0.3.8`).
 - Version tags must be created from `main` only.
