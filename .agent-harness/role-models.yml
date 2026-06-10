@@ -1,29 +1,93 @@
-# Role-to-model recommendations for wtcraft agent roles.
-# Update this file as new models are released or old ones are deprecated.
-# Last updated: 2026-06-10
+# Role-to-CLI routing for wtcraft agent roles.
+#
+# Quick start: copy a preset from .agent-harness/presets/ over this file
+# to switch to a provider-optimized configuration:
+#   cp .agent-harness/presets/preset-anthropic.yml .agent-harness/role-models.yml
+#
+# Fields:
+#   cli    — the binary to invoke (claude / codex / gemini). Primary routing key.
+#   model  — hint only. Used when API key is available; ignored for subscription users.
+#   fallback — ordered list. Left = higher priority.
+#
+# Matching rules (applied by agents and tooling):
+matching:
+  fuzzy: true              # normalize spaces, dashes, underscores, case
+  freshness_tolerance: 0.2 # max version gap within same model family to count as a hit
+                           # e.g. primary 4.8 → 4.7 OK, 4.6 NOT a hit
 
 roles:
   orchestrator:
-    primary: Gemini 3.5 Flash
-    fallback: claude-haiku
+    cli: gemini
+    model:
+      name: Gemini 3.5 Flash
+      version: "3.5"
+    fallback:
+      - cli: claude
+        model:
+          name: Claude Haiku
+          version: "4.5"
     rationale: low-latency, tool-heavy, cross-repo coordination
 
   planner:
-    primary: Claude Opus / GPT-5.5
-    fallback: claude-opus
+    cli: claude
+    model:
+      name: Claude Opus
+      version: "4.8"
+    fallback:
+      - cli: codex
+        model:
+          name: GPT-5.5
+          version: "5.5"
+      - cli: gemini
+        model:
+          name: Gemini Pro
+          version: "3.1"
     rationale: high-reasoning, session-based strategic planning
 
   executor:
-    primary: GPT-5.3-codex / Claude Sonnet
-    fallback: gpt-4.1-mini
+    cli: codex
+    model:
+      name: GPT-5.4
+      version: "5.4"
+    fallback:
+      - cli: claude
+        model:
+          name: Claude Sonnet
+          version: "4.6"
+      - cli: gemini
+        model:
+          name: Gemini Pro
+          version: "3.1"
     rationale: focused coder, budget-friendly, sandboxed worktree
 
   verifier:
-    primary: Claude Opus / Gemini Pro
-    fallback: claude-opus
+    cli: claude
+    model:
+      name: Claude Opus Fable
+      version: "5"
+    fallback:
+      - cli: claude
+        model:
+          name: Claude Opus
+          version: "4.8"
+      - cli: gemini
+        model:
+          name: Gemini Pro
+          version: "3.1"
     rationale: code review, security/style checks, PR-level gating
 
   finisher:
-    primary: Gemini Flash / Claude Haiku
-    fallback: gemini-flash
+    cli: gemini
+    model:
+      name: Gemini Flash
+      version: "3.5"
+    fallback:
+      - cli: claude
+        model:
+          name: Claude Haiku
+          version: "4.5"
+      - cli: codex
+        model:
+          name: GPT-5.4-Mini
+          version: "5.4"
     rationale: verification and cleanup runner
