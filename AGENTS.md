@@ -12,6 +12,11 @@ The corresponding live files in this repo are wtcraft's own dogfooded versions:
 
 When changing harness behavior: update both the template AND the live file.
 
+## model knowledge policy
+Never rely on your own training knowledge for model names or IDs — it is always outdated.
+For model recommendations, read `.agent-harness/role-models.yml`.
+If the user states a model name, that overrides everything else.
+
 ## release guardrails
 - Version tags must use `v<semver>` format (example: `v0.3.8`).
 - Version tags must be created from `main` only.
