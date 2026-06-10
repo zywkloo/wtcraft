@@ -62,6 +62,7 @@ wtcraft = [
   "templates/.agent-harness/planner.md",
   "templates/.agent-harness/executor.md",
   "templates/.agent-harness/finisher.md",
+  "templates/.agent-harness/role-models.yml",
   "templates/.claude/commands/planwt.md",
   "templates/.claude/commands/finishwt.md",
   "templates/.claude/commands/statuswt.md",
