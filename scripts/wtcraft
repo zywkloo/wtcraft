@@ -104,7 +104,9 @@ usage_check() {
 wtcraft check <worktree-path-or-name>
 
   Compare files changed in the worktree against the Scope and Off-limits
-  sections of the .worktree-task.md contract.
+  sections of the .worktree-task.md contract. Covers commits since the base
+  branch, staged/unstaged edits, and untracked files. The task contract
+  itself (.worktree-task.md) is exempt.
 
   Scope pattern syntax:
     - Exact file path:      src/index.ts
@@ -126,6 +128,9 @@ wtcraft verify <worktree-path-or-name>
   .worktree-task.md contract. Each command runs inside the worktree directory.
 
   Output includes per-command timing, exit codes, and a summary table.
+  The result is written back to the task file frontmatter as
+  `verify_result: pass|fail` and `verified: <timestamp>`, which
+  `wtcraft status` reports in its Verified column.
 
   Exit codes:
     0   All commands passed
@@ -352,20 +357,44 @@ extract_frontmatter() {
   ' "$file"
 }
 
+# set_frontmatter <file> <key> <value>
+#
+# Update key in the frontmatter block, or insert it before the closing ---
+# when absent. Only the first frontmatter block is touched.
+set_frontmatter() {
+  local file="$1"
+  local key="$2"
+  local value="$3"
+  local tmp="${file}.tmp"
+  awk -v key="$key" -v value="$value" '
+    BEGIN { in_fm=0; fm_done=0; written=0 }
+    /^---$/ {
+      if (fm_done==0 && in_fm==0) { in_fm=1; print; next }
+      if (in_fm==1) {
+        if (written==0) { print key ": " value; written=1 }
+        in_fm=0; fm_done=1; print; next
+      }
+      print; next
+    }
+    in_fm==1 && written==0 && $0 ~ "^" key ":" { print key ": " value; written=1; next }
+    { print }
+  ' "$file" > "$tmp" && mv "$tmp" "$file"
+}
+
 cmd_status() {
   ensure_repo_root
   local repo_root
   repo_root="$(git rev-parse --show-toplevel)"
 
-  printf "%-45s %-12s %-10s %-8s\n" "Task File" "Status" "Agent" "Priority"
-  printf "%-45s %-12s %-10s %-8s\n" "---------" "------" "-----" "--------"
+  printf "%-45s %-12s %-10s %-8s %-10s\n" "Task File" "Status" "Agent" "Priority" "Verified"
+  printf "%-45s %-12s %-10s %-8s %-10s\n" "---------" "------" "-----" "--------" "--------"
 
   local found=0
   while IFS= read -r wt; do
     [ -z "$wt" ] && continue
     # Skip the primary worktree (repo root), keep only linked worktrees.
     [ "$wt" = "$repo_root" ] && continue
-    local task rel status agent priority
+    local task rel status agent priority verified
     task="${wt}/.worktree-task.md"
     [ -f "$task" ] || continue
     found=1
@@ -373,10 +402,12 @@ cmd_status() {
     status="$(extract_frontmatter "$task" "status")"
     agent="$(extract_frontmatter "$task" "agent")"
     priority="$(extract_frontmatter "$task" "priority")"
+    verified="$(extract_frontmatter "$task" "verify_result")"
     status="${status:-unknown}"
     agent="${agent:-unknown}"
     priority="${priority:-unknown}"
-    printf "%-45s %-12s %-10s %-8s\n" "$rel" "$status" "$agent" "$priority"
+    verified="${verified:--}"
+    printf "%-45s %-12s %-10s %-8s %-10s\n" "$rel" "$status" "$agent" "$priority" "$verified"
   done < <(git -C "$repo_root" worktree list --porcelain | awk '/^worktree /{sub(/^worktree /,"",$0); print}')
 
   if [ "$found" -eq 0 ]; then
@@ -520,9 +551,17 @@ cmd_check() {
   local offlimits_items=()
   local line
 
+  # Committed changes vs base, plus staged/unstaged edits and untracked files —
+  # agents often leave work uncommitted, and a gate that only sees commits has a hole.
   while IFS= read -r line; do
     changed_files+=("$line")
-  done < <(git -C "$wt_path" diff --name-only "${base_branch}...HEAD")
+  done < <(
+    {
+      git -C "$wt_path" diff --name-only "${base_branch}...HEAD"
+      git -C "$wt_path" diff --name-only HEAD
+      git -C "$wt_path" ls-files --others --exclude-standard
+    } | sort -u
+  )
 
   while IFS= read -r line; do
     scope_items+=("$line")
@@ -536,6 +575,9 @@ cmd_check() {
 
   for f in "${changed_files[@]:-}"; do
     [ -z "$f" ] && continue
+    # The task contract is harness-managed (seeded by `new`, updated by `verify`)
+    # and never counts against Scope.
+    [ "$f" = ".worktree-task.md" ] && continue
 
     if [ "$f" = ".worktree-task.md" ]; then
       echo "Task contract violation: .worktree-task.md is local worktree state and must not be committed or merged."
@@ -566,7 +608,7 @@ cmd_check() {
   done
 
   if [ "$has_violations" -eq 0 ]; then
-    echo "Check passed: no Scope/Off-limits violations detected against ${base_branch}...HEAD."
+    echo "Check passed: no Scope/Off-limits violations in commits since ${base_branch} or the working tree."
   else
     exit 2
   fi
@@ -626,6 +668,12 @@ cmd_verify() {
     echo "$r"
   done
   echo "================================================================"
+
+  local result="pass"
+  [ "$failures" -ne 0 ] && result="fail"
+  set_frontmatter "$task_file" "verify_result" "$result"
+  set_frontmatter "$task_file" "verified" "$(date +"%Y-%m-%d %H:%M")"
+  echo "Recorded verify_result: ${result} in ${task_file}"
 
   if [ "$failures" -ne 0 ]; then
     echo ""
