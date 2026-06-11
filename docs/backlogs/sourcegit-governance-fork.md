@@ -154,9 +154,11 @@ every task at, run by which agent in which role".
   (and equivalents) with upstream. Fine for v0.1 on a dev machine; rename
   the app-data folder before telling anyone else to install both.
 - Worktree layout: don't assume wtcraft's in-repo `worktrees/` — GitKraken
-  uses sibling `<repo>.worktrees/<branch>`, others use arbitrary paths.
-  Enumerate via `git worktree list` (SourceGit already does), then probe
-  each listed path for the metadata file; never glob a hardcoded dir.
+  uses sibling `<repo>.worktrees/<branch>`, Codex creates worktrees at
+  arbitrary paths. Enumerate via `git worktree list` (SourceGit already
+  does), then probe each listed path for the metadata file; never glob a
+  hardcoded dir. wtcraft itself is adopting the same rule and flipping its
+  default layout to sibling — see `worktree-layout.md`.
 
 Budget note: the two-layer split costs ~+0.5 day. If the weekend runs
 short, Phase B item 3 (breach alarms via `wtcraft check`) moves to the cut
