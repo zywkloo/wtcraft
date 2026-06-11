@@ -78,8 +78,20 @@ All three agree = green. Disagreements get names:
 - **breach** — diff touches Off-limits (already `wtcraft check`)
 
 Liveness should not depend on agents dutifully updating fields (they won't).
-A harness-level hook that touches a heartbeat file / writes `last_active:` is
-the reliable path.
+
+**Vendor-dependency principle (decided 2026-06-11):** defer anything that
+depends on vendor surfaces (Claude Code hooks, Codex `notify`, TUI output
+formats — they churn at vendor release pace and break silently, see
+GitKraken's per-CLI adapter matrix). Build on vendor-free signals first:
+
+- Liveness v1 = **fs mtime** of the worktree (POSIX-stable, works for any
+  agent, any runner, zero setup). Minute-granularity is enough for
+  task-level monitoring.
+- CLI event hooks (Claude Code hooks / Codex notify writing `last_active:`
+  or stage into the task file) are a **deferred precision upgrade** — and
+  when added, they write through the same file interface, so the observer
+  never depends on them. If a hook breaks, `last_active` goes stale and
+  the stale alarm fires: the failure is visible and named, not silent.
 
 Any GUI stays a thin renderer over `wtcraft status --json`. The
 differentiator vs GitKraken Agent Mode / Vibe Kanban / Conductor etc. is

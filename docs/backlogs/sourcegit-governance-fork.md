@@ -137,9 +137,10 @@ every task at, run by which agent in which role".
    alarms. New files only.
 2. Mount: clone the group_expander + ListBox pair as a new sidebar group
    below Worktrees (the parent Grid needs two more RowDefinitions).
-3. Alarms v0.1: **breach** only, via `wtcraft check`. **stale** and
-   **bypass** need the heartbeat/`last_active:` convention
-   (stage-state-machine.md) — deferred.
+3. Alarms v0.1: **breach** only, via `wtcraft check`. **stale** (fs mtime
+   based) and **bypass** (git status vs declared stage) are vendor-free
+   and can follow soon after; CLI event hooks for finer liveness are
+   deferred per the vendor-dependency principle (stage-state-machine.md).
 4. Tag → `release.yml` → three-platform artifacts, unsigned like upstream.
 
 ### Gotchas (will cost time if hit blind)
