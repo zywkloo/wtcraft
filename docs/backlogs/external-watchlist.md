@@ -109,6 +109,39 @@ Takeaways:
   uncommitted-changes-in-graph (#1673 — the Sublime Merge feature
   switchers will miss; upstream-scale work, don't build it in the fork).
 
+### GitKraken Agent Mode anatomy (hands-on trial, 2026-06-11)
+
+Dissected during the 14-day trial on a private work repo. How its agent
+status (running / using tool / awaiting approval / done) actually works:
+
+- **Launch-time config injection, per CLI**: status exists only for
+  sessions started via its "Start Session" button. At spawn it injects
+  Claude Code lifecycle hooks (session start/end, tool use → "Using
+  tool", permission request → "Awaiting approval"); for Codex it uses the
+  CLI's `notify` mechanism, which has only two event types
+  (agent-turn-complete, approval-requested) — hence coarser status; for
+  OpenCode an official plugin. Closed adapter list of 5 CLIs; anything
+  else (e.g. Antigravity CLI, which has no notify mechanism at all) is
+  unsupportable by construction.
+- **Empirically falsified the PTY-scraping fallback**: a `codex` launched
+  *manually inside GitKraken's own embedded terminal* — every output byte
+  flowing through its PTY master, "Working (2m 51s)" rendered on screen —
+  shows **no status on the card**. There is no output parsing; status is
+  a property of the launch path, not the terminal. Off-path sessions are
+  silently invisible (UI gives no hint an untracked session exists).
+- **Three bills of the runner+adapter architecture** (one root cause):
+  closed CLI list, silent zero on off-path sessions, state lives in the
+  app not the repo (no persistence, no audit trail, gone on restart).
+- Contrast: a file-driven observer (TASK.md + git + fs mtime) sees the
+  same manual session immediately — agents write files, files have
+  mtime, no adapter exists to break. Cost: minute-level granularity
+  instead of sub-second — fine for task-level monitoring. This trial is
+  the empirical basis for the vendor-free-first principle in
+  `stage-state-machine.md`.
+- Layout note: GitKraken puts worktrees in a sibling dir
+  (`<repo>.worktrees/<branch>`), unlike wtcraft's in-repo `worktrees/`.
+  Any scanner must handle both (see fork plan gotchas).
+
 ### SourceGit maintainer background (public info, 2026-06)
 
 `love-linger` ("leo"), Chengdu, China. GitHub since 2013; no bio/blog/
