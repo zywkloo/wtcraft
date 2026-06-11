@@ -45,6 +45,7 @@ wtcraft init [--patch-agent-files]
     .agent-harness/executor.md
     .agent-harness/finisher.md
     .agent-harness/role-models.yml
+    .agent-harness/presets/
     .claude/commands/planwt.md
     .claude/commands/finishwt.md
 EOF
@@ -295,6 +296,10 @@ cmd_init() {
   copy_if_missing "${TEMPLATE_DIR}/.claude/commands/planwt.md" "${repo_root}/.claude/commands/planwt.md"
   copy_if_missing "${TEMPLATE_DIR}/.claude/commands/finishwt.md" "${repo_root}/.claude/commands/finishwt.md"
   copy_if_missing "${TEMPLATE_DIR}/.claude/commands/statuswt.md" "${repo_root}/.claude/commands/statuswt.md"
+  
+  for preset in balanced anthropic openai google; do
+    copy_if_missing "${TEMPLATE_DIR}/.agent-harness/presets/preset-${preset}.yml" "${repo_root}/.agent-harness/presets/preset-${preset}.yml"
+  done
 
   # Ensure .worktree-task.md is ignored in the user's repo
   local gitignore="${repo_root}/.gitignore"
@@ -308,6 +313,7 @@ cmd_init() {
    .agent-harness/executor.md
    .agent-harness/finisher.md
    .agent-harness/role-models.yml
+   .agent-harness/presets/
    .claude/commands/planwt.md
    .claude/commands/finishwt.md
    .claude/commands/statuswt.md
