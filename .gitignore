@@ -21,6 +21,5 @@ node_modules/
 *.log
 /worktrees/
 
-# wtcraft local task state. The packaged template source lives under templates/.
+# wtcraft local task state.
 /.worktree-task.md
-/.worktree-task.template.md
