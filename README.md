@@ -43,6 +43,8 @@ No hosted platform is required. No custom runtime is required.
 `wtcraft` enables you to orchestrate a highly efficient, budget-friendly multi-agent team by assigning models to specialized roles based on their speed, reasoning power, and cost:
 
 
+
+
 <!-- wtcraft:models:start -->
 ```mermaid
 graph TD

@@ -21,6 +21,8 @@ Usage:
   wtcraft init [--patch-agent-files]
   wtcraft patch
   wtcraft unpatch
+  wtcraft lang install [--lang <code>]
+  wtcraft lang remove
   wtcraft status
   wtcraft new <type/name>
   wtcraft check <worktree-path-or-name>
@@ -73,6 +75,28 @@ wtcraft unpatch
   AGENTS.md. Only the content between the wtcraft markers is removed;
   the rest of each file is left untouched. Scaffolded harness files
   (.agent-harness/, .claude/commands/) are NOT removed.
+EOF
+}
+
+usage_lang() {
+  cat <<'EOF'
+wtcraft lang install [--lang <code>]
+wtcraft lang remove
+
+  Install or remove a language-enforcement stub in CLAUDE.md.
+  The stub instructs the AI to respond only in the specified language.
+
+  Subcommands:
+    install   Append a language-enforcement block to CLAUDE.md (idempotent)
+    remove    Strip the language-enforcement block from CLAUDE.md
+
+  Options for install:
+    --lang <code>   Language to enforce (default: en)
+                    en     — English only
+                    zh-CN  — Simplified Chinese or English
+
+  This stub is separate from the wtcraft routing stub (wtcraft patch/unpatch)
+  and is an opt-in feature for users who need strict language output control.
 EOF
 }
 
@@ -145,14 +169,15 @@ cmd_help() {
     return 0
   fi
   case "$1" in
-    init)   usage_init ;;
-    patch)  usage_patch ;;
+    init)    usage_init ;;
+    patch)   usage_patch ;;
     unpatch) usage_unpatch ;;
-    status) usage_status ;;
-    new)    usage_new ;;
-    check)  usage_check ;;
-    verify) usage_verify ;;
-    help)   usage ;;
+    lang)    usage_lang ;;
+    status)  usage_status ;;
+    new)     usage_new ;;
+    check)   usage_check ;;
+    verify)  usage_verify ;;
+    help)    usage ;;
     *) die "no help topic for: $1" ;;
   esac
 }
@@ -212,10 +237,6 @@ patch_agent_files() {
 For complex or parallel tasks, read `.agent-harness/planner.md`.
 For worktree finishing, read `.agent-harness/finisher.md`.
 For LLM prompting anti-patterns (e.g., Irony of Negation, Sycophancy), read `.agent-harness/llm-anti-patterns.md`.
-
-## Language Enforcement (Anti-Hallucination)
-CRITICAL: You must output YOUR ENTIRE RESPONSE in **Simplified Chinese (简体中文)** or English ONLY. 
-Under absolute zero circumstances should you output any Hiragana, Katakana, or Hangul characters. Any use of Japanese or Korean characters will cause an immediate system crash.
 <!-- wtcraft:claude:end -->
 EOF
 )"
@@ -349,6 +370,62 @@ cmd_unpatch() {
   repo_root="$(git rev-parse --show-toplevel)"
   echo "Removing wtcraft routing stubs from agent files..."
   unpatch_agent_files "$repo_root"
+}
+
+cmd_lang() {
+  [ $# -ge 1 ] || { usage_lang; exit 1; }
+  local subcmd="$1"; shift
+  ensure_repo_root
+  local repo_root
+  repo_root="$(git rev-parse --show-toplevel)"
+  local claude_file="${repo_root}/CLAUDE.md"
+
+  case "$subcmd" in
+    install)
+      local lang="en"
+      while [ $# -gt 0 ]; do
+        case "$1" in
+          --lang) shift; lang="${1:?--lang requires a value}"; shift ;;
+          *) die "unknown lang install option: $1" ;;
+        esac
+      done
+
+      local lang_block
+      case "$lang" in
+        en)
+          lang_block="$(cat <<'EOF'
+<!-- wtcraft:lang:start -->
+## Language Enforcement
+CRITICAL: Output YOUR ENTIRE RESPONSE in **English** only.
+<!-- wtcraft:lang:end -->
+EOF
+)"
+          ;;
+        zh-CN)
+          lang_block="$(cat <<'EOF'
+<!-- wtcraft:lang:start -->
+## Language Enforcement
+CRITICAL: Output YOUR ENTIRE RESPONSE in **Simplified Chinese (简体中文)** or English only.
+<!-- wtcraft:lang:end -->
+EOF
+)"
+          ;;
+        *)
+          die "unsupported language code: ${lang}. Supported: en, zh-CN"
+          ;;
+      esac
+
+      append_managed_block_if_missing "$claude_file" "$lang_block" "<!-- wtcraft:lang:start -->"
+      ;;
+    remove)
+      [ $# -eq 0 ] || die "lang remove takes no arguments"
+      remove_managed_block "$claude_file" \
+        "<!-- wtcraft:lang:start -->" "<!-- wtcraft:lang:end -->"
+      ;;
+    *)
+      die "unknown lang subcommand: ${subcmd}. Use install or remove"
+      ;;
+  esac
 }
 
 extract_frontmatter() {
@@ -703,6 +780,7 @@ main() {
     init)        cmd_init "$@" ;;
     patch)       cmd_patch "$@" ;;
     unpatch)     cmd_unpatch "$@" ;;
+    lang)        cmd_lang "$@" ;;
     status)      cmd_status "$@" ;;
     new)         cmd_new "$@" ;;
     check)       cmd_check "$@" ;;
