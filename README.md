@@ -12,9 +12,6 @@
 <p align="center">
   <img src="https://raw.githubusercontent.com/zywkloo/wtcraft/main/wtcraft-icon.PNG" alt="wtcraft icon" width="120" />
 </p>
-
-Anthr… Open… Goo…
-
 **$200/month for one AI agent?**
 
 No.
