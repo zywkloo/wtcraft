@@ -68,20 +68,6 @@ def update_readme(role_blocks):
     with open(README, 'r') as f:
         content = f.read()
 
-    # Generate Mermaid diagram
-    # We will map roles to their primary cli/model
-    r_map = {r: f"{c}:{m}" for r, c, m, _, _ in role_blocks}
-    
-    mermaid = f"""```mermaid
-graph TD
-    Orchestrator["Orchestrator ({r_map.get('orchestrator', '')})"] -->|Subtask| Planner["Planner ({r_map.get('planner', '')})"]
-    Planner -->|Task Contract| Executor["Executor ({r_map.get('executor', '')})"]
-    Executor -->|PR| Verifier["Verifier ({r_map.get('verifier', '')})"]
-    Verifier -.->|Retry| Planner
-    Verifier -.->|Retry| Executor
-    Verifier -->|Merge| Finisher["Finisher ({r_map.get('finisher', '')})"]
-```"""
-
     # Generate role bullets
     bullets = []
     # Descriptions are hardcoded to match the original README, but we insert the STOT model
@@ -97,7 +83,7 @@ graph TD
         bullet = f"* **{role.capitalize()} (e.g., {model})**: {descs.get(role, '')}"
         bullets.append(bullet)
 
-    injected = "\n<!-- wtcraft:models:start -->\n" + mermaid + "\n\n" + "\n".join(bullets) + "\n<!-- wtcraft:models:end -->\n"
+    injected = "\n<!-- wtcraft:models:start -->\n" + "\n\n".join(bullets) + "\n<!-- wtcraft:models:end -->\n"
 
     # Replace existing block if markers exist
     if "<!-- wtcraft:models:start -->" in content and "<!-- wtcraft:models:end -->" in content:

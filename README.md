@@ -40,16 +40,17 @@ After running `wtcraft init`, you can use these slash commands in Claude Code:
 
 ## The Layered Agent Team
 
+
 <!-- wtcraft:models:start -->
-```mermaid
-graph TD
-    Orchestrator["Orchestrator (gemini:Gemini 3.5 Flash)"] -->|Subtask| Planner["Planner (claude:Claude Opus 4.8)"]
-    Planner -->|Task Contract| Executor["Executor (codex:GPT-5.4)"]
-    Executor -->|PR| Verifier["Verifier (claude:Claude Opus Fable 5)"]
-    Verifier -.->|Retry| Planner
-    Verifier -.->|Retry| Executor
-    Verifier -->|Merge| Finisher["Finisher (gemini:Gemini Flash 3.5)"]
-```
+* **Orchestrator (e.g., Gemini 3.5 Flash)**: Sits at the top of the workflow. Highly tool-agentic, low-latency, and coordinates the overall project state. It focuses on environment orchestration, git logistics, verification suites, and telemetry. Core features like cross-repository worktree monitoring, automated session summarization, and active agent handoff routing are **coming soon (upcoming role integration)**.
+
+* **Planner (e.g., Claude Opus 4.8)**: The slow, high-reasoning "architect". It reads the requirement, analyzes the code context, and designs the bounded execution contract (`.worktree-task.md`) specifying Scope, Off-limits, and Verification steps.
+
+* **Executor (e.g., GPT-5.4)**: The precision coder. It is budget-friendly, highly focused, and operates strictly inside the isolated worktree sandbox, adhering strictly to the contract boundaries.
+
+* **Verifier (e.g., Claude Opus Fable 5)**: The quality gatekeeper. It automatically conducts code reviews, checks for style/security constraints, and runs PR-level checks. If verification fails, it can trigger a feedback loop back to the Planner or Executor.
+
+* **Finisher (e.g., Gemini Flash 3.5)**: Performs deterministic boundary validation (`wtcraft check`), test suite verification (`wtcraft verify`), and cleans up local worktree assets after a successful merge to keep the development disk clean. Additionally, in an upcoming release (integrating with PR #12), the Finisher will aggregate and report **token telemetry** to track cost, budget, and API usage per agent model (**Coming Soon**).
 <!-- wtcraft:models:end -->
 
 ## Commands
