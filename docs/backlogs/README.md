@@ -20,8 +20,35 @@ All rule + config. No ML, no server, truth in local files/logs.
    on top of role-models.yml + presets ([preset-codegen.md](preset-codegen.md), PR #22).
    Build: ~2–3 days.
 
-Ordered work queue with estimates: [priorities.md](priorities.md).
+## Queue (Priorities)
 
+The single ordered work queue. When picking up wtcraft work, start at the top.
+Narrative/rationale lives in the per-item memos.
+
+| # | Item | Memo | Estimate | Why this position |
+|---|------|------|----------|-------------------|
+| P0 | Finish PR #22 — presets + gen-presets.py | [preset-codegen.md](preset-codegen.md) | already in progress | In flight on `feat/role-models-v2-codegen`; config base that P2 depends on; also fixes the dangling `presets/` reference in role-models.yml |
+| P1 | Pivot to Governance Layer | [pivot-governance-layer.md](pivot-governance-layer.md) | 2–3 days | The new core identity of wtcraft. Replacing agent orchestration with strict Zero-Trust Worktree Containment and Budget Gating. |
+| P2 | Stage state machine + progress view | [stage-state-machine.md](stage-state-machine.md) | 0.5–1 day (+0.5 for `--json`) | Smallest build with daily payoff; parts already landed 2026-06-10 (`set_frontmatter`, verify write-back, re-plan checkpoint) |
+| P3 | Quota-aware model-select | [model-select-quota.md](model-select-quota.md) | 2–3 days | The differentiated kernel (no competitor serves subscription-CLI users); needs P0's config base |
+| P4 | bats tests for awk parsing | — | ~1 day | Insurance for the 5 fragile parse functions; do opportunistically or when parsing next breaks |
+| P5 | Subscription fit report in `wtcraft budget` | [subscription-fit.md](subscription-fit.md) | ~1 day | Slow-loop advice (monthly); wait until P3 proves the quota data path |
+| P6 | Expose check/verify/status as MCP server | — | unsized | Trend-aligned composability; revisit after P2–P3 are in daily use |
+
+## No work needed (adopt today)
+
+- Realtime token view: `npx ccusage@latest blocks --live` (5h-window dashboard)
+  and/or `npx tokscale@latest` (cross-CLI totals). See
+  [external-watchlist.md](external-watchlist.md).
+
+## Re-prioritize when
+
+- PR #22 merges → P1 becomes the active item
+- A usage tool changes its JSON output → check P3's parser assumptions
+- tokscale merges Antigravity CLI support (PR #703) → consider Antigravity as
+  a model-select candidate CLI
+- Anyone shows up wanting Windows or Rust → see deferred section in
+  `README.md` and `../rust-migration.md`
 Competitive note (2026-06-10): item 1 is the *least* differentiated — Vibe
 Kanban already ships kanban stages, per-task agent/model selection, and
 plan-approval gates in a polished UI. (Maker Bloop AI shut down 2026-04-10 —
@@ -39,8 +66,8 @@ the contract + quota kernel.
 
 ## Index
 
-- [priorities.md](priorities.md) — **the ordered work queue** (start here)
 - [preset-codegen.md](preset-codegen.md) — preset system + gen-presets.py design decisions (PR #22 in progress)
+- [pivot-governance-layer.md](pivot-governance-layer.md) — Zero-Trust containment & governance (new P1)
 - [stage-state-machine.md](stage-state-machine.md) — `stage:` lifecycle in task
   frontmatter + unified progress view; pragmatic v1 of roadmap Phase 5
 - [model-select-quota.md](model-select-quota.md) — quota-aware model
