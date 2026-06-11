@@ -24,6 +24,10 @@ test_help_init_status() {
   "$CLI" init
   "$CLI" status
   test ! -e .worktree-task.template.md
+  test -f .agent-harness/presets/preset-anthropic.yml
+  test -f .agent-harness/presets/preset-balanced.yml
+  test -f .agent-harness/presets/preset-openai.yml
+  test -f .agent-harness/presets/preset-google.yml
 }
 
 test_patch_agent_files_idempotent() {
