@@ -44,6 +44,40 @@ the macOS menu bar. Covers Claude Code, Codex, Copilot, Cursor, Gemini CLI,
 Antigravity. $2.99–7.99 one-time. Local processing, closed source — useful as
 a human-facing display, not as a data source for wtcraft.
 
+## Worktree agent GUIs (2026-06 landscape)
+
+Surveyed for the stage-state-machine observer/GUI direction. Recorded
+2026-06-11. Conclusion: worktree dashboards and agent runners are crowded;
+**nobody does file-based, repo-native task state** (TASK.md as truth) or
+Scope/Off-limits/verification governance. Every tool below keeps state in its
+own app/DB and wants to *own* the workflow by spawning agents.
+
+- **GitKraken Desktop 12.0 Agent Mode** (2026-04) — commercial; agent
+  sessions panel per worktree, running/waiting/done status, spawns Claude
+  Code/Codex/Copilot/Gemini/OpenCode. Closest commercial product; no
+  task-contract concept.
+- **Vibe Kanban** (BloopAI, Apache-2.0, Rust+React) — kanban state machine
+  over worktrees, but: agent runner, own DB, runs agents with
+  `--dangerously-skip-permissions` by default (anti-governance). Sunsetting
+  since early 2026. Reference for board UI only.
+- **Conductor** (conductor.build) — Mac-only Claude Code worktree runner.
+- **Superset** (ELv2) / **Crystal→Nimbalyst** — macOS-first agent
+  editors/runners.
+- **Parallel Code** (johannesjo, MIT, Electron+SolidJS) — worktree-first
+  dashboard + diff review, BYO agent/editor. macOS+Linux only (no Windows).
+  Viable fork base if a TS path is ever wanted.
+
+### Fork base: SourceGit (chosen direction)
+
+MIT, C#/Avalonia, Windows/macOS/Linux, worktree GUI already built in, very
+active (v2026.12, 2026-06-01, 5.4k★). Plan: add a governance panel that
+reads `worktrees/**/.worktree-task.md` + `wtcraft status --json` — the
+bounded delta, since worktree support already exists. Sublime-Merge-class
+client, fits "GUI instead of CLI" preference.
+
+Full customization plan with mount points and weekend scope:
+`sourcegit-governance-fork.md`.
+
 ## Account-side quota: access paths (2026-06 state)
 
 - **No public API.** Open feature requests: anthropics/claude-code #44328,

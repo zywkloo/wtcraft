@@ -47,9 +47,49 @@ no multiplexer at all.
    (TUI, web page, even a Vibe-Kanban-style board) can render the pipeline
    without wtcraft owning a frontend. Turns truth-in-files into composability;
    ~0.5 day extra.
+5. **`role:` frontmatter field** — `agent:` records which CLI; `role:`
+   records the pipeline role (planner/executor/verifier/finisher). Lets
+   `status` and any UI join `role-models.yml`: show the expected cli/model/
+   fallback for the role, and flag mismatches ("task declares verifier but
+   agent is gemini; config routes verifier to claude"). One field buys a
+   whole class of checks.
 
 Estimated ~0.5–1 day total. Template + live file pairs must stay in sync
 (CLAUDE.md rule).
+
+## Declared vs actual (observer design, recorded 2026-06-11)
+
+Frontmatter is *declared* state only — an agent that crashes after writing
+`stage: executing` leaves a stale claim behind; the file never corrects
+itself. So the monitor's job is not rendering `.worktree-task.md`, it is
+reconciling three independent signal sources:
+
+| source              | tells you                                          |
+|---------------------|----------------------------------------------------|
+| `.worktree-task.md` | declared stage, role, Scope, Off-limits            |
+| git                 | actual changes: diff vs Scope/Off-limits, commits (`wtcraft check` today) |
+| fs mtime / heartbeat| liveness: is anything moving in that worktree      |
+
+All three agree = green. Disagreements get names:
+
+- **stale** — declared `executing`, no file activity for N minutes
+- **bypass** — declared `planned`/pre-execution, but uncommitted changes exist
+  (work happening outside the state machine)
+- **breach** — diff touches Off-limits (already `wtcraft check`)
+
+Liveness should not depend on agents dutifully updating fields (they won't).
+A harness-level hook that touches a heartbeat file / writes `last_active:` is
+the reliable path.
+
+Any GUI stays a thin renderer over `wtcraft status --json`. The
+differentiator vs GitKraken Agent Mode / Vibe Kanban / Conductor etc. is
+state-in-repo (files as truth) vs state-in-app (their own DB), and that those
+tools are agent *runners* while this is a read-only *observer* — it composes
+with any runner. See `external-watchlist.md` § Worktree agent GUIs.
+
+The concrete GUI is a SourceGit fork (separate repo); plan with exact mount
+points and weekend scope: `sourcegit-governance-fork.md`. Items 4 (`--json`)
+and 5 (`role:`) above are its wtcraft-side dependencies.
 
 ## Already in place (as of 2026-06-10)
 
