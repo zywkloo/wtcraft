@@ -44,6 +44,7 @@ wtcraft init [--patch-agent-files]
     .agent-harness/planner.md
     .agent-harness/executor.md
     .agent-harness/finisher.md
+    .agent-harness/role-models.yml
     .claude/commands/planwt.md
     .claude/commands/finishwt.md
 EOF
@@ -285,18 +286,26 @@ cmd_init() {
   copy_if_missing "${TEMPLATE_DIR}/.agent-harness/planner.md" "${repo_root}/.agent-harness/planner.md"
   copy_if_missing "${TEMPLATE_DIR}/.agent-harness/executor.md" "${repo_root}/.agent-harness/executor.md"
   copy_if_missing "${TEMPLATE_DIR}/.agent-harness/finisher.md" "${repo_root}/.agent-harness/finisher.md"
+  copy_if_missing "${TEMPLATE_DIR}/.agent-harness/role-models.yml" "${repo_root}/.agent-harness/role-models.yml"
   copy_if_missing "${TEMPLATE_DIR}/.claude/commands/planwt.md" "${repo_root}/.claude/commands/planwt.md"
   copy_if_missing "${TEMPLATE_DIR}/.claude/commands/finishwt.md" "${repo_root}/.claude/commands/finishwt.md"
   copy_if_missing "${TEMPLATE_DIR}/.claude/commands/statuswt.md" "${repo_root}/.claude/commands/statuswt.md"
 
+  # Ensure .worktree-task.md is ignored in the user's repo
+  local gitignore="${repo_root}/.gitignore"
+  if [ ! -f "$gitignore" ] || ! grep -qxF '/.worktree-task.md' "$gitignore"; then
+    printf '\n# wtcraft local task state\n/.worktree-task.md\n' >> "$gitignore"
+  fi
+
   cat <<'EOF'
-Initialized wtcraft harness files (existing files were left untouched):
-  .agent-harness/planner.md
-  .agent-harness/executor.md
-  .agent-harness/finisher.md
-  .claude/commands/planwt.md
-  .claude/commands/finishwt.md
-  .claude/commands/statuswt.md
+ Initialized wtcraft harness files (existing files were left untouched):
+   .agent-harness/planner.md
+   .agent-harness/executor.md
+   .agent-harness/finisher.md
+   .agent-harness/role-models.yml
+   .claude/commands/planwt.md
+   .claude/commands/finishwt.md
+   .claude/commands/statuswt.md
 EOF
 
   if [ "$patch_agent" = true ]; then
@@ -391,14 +400,13 @@ cmd_new() {
   git -C "$repo_root" worktree add "$wt_path" -b "$branch" "$base_branch"
 
   local task_file="${wt_path}/.worktree-task.md"
-  cp "${TEMPLATE_DIR}/worktrees/.worktree-task.md" "$task_file"
 
-  local exclude_file
-  exclude_file="$(git -C "$wt_path" rev-parse --git-path info/exclude)"
-  mkdir -p "$(dirname "$exclude_file")"
-  touch "$exclude_file"
-  if ! grep -qxF "/.worktree-task.md" "$exclude_file"; then
-    printf "\n/.worktree-task.md\n" >> "$exclude_file"
+  # If /planwt already generated a plan in the repo root, absorb it;
+  # otherwise seed with the blank template.
+  if [ -f "${repo_root}/.worktree-task.md" ]; then
+    mv "${repo_root}/.worktree-task.md" "$task_file"
+  else
+    cp "${TEMPLATE_DIR}/worktrees/.worktree-task.md" "$task_file"
   fi
 
   local today

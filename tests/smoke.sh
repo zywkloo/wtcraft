@@ -86,6 +86,7 @@ test_new_verify_check() {
   current_branch="$(git branch --show-current)"
 
   "$CLI" init
+  git add -A && git commit -q -m "wtcraft init"
   WTCRAFT_BASE_BRANCH="$current_branch" "$CLI" new chore/smoke
 
   local task_file="${repo}/worktrees/chore/smoke/.worktree-task.md"
@@ -111,6 +112,7 @@ test_check_rejects_task_contract_changes() {
   current_branch="$(git branch --show-current)"
 
   "$CLI" init
+  git add -A && git commit -q -m "wtcraft init"
   WTCRAFT_BASE_BRANCH="$current_branch" "$CLI" new chore/task-contract
 
   (

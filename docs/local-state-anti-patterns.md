@@ -1,52 +1,46 @@
-# Anti-Patterns: Local Task State & Worktree Workflow
+# ADR: Task Contract as Local Worktree State
 
-This document records the architectural and Git-level anti-patterns discovered during the implementation of the local task state guard (specifically around PR #25). These serve as a reference for why certain approaches were rejected and how to properly handle Git worktree state.
+## Status
 
-## 1. Global Side-Effects of Mutating `info/exclude`
+Accepted — implemented in PR #25.
 
-### The Anti-Pattern
-Attempting to dynamically ignore a file strictly within a worktree by appending it to `info/exclude` via a script (e.g., inside `wtcraft new`):
+## Context
 
-```bash
-local exclude_file
-exclude_file="$(git -C "$wt_path" rev-parse --git-path info/exclude)"
-echo "/.worktree-task.md" >> "$exclude_file"
-```
+The `.worktree-task.md` task contract is generated per-worktree by `/planwt` and consumed by the executor agent inside the worktree sandbox. It is ephemeral, branch-specific state that should never be committed or merged into the base branch.
 
-### Why it's Dangerous
-1. **Global Scope**: Git worktrees share the same core `.git` directory. The path returned by `rev-parse --git-path info/exclude` resolves to the **main repository's global `.git/info/exclude`**.
-2. **Unintended Collateral**: Appending `/.worktree-task.md` ignores the file not just in the newly created worktree, but also in the **main repository root** and **all other worktrees**.
-3. **Environment Inconsistency**: `info/exclude` is a local, unversioned file. If other developers `git clone` the repository, they will not inherit this ignore rule until they run the specific script that mutates it. This causes inconsistent tracking behavior across the team.
+Previously, the contract was tracked in git (both in the wtcraft repo itself and in user repos). This led to noisy diffs, merge conflicts between worktrees, and leaked implementation state in the git history.
 
-### The Correct Approach
-Do not use "magic" to silently modify local Git configuration. To ignore files like `.worktree-task.md`:
-- Explicitly add the rule to the version-controlled `.gitignore`.
-- If providing a tool for third-party repositories, have the initialization command (`wtcraft init`) append the rule to the user's `.gitignore` transparently.
+## Decision
 
----
+### 1. Ignore via `.gitignore`, not `info/exclude`
 
-## 2. The Orchestrator Workflow Disconnect (Data Loss)
+We considered using `git info/exclude` to silently ignore `.worktree-task.md` per-worktree. This approach was **rejected** because:
 
-### The Anti-Pattern
-Designing an Agent workflow that splits file generation and environment setup without state transfer. For example, having the agent write a task contract to the root repository, then calling a scaffolding command (`wtcraft new`) that unconditionally writes an empty template over the target destination.
+- Git worktrees share the same core `.git` directory. `rev-parse --git-path info/exclude` resolves to the **main repository's** global `.git/info/exclude`, not a worktree-local path. Writing to it affects the main repo and all other worktrees.
+- `info/exclude` is unversioned. Other developers who `git clone` the project would not inherit the rule, causing inconsistent tracking behavior across environments.
 
-### Why it's Dangerous
-1. **Plan Abandonment**: The Agent (`/planwt`) writes the carefully crafted `.worktree-task.md` to the `repo_root`.
-2. **Destructive Scaffolding**: `wtcraft new <branch>` then executes, creating the worktree and blindly copying `templates/worktrees/.worktree-task.md` into the new worktree.
-3. **Data Loss**: The worktree receives a blank template, while the actual generated plan is left abandoned in the `repo_root`.
+**Chosen approach:** `wtcraft init` appends `/.worktree-task.md` to the project's version-controlled `.gitignore`. This is explicit, portable, and consistent across all clones and worktrees.
 
-### The Correct Approach
-Scaffolding scripts (`wtcraft new`) must be state-aware and capable of absorbing preexisting artifacts.
+### 2. `cmd_new` absorbs existing plans from the repo root
+
+The `/planwt` orchestrator writes a `.worktree-task.md` plan to the repo root, then calls `wtcraft new <branch>` to create the worktree. If `cmd_new` unconditionally copies a blank template into the worktree, the generated plan is lost.
+
+**Chosen approach:** `cmd_new` checks whether `repo_root/.worktree-task.md` already exists. If so, it moves (`mv`) the file into the new worktree. Otherwise it falls back to copying the blank template. This ensures the orchestrator workflow is seamless.
 
 ```bash
-local task_file="${wt_path}/.worktree-task.md"
-
-# If a generated plan already exists in the root, absorb it
 if [ -f "${repo_root}/.worktree-task.md" ]; then
   mv "${repo_root}/.worktree-task.md" "$task_file"
 else
-  # Otherwise, fallback to the blank template
   cp "${TEMPLATE_DIR}/worktrees/.worktree-task.md" "$task_file"
 fi
 ```
-This ensures the workflow from generation to scaffolding is continuous and preserves data.
+
+### 3. `cmd_check` guards against accidental commits
+
+As defense-in-depth, `wtcraft check` now flags `.worktree-task.md` in the changed files list as a violation, regardless of Scope. This catches cases where an agent force-adds the contract despite the `.gitignore` rule.
+
+## Consequences
+
+- `.worktree-task.md` no longer appears in diffs or git history.
+- `.worktree-task.template.md` (the root-level dogfooding copy) is removed; the canonical template lives at `templates/worktrees/.worktree-task.md`.
+- The `/planwt` → `wtcraft new` workflow is now a single seamless step with no data loss.
