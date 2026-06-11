@@ -37,6 +37,12 @@ We provide the definitive safety harness for agentic coding. You let your AI wri
 - **`wtcraft init-ci`**: Automatically generates `.github/workflows/wtcraft-gate.yml`.
 - **PR Blocking**: When an AI agent (or junior dev) opens a PR, the CI parses the branch's `.worktree-task.md` and checks the PR diff against it. If the PR touches files outside the authorized scope, the CI automatically comments with the violation details and blocks the merge.
 
+### 5. Budget & Token Governance (Financial Containment)
+Governance isn't just about file scopes; it's also about preventing an AI from burning through a $50 API quota while stuck in an infinite loop.
+- **Budget Contracts:** Add a `budget:` parameter to the `.worktree-task.md` (e.g., `budget: $0.50`).
+- **Telemetry Extraction:** The `Finisher` role (or `wtcraft check`) aggregates token logs dumped by Aider/Cursor/Claude into a standard `.wtcraft-telemetry.json` file.
+- **Financial Gating:** If the worktree token cost exceeds the contractual budget, the CI blocks the merge or flags it with a "Budget Exceeded" warning, enabling managers to review AI ROI at the PR level.
+
 ## What This Means We De-prioritize
 To focus on Governance, we would step back from:
 - Trying to build our own prompt-generation or LLM-calling scripts.
