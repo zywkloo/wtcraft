@@ -170,12 +170,15 @@ upstream PR submission itself (post-v0.1 activity).
   agent, AI × worktree) — nobody has requested per-worktree metadata
   display. Closest: #2158 (main-repo vs worktree indicator), #1761
   (worktree-linked branch indication) — git-native concepts only.
-- **Maintainer profile (love-linger)**: ships worktree UI clarity fixes
-  himself within days of issue discussion; hard filter on information
-  density (rejected tooltip status as "completely repetitive and
-  unhelpful"; declined ahead/behind tooltip explanation); external
-  worktree feature PRs closed unmerged (#2346, #1983/#1982) — the pattern
-  is discuss-in-issue → he implements it himself. Responds in Chinese.
+- **Maintainer profile (love-linger)**: "leo", Chengdu, China; 78% of all
+  commits are his, low-profile (no bio/blog), project began Windows-only
+  and went cross-platform via Avalonia (he maintains support forks of
+  Avalonia/AvaloniaEdit). Ships worktree UI clarity fixes himself within
+  days of issue discussion; hard filter on information density (rejected
+  tooltip status as "completely repetitive and unhelpful"; declined
+  ahead/behind tooltip explanation); external worktree feature PRs closed
+  unmerged (#2346, #1983/#1982) — the pattern is discuss-in-issue → he
+  implements it himself. Responds in Chinese.
 - Therefore **issue-first is mandatory**, not optional. Pitch in Chinese,
   framed as "many worktrees are hard to tell apart" (his own acknowledged
   pain in #2158: "确实很难分得清楚") — NOT as an AI-agent feature. The
