@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "wtcraft"
-version = "0.3.9"
-description = "Budget-Aware Multi-Agent Coding Harness for git-native worktrees"
+version = "0.4.0"
+description = "A lightweight, git-native scaffolding for bounded multi-agent coding"
 license = { text = "Apache-2.0" }
 requires-python = ">=3.7"
 keywords = [
