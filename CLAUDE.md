@@ -9,7 +9,6 @@ The corresponding live files in this repo are wtcraft's own dogfooded versions:
 
   templates/.agent-harness/                    ↔  .agent-harness/
   templates/.claude/commands/                  ↔  .claude/commands/
-  templates/worktrees/.worktree-task.md        ↔  .worktree-task.template.md
 
 When changing harness behavior: update both the template AND the live file.
 

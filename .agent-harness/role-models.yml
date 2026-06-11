@@ -5,25 +5,25 @@
 roles:
   orchestrator:
     primary: Gemini 3.5 Flash
-    fallback: claude-haiku
+    fallback: Claude Sonnet 4.6 / GPT-5.4
     rationale: low-latency, tool-heavy, cross-repo coordination
 
   planner:
-    primary: Claude Opus / GPT-5.5
-    fallback: claude-opus
+    primary: Claude Opus 4.8 
+    fallback: GPT-5.5 / Gemini Pro 3.1
     rationale: high-reasoning, session-based strategic planning
 
   executor:
-    primary: GPT-5.3-codex / Claude Sonnet
-    fallback: gpt-4.1-mini
+    primary: GPT-5.4
+    fallback: Claude Sonnet 4.6 / Gemini Pro 3.1
     rationale: focused coder, budget-friendly, sandboxed worktree
 
   verifier:
-    primary: Claude Opus / Gemini Pro
-    fallback: claude-opus
+    primary: Claude Opus Fable 5 
+    fallback: Claude Opus 4.8 / Gemini Pro 3.1 / GPT-5.5
     rationale: code review, security/style checks, PR-level gating
 
   finisher:
-    primary: Gemini Flash / Claude Haiku
-    fallback: gemini-flash
-    rationale: verification and cleanup runner
+    primary: Gemini Flash 3.5 
+    fallback: Claude Haiku 4.5 / GPT-5.4-Mini
+    rationale: worktree and local branch cleanup runner

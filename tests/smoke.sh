@@ -23,6 +23,7 @@ test_help_init_status() {
   "$CLI" --help
   "$CLI" init
   "$CLI" status
+  test ! -e .worktree-task.template.md
 }
 
 test_patch_agent_files_idempotent() {
@@ -85,19 +86,48 @@ test_new_verify_check() {
   current_branch="$(git branch --show-current)"
 
   "$CLI" init
+  git add -A && git commit -q -m "wtcraft init"
   WTCRAFT_BASE_BRANCH="$current_branch" "$CLI" new chore/smoke
 
   local task_file="${repo}/worktrees/chore/smoke/.worktree-task.md"
   sed -i.bak "s|pnpm tsc --noEmit|echo ok|" "$task_file"
   rm -f "${task_file}.bak"
+  git -C worktrees/chore/smoke check-ignore -q .worktree-task.md
+  test -z "$(git -C worktrees/chore/smoke status --short -- .worktree-task.md)"
 
   "$CLI" verify chore/smoke
   "$CLI" check chore/smoke
+}
+
+test_check_rejects_task_contract_changes() {
+  local repo="$1"
+  cd "$repo"
+  git config user.name "wtcraft-smoke"
+  git config user.email "wtcraft-smoke@example.com"
+  echo "seed" > .wtcraft-seed
+  git add .wtcraft-seed
+  git commit -q -m "seed"
+
+  local current_branch
+  current_branch="$(git branch --show-current)"
+
+  "$CLI" init
+  git add -A && git commit -q -m "wtcraft init"
+  WTCRAFT_BASE_BRANCH="$current_branch" "$CLI" new chore/task-contract
+
+  (
+    cd worktrees/chore/task-contract
+    git add -f .worktree-task.md
+    git commit -q -m "accidentally commit task contract"
+  )
+
+  ! "$CLI" check chore/task-contract 2>/dev/null
 }
 
 run_in_temp_repo test_help_init_status
 run_in_temp_repo test_patch_agent_files_idempotent
 run_in_temp_repo test_patch_unpatch_roundtrip
 run_in_temp_repo test_new_verify_check
+run_in_temp_repo test_check_rejects_task_contract_changes
 
 echo "Smoke tests passed."

@@ -44,9 +44,9 @@ wtcraft init [--patch-agent-files]
     .agent-harness/planner.md
     .agent-harness/executor.md
     .agent-harness/finisher.md
+    .agent-harness/role-models.yml
     .claude/commands/planwt.md
     .claude/commands/finishwt.md
-    .worktree-task.template.md
 EOF
 }
 
@@ -290,18 +290,22 @@ cmd_init() {
   copy_if_missing "${TEMPLATE_DIR}/.claude/commands/planwt.md" "${repo_root}/.claude/commands/planwt.md"
   copy_if_missing "${TEMPLATE_DIR}/.claude/commands/finishwt.md" "${repo_root}/.claude/commands/finishwt.md"
   copy_if_missing "${TEMPLATE_DIR}/.claude/commands/statuswt.md" "${repo_root}/.claude/commands/statuswt.md"
-  copy_if_missing "${TEMPLATE_DIR}/worktrees/.worktree-task.md" "${repo_root}/.worktree-task.template.md"
+
+  # Ensure .worktree-task.md is ignored in the user's repo
+  local gitignore="${repo_root}/.gitignore"
+  if [ ! -f "$gitignore" ] || ! grep -qxF '/.worktree-task.md' "$gitignore"; then
+    printf '\n# wtcraft local task state\n/.worktree-task.md\n' >> "$gitignore"
+  fi
 
   cat <<'EOF'
-Initialized wtcraft harness files (existing files were left untouched):
-  .agent-harness/planner.md
-  .agent-harness/executor.md
-  .agent-harness/finisher.md
-  .agent-harness/role-models.yml
-  .claude/commands/planwt.md
-  .claude/commands/finishwt.md
-  .claude/commands/statuswt.md
-  .worktree-task.template.md
+ Initialized wtcraft harness files (existing files were left untouched):
+   .agent-harness/planner.md
+   .agent-harness/executor.md
+   .agent-harness/finisher.md
+   .agent-harness/role-models.yml
+   .claude/commands/planwt.md
+   .claude/commands/finishwt.md
+   .claude/commands/statuswt.md
 EOF
 
   if [ "$patch_agent" = true ]; then
@@ -396,7 +400,14 @@ cmd_new() {
   git -C "$repo_root" worktree add "$wt_path" -b "$branch" "$base_branch"
 
   local task_file="${wt_path}/.worktree-task.md"
-  cp "${TEMPLATE_DIR}/worktrees/.worktree-task.md" "$task_file"
+
+  # If /planwt already generated a plan in the repo root, absorb it;
+  # otherwise seed with the blank template.
+  if [ -f "${repo_root}/.worktree-task.md" ]; then
+    mv "${repo_root}/.worktree-task.md" "$task_file"
+  else
+    cp "${TEMPLATE_DIR}/worktrees/.worktree-task.md" "$task_file"
+  fi
 
   local today
   today="$(date +%F)"
@@ -525,6 +536,12 @@ cmd_check() {
 
   for f in "${changed_files[@]:-}"; do
     [ -z "$f" ] && continue
+
+    if [ "$f" = ".worktree-task.md" ]; then
+      echo "Task contract violation: .worktree-task.md is local worktree state and must not be committed or merged."
+      has_violations=1
+      continue
+    fi
 
     local in_scope=0
     for s in "${scope_items[@]:-}"; do
