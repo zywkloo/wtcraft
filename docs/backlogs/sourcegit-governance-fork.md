@@ -24,6 +24,51 @@ agents own all writes.
 - **wtcraft repo**: contract specs (`.worktree-task.md` frontmatter,
   `wtcraft status --json`, `wtcraft check`), this plan until migration.
 
+## Architecture: mechanism vs policy (decided 2026-06-11)
+
+Two layers from the start (~+0.5 day over hardcoding wtcraft directly),
+keeping the upstream-PR option open for Layer 1.
+
+### Layer 1 — generic worktree metadata display (upstream-PR candidate)
+
+Zero wtcraft coupling; shaped as something any SourceGit user could use
+("which of my many worktrees is doing what").
+
+a. **Config surface, kept minimal**: per-repo *metadata filename* (empty =
+   feature off — off-by-default is a precondition for upstream acceptance)
+   plus one *primary key* whose value shows as the row badge; all other
+   keys tooltip-only. Reuse the existing per-repo settings persistence
+   (the `_uiStates.IsWorktreeExpandedInSideBar` pattern in Repository.cs).
+   No color mapping config, no multi-file, no templates.
+b. **Parsing contract**: optional `---` frontmatter fence (no fence = read
+   from top, stop at first non-matching line); per line `Split(':', 2)` +
+   trim; skip blanks and `#` comments; silently ignore non-matching lines
+   (no nesting/arrays/multiline — STOT generalized). Read first 4KB UTF-8
+   only; any failure = silently no metadata, never a dialog. **No YAML
+   library** — zero new NuGet deps is key to PR acceptance.
+c. **Read timing**: piggyback `RefreshWorktrees()` (Repository.cs ~1160)
+   background path — one `File.Exists` + small read per worktree. No new
+   watcher, threads, or event sources; existing refresh triggers
+   (checkout/branch/watcher paths) update metadata for free.
+d. **Display**: primary-key value as a *neutral, uncolored* row badge —
+   the mechanism layer assigns no semantics; all key:values appended to
+   the existing tooltip Grid (Repository.axaml ~420), file order
+   preserved. Optional context-menu "Open metadata file".
+e. **Output**: `Dictionary<string,string>` on a nullable property of
+   `ViewModels/Worktree.cs`. Whole layer ~150–200 lines — a
+   one-screen-diff PR.
+
+### Layer 2 — wtcraft policy (fork-only)
+
+Interpreter interface (e.g. `IWorktreeMetadataInterpreter`) consuming the
+fields dict → stage badge colors/FSM semantics, `role:` join against
+`role-models.yml`, `wtcraft check` breach alarms, the governance panel.
+The wtcraft interpreter is the first implementation.
+
+If Layer 1 is ever accepted upstream (or reimplemented there), the fork's
+largest mount point becomes upstream-owned and monthly rebases shrink to
+near-zero.
+
 ## Upstream facts (measured 2026-06-11, v2026.12)
 
 - ~58k lines C# (479 files) + ~32k lines AXAML (160 files). Medium-sized,
@@ -71,7 +116,9 @@ agents own all writes.
 
 ### Phase A — Saturday: badges on existing rows
 
-1. New `Models/WorktreeTask.cs` — frontmatter struct + parser (~60 lines).
+1. New `Models/WorktreeMetadata.cs` — generic frontmatter parser per the
+   Layer-1 contract above (no wtcraft knowledge), plus a thin wtcraft
+   interpreter (Layer 2) mapping fields to governance meaning.
 2. Extend `ViewModels/Worktree.cs` — nullable `Task` property + derived
    display strings.
 3. Hook `RefreshWorktrees()` — after `Worktree.Build()`, probe each
@@ -106,10 +153,38 @@ every task at, run by which agent in which role".
   (and equivalents) with upstream. Fine for v0.1 on a dev machine; rename
   the app-data folder before telling anyone else to install both.
 
+Budget note: the two-layer split costs ~+0.5 day. If the weekend runs
+short, Phase B item 3 (breach alarms via `wtcraft check`) moves to the cut
+list before anything else.
+
 ### Cut list (explicitly not v0.1)
 
 Write operations of any kind, stage transition editing, stale/bypass
-alarms, token telemetry, app rename/rebrand, signed Windows builds.
+alarms, token telemetry, app rename/rebrand, signed Windows builds,
+upstream PR submission itself (post-v0.1 activity).
+
+## Upstream relationship (intel gathered 2026-06-11)
+
+- The fork owes upstream nothing (MIT; fork-and-diverge is normal).
+- **No prior art**: searched issues/PRs (metadata, custom, note, badge,
+  agent, AI × worktree) — nobody has requested per-worktree metadata
+  display. Closest: #2158 (main-repo vs worktree indicator), #1761
+  (worktree-linked branch indication) — git-native concepts only.
+- **Maintainer profile (love-linger)**: ships worktree UI clarity fixes
+  himself within days of issue discussion; hard filter on information
+  density (rejected tooltip status as "completely repetitive and
+  unhelpful"; declined ahead/behind tooltip explanation); external
+  worktree feature PRs closed unmerged (#2346, #1983/#1982) — the pattern
+  is discuss-in-issue → he implements it himself. Responds in Chinese.
+- Therefore **issue-first is mandatory**, not optional. Pitch in Chinese,
+  framed as "many worktrees are hard to tell apart" (his own acknowledged
+  pain in #2158: "确实很难分得清楚") — NOT as an AI-agent feature. The
+  best realistic outcome may be him reimplementing the mechanism himself,
+  which is equally a win: the mount point becomes upstream-owned.
+- Incidental PRs while working in the codebase (bugs hit, zh_CN
+  localization fixes, small UX) keep the rebase relationship friendly.
+- The two-layer architecture stands regardless of upstream outcome (fork
+  cleanliness + small rebase surface).
 
 ## Fork hygiene
 
