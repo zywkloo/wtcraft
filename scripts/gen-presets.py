@@ -1,9 +1,18 @@
 import re
 import os
+import subprocess
 
-STOT_YML = "templates/.agent-harness/role-models.yml"
-PRESET_DIR = "templates/.agent-harness/presets"
-README = "README.md"
+def get_repo_root():
+    try:
+        return subprocess.check_output(['git', 'rev-parse', '--show-toplevel'], stderr=subprocess.DEVNULL).decode('utf-8').strip()
+    except Exception:
+        # Fallback to current directory if not in git
+        return os.getcwd()
+
+REPO_ROOT = get_repo_root()
+STOT_YML = os.path.join(REPO_ROOT, "templates/.agent-harness/role-models.yml")
+PRESET_DIR = os.path.join(REPO_ROOT, "templates/.agent-harness/presets")
+README = os.path.join(REPO_ROOT, "README.md")
 
 def read_stot():
     with open(STOT_YML, 'r') as f:
