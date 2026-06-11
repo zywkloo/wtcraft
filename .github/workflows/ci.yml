@@ -19,11 +19,11 @@ jobs:
       - name: Lint shell script
         run: shellcheck scripts/wtcraft
 
-      - name: Run CLI smoke checks
+      - name: Run test suite
         run: |
           chmod +x scripts/wtcraft
-          chmod +x tests/smoke.sh
-          tests/smoke.sh
+          chmod +x tests/*.sh
+          tests/run_all.sh
 
       - name: Run CLI integration checks
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
