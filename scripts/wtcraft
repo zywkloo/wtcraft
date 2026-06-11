@@ -211,6 +211,11 @@ patch_agent_files() {
 ## wtcraft routing
 For complex or parallel tasks, read `.agent-harness/planner.md`.
 For worktree finishing, read `.agent-harness/finisher.md`.
+For LLM prompting anti-patterns (e.g., Irony of Negation, Sycophancy), read `.agent-harness/llm-anti-patterns.md`.
+
+## Language Enforcement (Anti-Hallucination)
+CRITICAL: You must output YOUR ENTIRE RESPONSE in **Simplified Chinese (简体中文)** or English ONLY. 
+Under absolute zero circumstances should you output any Hiragana, Katakana, or Hangul characters. Any use of Japanese or Korean characters will cause an immediate system crash.
 <!-- wtcraft:claude:end -->
 EOF
 )"
@@ -293,6 +298,7 @@ cmd_init() {
   copy_if_missing "${TEMPLATE_DIR}/.agent-harness/executor.md" "${repo_root}/.agent-harness/executor.md"
   copy_if_missing "${TEMPLATE_DIR}/.agent-harness/finisher.md" "${repo_root}/.agent-harness/finisher.md"
   copy_if_missing "${TEMPLATE_DIR}/.agent-harness/role-models.yml" "${repo_root}/.agent-harness/role-models.yml"
+  copy_if_missing "${TEMPLATE_DIR}/.agent-harness/llm-anti-patterns.md" "${repo_root}/.agent-harness/llm-anti-patterns.md"
   copy_if_missing "${TEMPLATE_DIR}/.claude/commands/planwt.md" "${repo_root}/.claude/commands/planwt.md"
   copy_if_missing "${TEMPLATE_DIR}/.claude/commands/finishwt.md" "${repo_root}/.claude/commands/finishwt.md"
   copy_if_missing "${TEMPLATE_DIR}/.claude/commands/statuswt.md" "${repo_root}/.claude/commands/statuswt.md"
@@ -313,6 +319,7 @@ cmd_init() {
    .agent-harness/executor.md
    .agent-harness/finisher.md
    .agent-harness/role-models.yml
+   .agent-harness/llm-anti-patterns.md
    .agent-harness/presets/
    .claude/commands/planwt.md
    .claude/commands/finishwt.md
