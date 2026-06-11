@@ -1,7 +1,7 @@
 # wtcraft
 
-> **Your Cheap Token Orchestrator (CTO).**
-> For developers who can afford 3 cheap subscriptions but not 1 expensive one.
+> **Zero-trust containment and governance for AI-generated code.**
+> Provide a definitive safety harness for agentic coding. Let your AI write code; `wtcraft` ensures it strictly obeys boundaries, scopes, and verification rules before it ever touches your main branch.
 
 [![npm version](https://img.shields.io/npm/v/wtcraft.svg?logo=npm&maxAge=300)](https://www.npmjs.com/package/wtcraft)
 [![PyPI version](https://img.shields.io/pypi/v/wtcraft.svg?logo=pypi&maxAge=300)](https://pypi.org/project/wtcraft/)
@@ -68,18 +68,16 @@ graph TD
 
 ## Why
 
-**$200/month for one AI agent? No.**
+AI agents (and human contributors) hallucinate, over-engineer, and accidentally break unrelated code. While parallel agents are useful, raw parallelism creates common problems: unclear handoffs, context pollution, and file collisions.
 
-`wtcraft` coordinates multiple agents (Claude Pro, ChatGPT Plus, Gemini) with git worktrees, task files, and clear boundaries — so one solo developer can run parallel work without depending on one premium plan.
+`wtcraft` provides a definitive safety harness. It focuses on handoff, boundaries, and deterministic containment, not just concurrency. 
 
-Raw parallelism creates common problems: unclear handoffs, context pollution, and file collisions. `wtcraft` focuses on explicit task contracts, strict boundaries, and budget-aware sequencing.
+- **Git-Native Containment:** Keep agent work physically isolated with `git worktree`.
+- **Task Contracts:** Make agent handoffs explicit with a per-task whitelist in `.worktree-task.md`.
+- **Deterministic Gating:** Enforce scope boundaries at the commit/PR level. If a task isn't in scope, the code doesn't merge.
+- **Budget-Aware:** Avoid infinite LLM loops and track API usage per worktree.
 
-- keep agent work isolated with `git worktree`
-- make agent handoffs explicit with a task contract
-- keep file and task boundaries easy to verify
-- stay usable from CLI + any IDE
-
-No hosted platform is required. No custom runtime is required.
+No hosted platform is required. No custom runtime is required. You can use Aider, Cursor, Claude, or Devin — `wtcraft` simply wraps your working directory in a zero-trust governance layer.
 
 ## Docs
 
