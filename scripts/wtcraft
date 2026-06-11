@@ -575,10 +575,6 @@ cmd_check() {
 
   for f in "${changed_files[@]:-}"; do
     [ -z "$f" ] && continue
-    # The task contract is harness-managed (seeded by `new`, updated by `verify`)
-    # and never counts against Scope.
-    [ "$f" = ".worktree-task.md" ] && continue
-
     if [ "$f" = ".worktree-task.md" ]; then
       echo "Task contract violation: .worktree-task.md is local worktree state and must not be committed or merged."
       has_violations=1
