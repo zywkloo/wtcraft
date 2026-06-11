@@ -63,8 +63,13 @@ wtcraft = [
   "templates/.agent-harness/executor.md",
   "templates/.agent-harness/finisher.md",
   "templates/.agent-harness/role-models.yml",
+  "templates/.agent-harness/llm-anti-patterns.md",
   "templates/.claude/commands/planwt.md",
   "templates/.claude/commands/finishwt.md",
   "templates/.claude/commands/statuswt.md",
+  "templates/.agent-harness/presets/preset-balanced.yml",
+  "templates/.agent-harness/presets/preset-anthropic.yml",
+  "templates/.agent-harness/presets/preset-openai.yml",
+  "templates/.agent-harness/presets/preset-google.yml",
   "templates/worktrees/.worktree-task.md",
 ]
