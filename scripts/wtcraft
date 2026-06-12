@@ -103,11 +103,17 @@ EOF
 
 usage_status() {
   cat <<'EOF'
-wtcraft status
+wtcraft status [--json]
 
   List all linked worktrees with their task contract state. Worktrees are
   enumerated via `git worktree list`, so any layout is covered (in-repo
   worktrees/, sibling dirs, agent-created arbitrary paths).
+
+  --json emits one object per worktree: worktree, branch, zombie, locked,
+  contracted, and (when contracted) task_file, stage (with legacy status
+  fallback applied), role, agent, status, priority, created, base,
+  verify_result, verified. Absent fields are null. Intended as the stable
+  machine interface for external observers/GUIs.
 
   Columns: task file, stage (falls back to legacy `status:` for contracts
   that predate the stage convention — see .agent-harness/task-states.md),
@@ -484,28 +490,56 @@ set_frontmatter() {
 
 # list_worktrees <repo_root>
 #
-# Emit one `path|flags` line per registered worktree (any layout: in-repo,
-# sibling, agent-created arbitrary paths). Flags: prunable, locked.
+# Emit one `path|branch|flags` line per registered worktree (any layout:
+# in-repo, sibling, agent-created arbitrary paths). Flags: prunable, locked.
 list_worktrees() {
   local repo_root="$1"
   git -C "$repo_root" worktree list --porcelain | awk '
-    /^worktree /{ if (wt!="") print wt "|" flags; wt=$0; sub(/^worktree /,"",wt); flags="" }
+    /^worktree /{ if (wt!="") print wt "|" br "|" flags; wt=$0; sub(/^worktree /,"",wt); br=""; flags="" }
+    /^branch /{ br=$0; sub(/^branch refs\/heads\//,"",br) }
     /^prunable/{ flags=flags "prunable," }
     /^locked/{ flags=flags "locked," }
-    END{ if (wt!="") print wt "|" flags }
+    END{ if (wt!="") print wt "|" br "|" flags }
   '
+}
+
+json_escape() {
+  local s="$1"
+  s="${s//\\/\\\\}"
+  s="${s//\"/\\\"}"
+  printf '%s' "$s"
+}
+
+# json_field <value> — quoted JSON string, or null when empty
+json_field() {
+  if [ -z "$1" ]; then
+    printf 'null'
+  else
+    printf '"%s"' "$(json_escape "$1")"
+  fi
 }
 
 cmd_status() {
   ensure_repo_root
+  local as_json=false
+  while [ $# -gt 0 ]; do
+    case "$1" in
+      --json) as_json=true ;;
+      *) die "unknown status option: $1" ;;
+    esac
+    shift
+  done
   local repo_root
   repo_root="$(git rev-parse --show-toplevel)"
 
-  printf "%-45s %-13s %-10s %-8s %-8s %-10s\n" "Worktree / Task" "Stage" "Role" "Agent" "Priority" "Verified"
-  printf "%-45s %-13s %-10s %-8s %-8s %-10s\n" "---------------" "-----" "----" "-----" "--------" "--------"
+  if [ "$as_json" = false ]; then
+    printf "%-45s %-13s %-10s %-8s %-8s %-10s\n" "Worktree / Task" "Stage" "Role" "Agent" "Priority" "Verified"
+    printf "%-45s %-13s %-10s %-8s %-8s %-10s\n" "---------------" "-----" "----" "-----" "--------" "--------"
+  fi
 
-  local found=0 wt flags
-  while IFS='|' read -r wt flags; do
+  local found=0 wt branch flags
+  local json_entries=()
+  while IFS='|' read -r wt branch flags; do
     [ -z "$wt" ] && continue
     # Skip the primary worktree (repo root), keep only linked worktrees.
     [ "$wt" = "$repo_root" ] && continue
@@ -515,31 +549,57 @@ cmd_status() {
       "$repo_root"/*) rel="${wt#"${repo_root}"/}" ;;
     esac
 
-    # Directory deleted out from under git — registry entry is a zombie.
-    if [[ "$flags" == *prunable* ]]; then
-      printf "%-45s %-13s %-10s %-8s %-8s %-10s\n" "$rel" "zombie" "-" "-" "-" "-"
-      continue
-    fi
+    local zombie=false locked=false contracted=false
+    [[ "$flags" == *prunable,* ]] && zombie=true
+    [[ "$flags" == *locked,* ]] && locked=true
 
     local task="${wt}/.worktree-task.md"
-    # Worktree without a contract (e.g. created directly by an agent).
-    if [ ! -f "$task" ]; then
-      printf "%-45s %-13s %-10s %-8s %-8s %-10s\n" "$rel" "uncontracted" "-" "-" "-" "-"
+    local stage="" status_legacy="" role="" agent="" priority="" created="" base="" verify_result="" verified=""
+    if [ "$zombie" = false ] && [ -f "$task" ]; then
+      contracted=true
+      stage="$(extract_frontmatter "$task" "stage")"
+      status_legacy="$(extract_frontmatter "$task" "status")"
+      # Legacy contracts predate stage:; fall back to the coarse status field.
+      [ -n "$stage" ] || stage="$status_legacy"
+      role="$(extract_frontmatter "$task" "role")"
+      agent="$(extract_frontmatter "$task" "agent")"
+      priority="$(extract_frontmatter "$task" "priority")"
+      created="$(extract_frontmatter "$task" "created")"
+      base="$(extract_frontmatter "$task" "base")"
+      verify_result="$(extract_frontmatter "$task" "verify_result")"
+      verified="$(extract_frontmatter "$task" "verified")"
+    fi
+
+    if [ "$as_json" = true ]; then
+      local entry
+      entry="{\"worktree\":$(json_field "$wt"),\"branch\":$(json_field "$branch"),\"zombie\":${zombie},\"locked\":${locked},\"contracted\":${contracted}"
+      if [ "$contracted" = true ]; then
+        entry="${entry},\"task_file\":$(json_field "$task"),\"stage\":$(json_field "$stage"),\"role\":$(json_field "$role"),\"agent\":$(json_field "$agent"),\"status\":$(json_field "$status_legacy"),\"priority\":$(json_field "$priority"),\"created\":$(json_field "$created"),\"base\":$(json_field "$base"),\"verify_result\":$(json_field "$verify_result"),\"verified\":$(json_field "$verified")"
+      fi
+      json_entries+=("${entry}}")
       continue
     fi
 
-    local stage role agent priority verified
-    stage="$(extract_frontmatter "$task" "stage")"
-    # Legacy contracts predate stage:; fall back to the coarse status field.
-    [ -n "$stage" ] || stage="$(extract_frontmatter "$task" "status")"
-    role="$(extract_frontmatter "$task" "role")"
-    agent="$(extract_frontmatter "$task" "agent")"
-    priority="$(extract_frontmatter "$task" "priority")"
-    verified="$(extract_frontmatter "$task" "verify_result")"
-    printf "%-45s %-13s %-10s %-8s %-8s %-10s\n" \
-      "${rel}/.worktree-task.md" "${stage:-unknown}" "${role:--}" \
-      "${agent:-unknown}" "${priority:-unknown}" "${verified:--}"
+    if [ "$zombie" = true ]; then
+      printf "%-45s %-13s %-10s %-8s %-8s %-10s\n" "$rel" "zombie" "-" "-" "-" "-"
+    elif [ "$contracted" = false ]; then
+      printf "%-45s %-13s %-10s %-8s %-8s %-10s\n" "$rel" "uncontracted" "-" "-" "-" "-"
+    else
+      printf "%-45s %-13s %-10s %-8s %-8s %-10s\n" \
+        "${rel}/.worktree-task.md" "${stage:-unknown}" "${role:--}" \
+        "${agent:-unknown}" "${priority:-unknown}" "${verify_result:--}"
+    fi
   done < <(list_worktrees "$repo_root")
+
+  if [ "$as_json" = true ]; then
+    local out="[" first=1 e
+    for e in "${json_entries[@]:-}"; do
+      [ -z "$e" ] && continue
+      if [ "$first" -eq 1 ]; then out="${out}${e}"; first=0; else out="${out},${e}"; fi
+    done
+    printf '%s]\n' "$out"
+    return 0
+  fi
 
   if [ "$found" -eq 0 ]; then
     echo "No linked worktrees found."
@@ -639,19 +699,15 @@ resolve_worktree_path() {
   fi
   # Fall back to git's worktree registry: any layout (in-repo, sibling,
   # agent-created arbitrary paths). Match by branch name or path suffix.
-  local wt branch
-  while IFS='|' read -r wt branch; do
+  local wt branch flags
+  while IFS='|' read -r wt branch flags; do
     [ -z "$wt" ] && continue
     [ "$wt" = "$repo_root" ] && continue
     if [ "$branch" = "$arg" ] || [[ "$wt" == */"$arg" ]]; then
       echo "$wt"
       return 0
     fi
-  done < <(git -C "$repo_root" worktree list --porcelain | awk '
-    /^worktree /{ if (wt!="") print wt "|" br; wt=$0; sub(/^worktree /,"",wt); br="" }
-    /^branch /{ br=$0; sub(/^branch refs\/heads\//,"",br) }
-    END{ if (wt!="") print wt "|" br }
-  ')
+  done < <(list_worktrees "$repo_root")
   return 1
 }
 

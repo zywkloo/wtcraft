@@ -31,6 +31,21 @@ test_new_verify_check() {
   grep -q "^verified: " "$task_file"
   "$CLI" status | grep -q "pass"
 
+  # stage/role columns come from the new contract convention
+  "$CLI" status | grep -q "planned"
+  "$CLI" status | grep -q "executor"
+
+  # --json is well-formed and carries the same facts
+  "$CLI" status --json | python3 -m json.tool >/dev/null
+  "$CLI" status --json | grep -q '"stage":"planned"'
+
+  # a worktree without a contract surfaces as uncontracted (any layout —
+  # this one is a sibling dir outside the repo)
+  git worktree add -q "${repo}/../wt-smoke-wild" -b chore/wild "$current_branch"
+  "$CLI" status | grep -q "uncontracted"
+  "$CLI" status --json | grep -q '"contracted":false'
+  git worktree remove --force "${repo}/../wt-smoke-wild"
+
   # a failing verification is recorded as fail
   sed -i.bak "s|echo ok|false|" "$task_file"
   rm -f "${task_file}.bak"
