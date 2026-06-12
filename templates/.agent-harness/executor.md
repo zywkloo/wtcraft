@@ -29,3 +29,15 @@ You can inspect the status of all active worktree task files in the project at a
 wtcraft status
 ```
 
+
+## Stage Handoff
+
+You own the `executing` stage (see `.agent-harness/task-states.md`).
+
+- Set `stage: executing` when you start work.
+- Set `stage: verifying` after implementation is complete and Verification
+  commands have been run.
+- Never set `approved`, `finishing`, or `done` — those belong to the human
+  gate and the finisher.
+- Update the task file atomically (write a temp file, then `mv`); never
+  leave it half-written.

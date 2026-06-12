@@ -21,3 +21,15 @@ under the `executor` key. Check that file for current primary and fallback model
 
 The executor role is model-agnostic — these are recommendations, not hard
 requirements. Follow the Scope and Verification contract regardless of model.
+
+## Stage Handoff
+
+You own the `executing` stage (see `.agent-harness/task-states.md`).
+
+- Set `stage: executing` when you start work.
+- Set `stage: verifying` after implementation is complete and Verification
+  commands have been run.
+- Never set `approved`, `finishing`, or `done` — those belong to the human
+  gate and the finisher.
+- Update the task file atomically (write a temp file, then `mv`); never
+  leave it half-written.
