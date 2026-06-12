@@ -21,10 +21,13 @@ npm install -g wtcraft     # npm (global)
 brew tap zywkloo/wtcraft https://github.com/zywkloo/wtcraft && brew install wtcraft
 ```
 
+Short alias available after install: `wtc`
+
 ## Quick Start
 
 ```bash
 wtcraft init                            # scaffold harness into current repo
+wtcraft init --local                    # scaffold locally; ignore via .git/info/exclude
 wtcraft patch                           # append routing stubs to CLAUDE.md / AGENTS.md
 wtcraft lang install --lang zh-CN       # enforce output language in CLAUDE.md
 wtcraft new feat/my-task                # create worktree + task contract
@@ -57,7 +60,7 @@ After running `wtcraft init`, you can use these slash commands in Claude Code:
 
 | Command | Arguments | What it does |
 |---|---|---|
-| `wtcraft init` | `[--patch-agent-files]` | Scaffold harness files. Does not overwrite. |
+| `wtcraft init` | `[--patch-agent-files] [--local]` | Scaffold harness files. Does not overwrite. `--local` keeps scaffold clone-local via `.git/info/exclude`. |
 | `wtcraft patch` | — | Alias for `init --patch-agent-files`. Appends routing stubs to `CLAUDE.md` / `AGENTS.md`. |
 | `wtcraft unpatch` | — | Remove the routing stub from `CLAUDE.md` / `AGENTS.md`. |
 | `wtcraft lang` | `install\|remove` | Add or remove language enforcement rules (e.g. `install --lang zh-CN`). |
