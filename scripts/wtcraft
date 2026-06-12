@@ -105,8 +105,16 @@ usage_status() {
   cat <<'EOF'
 wtcraft status
 
-  List active worktree task files and their frontmatter metadata.
-  Shows: task file path, status, agent, and priority.
+  List all linked worktrees with their task contract state. Worktrees are
+  enumerated via `git worktree list`, so any layout is covered (in-repo
+  worktrees/, sibling dirs, agent-created arbitrary paths).
+
+  Columns: task file, stage (falls back to legacy `status:` for contracts
+  that predate the stage convention — see .agent-harness/task-states.md),
+  role, agent, priority, verification result.
+
+  Worktrees without a `.worktree-task.md` are listed as `uncontracted`;
+  registry entries whose directory was deleted show as `zombie`.
 EOF
 }
 
@@ -474,37 +482,67 @@ set_frontmatter() {
   ' "$file" > "$tmp" && mv "$tmp" "$file"
 }
 
+# list_worktrees <repo_root>
+#
+# Emit one `path|flags` line per registered worktree (any layout: in-repo,
+# sibling, agent-created arbitrary paths). Flags: prunable, locked.
+list_worktrees() {
+  local repo_root="$1"
+  git -C "$repo_root" worktree list --porcelain | awk '
+    /^worktree /{ if (wt!="") print wt "|" flags; wt=$0; sub(/^worktree /,"",wt); flags="" }
+    /^prunable/{ flags=flags "prunable," }
+    /^locked/{ flags=flags "locked," }
+    END{ if (wt!="") print wt "|" flags }
+  '
+}
+
 cmd_status() {
   ensure_repo_root
   local repo_root
   repo_root="$(git rev-parse --show-toplevel)"
 
-  printf "%-45s %-12s %-10s %-8s %-10s\n" "Task File" "Status" "Agent" "Priority" "Verified"
-  printf "%-45s %-12s %-10s %-8s %-10s\n" "---------" "------" "-----" "--------" "--------"
+  printf "%-45s %-13s %-10s %-8s %-8s %-10s\n" "Worktree / Task" "Stage" "Role" "Agent" "Priority" "Verified"
+  printf "%-45s %-13s %-10s %-8s %-8s %-10s\n" "---------------" "-----" "----" "-----" "--------" "--------"
 
-  local found=0
-  while IFS= read -r wt; do
+  local found=0 wt flags
+  while IFS='|' read -r wt flags; do
     [ -z "$wt" ] && continue
     # Skip the primary worktree (repo root), keep only linked worktrees.
     [ "$wt" = "$repo_root" ] && continue
-    local task rel status agent priority verified
-    task="${wt}/.worktree-task.md"
-    [ -f "$task" ] || continue
     found=1
-    rel="${task#"${repo_root}"/}"
-    status="$(extract_frontmatter "$task" "status")"
+    local rel="$wt"
+    case "$wt" in
+      "$repo_root"/*) rel="${wt#"${repo_root}"/}" ;;
+    esac
+
+    # Directory deleted out from under git — registry entry is a zombie.
+    if [[ "$flags" == *prunable* ]]; then
+      printf "%-45s %-13s %-10s %-8s %-8s %-10s\n" "$rel" "zombie" "-" "-" "-" "-"
+      continue
+    fi
+
+    local task="${wt}/.worktree-task.md"
+    # Worktree without a contract (e.g. created directly by an agent).
+    if [ ! -f "$task" ]; then
+      printf "%-45s %-13s %-10s %-8s %-8s %-10s\n" "$rel" "uncontracted" "-" "-" "-" "-"
+      continue
+    fi
+
+    local stage role agent priority verified
+    stage="$(extract_frontmatter "$task" "stage")"
+    # Legacy contracts predate stage:; fall back to the coarse status field.
+    [ -n "$stage" ] || stage="$(extract_frontmatter "$task" "status")"
+    role="$(extract_frontmatter "$task" "role")"
     agent="$(extract_frontmatter "$task" "agent")"
     priority="$(extract_frontmatter "$task" "priority")"
     verified="$(extract_frontmatter "$task" "verify_result")"
-    status="${status:-unknown}"
-    agent="${agent:-unknown}"
-    priority="${priority:-unknown}"
-    verified="${verified:--}"
-    printf "%-45s %-12s %-10s %-8s %-10s\n" "$rel" "$status" "$agent" "$priority" "$verified"
-  done < <(git -C "$repo_root" worktree list --porcelain | awk '/^worktree /{sub(/^worktree /,"",$0); print}')
+    printf "%-45s %-13s %-10s %-8s %-8s %-10s\n" \
+      "${rel}/.worktree-task.md" "${stage:-unknown}" "${role:--}" \
+      "${agent:-unknown}" "${priority:-unknown}" "${verified:--}"
+  done < <(list_worktrees "$repo_root")
 
   if [ "$found" -eq 0 ]; then
-    echo "No worktree task files found under worktrees/."
+    echo "No linked worktrees found."
   fi
 }
 
@@ -539,6 +577,10 @@ cmd_new() {
   sed -i.bak "s|^created: .*|created: ${today}|" "$task_file"
   sed -i.bak "s|^base: .*|base: ${base_branch}|" "$task_file"
   rm -f "${task_file}.bak"
+
+  # Plans absorbed from /planwt may predate the stage/role convention.
+  [ -n "$(extract_frontmatter "$task_file" "stage")" ] || set_frontmatter "$task_file" "stage" "planned"
+  [ -n "$(extract_frontmatter "$task_file" "role")" ] || set_frontmatter "$task_file" "role" "executor"
 
   cat <<EOF
 Created worktree:
@@ -595,6 +637,21 @@ resolve_worktree_path() {
     echo "${repo_root}/worktrees/${arg}"
     return 0
   fi
+  # Fall back to git's worktree registry: any layout (in-repo, sibling,
+  # agent-created arbitrary paths). Match by branch name or path suffix.
+  local wt branch
+  while IFS='|' read -r wt branch; do
+    [ -z "$wt" ] && continue
+    [ "$wt" = "$repo_root" ] && continue
+    if [ "$branch" = "$arg" ] || [[ "$wt" == */"$arg" ]]; then
+      echo "$wt"
+      return 0
+    fi
+  done < <(git -C "$repo_root" worktree list --porcelain | awk '
+    /^worktree /{ if (wt!="") print wt "|" br; wt=$0; sub(/^worktree /,"",wt); br="" }
+    /^branch /{ br=$0; sub(/^branch refs\/heads\//,"",br) }
+    END{ if (wt!="") print wt "|" br }
+  ')
   return 1
 }
 
