@@ -1,7 +1,12 @@
 # Worktree enumeration + default layout change
 
-> Status: not scheduled (~0.5 day). Recorded 2026-06-12, from the GitKraken
-> trial findings in `external-watchlist.md` § GitKraken Agent Mode anatomy.
+> Status: **step 1 shipped 2026-06-12** — `status`/`check`/`verify` now
+> enumerate and resolve via `git worktree list --porcelain`
+> (`list_worktrees` helper); uncontracted and zombie (prunable) worktrees
+> are surfaced; layout is configuration, not contract. Step 2 (flip the
+> default to a sibling dir) not scheduled. Originally recorded 2026-06-12,
+> from the GitKraken trial findings in `external-watchlist.md`
+> § GitKraken Agent Mode anatomy.
 
 ## Problem
 
