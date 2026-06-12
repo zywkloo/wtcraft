@@ -14,6 +14,10 @@ reasoning isn't re-derived later.
 - [subscription-fit.md](subscription-fit.md) — personal, rule-based "is my
   plan paying for itself" report (idea)
 - [external-watchlist.md](external-watchlist.md) — upstream projects to watch
-  or contribute to (tokscale, usage tooling)
+  or contribute to (tokscale, usage tooling, git GUI landscape)
+- [sourcegit-governance-fork.md](sourcegit-governance-fork.md) — SourceGit
+  fork plan: two-layer governance panel, upstream strategy, weekend scope
+- [worktree-layout.md](worktree-layout.md) — enumerate worktrees via
+  `git worktree list` instead of glob; flip default layout to sibling dir
 
 *(Note: Completed designs, explicitly rejected ideas, and deferred architectures like the Rust migration have been moved to the `../adr/` directory.)*
