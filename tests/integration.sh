@@ -65,6 +65,7 @@ test_npm_package_integration() {
 
   # 4. Find the installed binary path
   local wt_binary="${npm_prefix}/bin/wtcraft"
+  local wtc_binary="${npm_prefix}/bin/wtc"
 
   if [ ! -f "$wt_binary" ]; then
     echo "NPM packaged binary was not installed at expected path: $wt_binary"
@@ -72,13 +73,19 @@ test_npm_package_integration() {
     rm -rf "$npm_prefix"
     exit 1
   fi
+  if [ ! -f "$wtc_binary" ]; then
+    echo "NPM packaged alias was not installed at expected path: $wtc_binary"
+    rm -f "$tarball_path"
+    rm -rf "$npm_prefix"
+    exit 1
+  fi
 
   # 5. Run init using the packaged binary
-  "$wt_binary" init
+  "$wtc_binary" init
 
   # 6. Verify templates were successfully copied
   if [ ! -f ".agent-harness/planner.md" ]; then
-    echo "NPM packaged binary init failed to create planner.md"
+    echo "NPM packaged alias init failed to create planner.md"
     rm -f "$tarball_path"
     rm -rf "$npm_prefix"
     exit 1
@@ -121,19 +128,25 @@ test_pip_package_integration() {
 
   # 3. Find the installed binary path
   local wt_binary="${venv_dir}/bin/wtcraft"
+  local wtc_binary="${venv_dir}/bin/wtc"
 
   if [ ! -f "$wt_binary" ]; then
     echo "Pip packaged binary was not installed at expected path: $wt_binary"
     rm -rf "$venv_dir"
     exit 1
   fi
+  if [ ! -f "$wtc_binary" ]; then
+    echo "Pip packaged alias was not installed at expected path: $wtc_binary"
+    rm -rf "$venv_dir"
+    exit 1
+  fi
 
   # 4. Run init using the packaged binary
-  "$wt_binary" init
+  "$wtc_binary" init
 
   # 5. Verify templates were successfully copied
   if [ ! -f ".agent-harness/planner.md" ]; then
-    echo "Pip packaged binary init failed to create planner.md"
+    echo "Pip packaged alias init failed to create planner.md"
     rm -rf "$venv_dir"
     exit 1
   fi

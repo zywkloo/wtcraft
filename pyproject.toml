@@ -49,6 +49,7 @@ Homepage    = "https://github.com/zywkloo/wtcraft#readme"
 
 [project.scripts]
 wtcraft = "wtcraft._cli:main"
+wtc = "wtcraft._cli:main"
 
 # ── package discovery ────────────────────────────────────────────────────────
 [tool.setuptools.packages.find]

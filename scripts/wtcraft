@@ -18,7 +18,7 @@ usage() {
 wtcraft - git-native harness helper
 
 Usage:
-  wtcraft init [--patch-agent-files]
+  wtcraft init [--patch-agent-files] [--local]
   wtcraft patch
   wtcraft unpatch
   wtcraft lang install [--lang <code>]
@@ -33,7 +33,7 @@ EOF
 
 usage_init() {
   cat <<'EOF'
-wtcraft init [--patch-agent-files]
+wtcraft init [--patch-agent-files] [--local]
 
   Scaffold harness files into the current git repository.
   Existing files are never overwritten.
@@ -41,6 +41,9 @@ wtcraft init [--patch-agent-files]
   Options:
     --patch-agent-files   Append a wtcraft routing stub to CLAUDE.md and
                           AGENTS.md (opt-in only; never overwrites content)
+    --local               Keep wtcraft scaffold local to this clone by
+                          writing ignore rules to .git/info/exclude instead
+                          of modifying the repo's .gitignore
 
   Creates:
     .agent-harness/planner.md
@@ -304,9 +307,11 @@ unpatch_agent_files() {
 cmd_init() {
   ensure_repo_root
   local patch_agent=false
+  local local_mode=false
   while [ $# -gt 0 ]; do
     case "$1" in
       --patch-agent-files) patch_agent=true ;;
+      --local) local_mode=true ;;
       *) die "unknown init option: $1" ;;
     esac
     shift
@@ -328,10 +333,31 @@ cmd_init() {
     copy_if_missing "${TEMPLATE_DIR}/.agent-harness/presets/preset-${preset}.yml" "${repo_root}/.agent-harness/presets/preset-${preset}.yml"
   done
 
-  # Ensure .worktree-task.md is ignored in the user's repo
-  local gitignore="${repo_root}/.gitignore"
-  if [ ! -f "$gitignore" ] || ! grep -qxF '/.worktree-task.md' "$gitignore"; then
-    printf '\n# wtcraft local task state\n/.worktree-task.md\n' >> "$gitignore"
+  if [ "$local_mode" = true ]; then
+    local exclude_file="${repo_root}/.git/info/exclude"
+    mkdir -p "$(dirname "$exclude_file")"
+    [ -f "$exclude_file" ] || : >"$exclude_file"
+    if ! grep -qxF '# wtcraft local scaffold' "$exclude_file"; then
+      printf '\n# wtcraft local scaffold\n' >>"$exclude_file"
+    fi
+    local local_rule
+    for local_rule in \
+      '/.worktree-task.md' \
+      '/.agent-harness/' \
+      '/.claude/commands/' \
+      '/AGENTS.md' \
+      '/CLAUDE.md'
+    do
+      if ! grep -qxF "$local_rule" "$exclude_file"; then
+        printf '%s\n' "$local_rule" >>"$exclude_file"
+      fi
+    done
+  else
+    # Ensure .worktree-task.md is ignored in the user's repo
+    local gitignore="${repo_root}/.gitignore"
+    if [ ! -f "$gitignore" ] || ! grep -qxF '/.worktree-task.md' "$gitignore"; then
+      printf '\n# wtcraft local task state\n/.worktree-task.md\n' >> "$gitignore"
+    fi
   fi
 
   cat <<'EOF'
@@ -355,6 +381,11 @@ EOF
     echo
     echo "Agent files were not modified (default behavior)."
     echo "Use: wtcraft init --patch-agent-files"
+  fi
+
+  if [ "$local_mode" = true ]; then
+    echo
+    echo "Local mode enabled: wtcraft scaffold is ignored via .git/info/exclude in this clone only."
   fi
 }
 

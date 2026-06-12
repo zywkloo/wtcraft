@@ -4,7 +4,8 @@
   "description": "Zero-trust containment and governance for AI-generated code.",
   "license": "Apache-2.0",
   "bin": {
-    "wtcraft": "scripts/wtcraft"
+    "wtcraft": "scripts/wtcraft",
+    "wtc": "scripts/wtcraft"
   },
   "files": [
     "scripts/",

@@ -14,6 +14,35 @@ test_help_init_status() {
   test -f .agent-harness/presets/preset-google.yml
 }
 
+test_init_local_keeps_repo_clean() {
+  local repo="$1"
+  cd "$repo"
+
+  "$CLI" init --local
+
+  test ! -f .gitignore
+  grep -qxF '# wtcraft local scaffold' .git/info/exclude
+  grep -qxF '/.worktree-task.md' .git/info/exclude
+  grep -qxF '/.agent-harness/' .git/info/exclude
+  grep -qxF '/.claude/commands/' .git/info/exclude
+  grep -qxF '/AGENTS.md' .git/info/exclude
+  grep -qxF '/CLAUDE.md' .git/info/exclude
+  test -z "$(git status --short)"
+}
+
+test_init_local_patch_hides_agent_files() {
+  local repo="$1"
+  cd "$repo"
+
+  "$CLI" init --local --patch-agent-files
+
+  test -f CLAUDE.md
+  test -f AGENTS.md
+  grep -q "<!-- wtcraft:claude:start -->" CLAUDE.md
+  grep -q "<!-- wtcraft:agents:start -->" AGENTS.md
+  test -z "$(git status --short)"
+}
+
 test_patch_agent_files_idempotent() {
   local repo="$1"
   cd "$repo"
@@ -62,6 +91,8 @@ test_patch_unpatch_roundtrip() {
 }
 
 run_in_temp_repo test_help_init_status
+run_in_temp_repo test_init_local_keeps_repo_clean
+run_in_temp_repo test_init_local_patch_hides_agent_files
 run_in_temp_repo test_patch_agent_files_idempotent
 run_in_temp_repo test_patch_unpatch_roundtrip
 
