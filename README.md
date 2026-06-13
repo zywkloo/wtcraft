@@ -1,7 +1,11 @@
 # wtcraft
 
-> **Zero-trust containment and governance for AI-generated code.**
-> Provide a definitive safety harness for agentic coding. Let your AI write code; `wtcraft` ensures it strictly obeys file boundaries, verification rules, and **token budgets** before it ever touches your main branch.
+> **Git-native governance for agent worktrees.**
+>
+> `wtcraft` is a lightweight governance core for worktree-based agent
+> workflows. It defines task contracts, tracks lifecycle state, and exposes
+> deterministic scope and verification checks for CLIs, agents, and graphical
+> clients.
 
 [![npm version](https://img.shields.io/npm/v/wtcraft.svg?logo=npm&maxAge=300)](https://www.npmjs.com/package/wtcraft)
 [![PyPI version](https://img.shields.io/pypi/v/wtcraft.svg?logo=pypi&maxAge=300)](https://pypi.org/project/wtcraft/)
