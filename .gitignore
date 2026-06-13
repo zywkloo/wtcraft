@@ -14,6 +14,9 @@ env/
 # Node
 node_modules/
 
+# Rust
+/target/
+
 # OS and Cache/CLI metadata
 .DS_Store
 /.claude/

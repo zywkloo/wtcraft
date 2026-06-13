@@ -19,44 +19,49 @@ agent: codex
 ```
 
 - `stage` is the current governance lifecycle state.
-- `role` is the single role allowed to write the task contract at this stage.
+- `role` is the pipeline role currently responsible for receiving or
+  continuing the task.
 - `agent` identifies the assigned CLI/provider and is descriptive, not an
   authorization boundary.
 
 The legacy `status` field may be displayed as a fallback when `stage` is
 missing, but it does not participate in transition validation.
 
-## Stages and owners
+## Stages and responsible roles
 
-| Stage | Owning role | Meaning |
+| Stage | Responsible role | Meaning |
 |---|---|---|
-| `planned` | planner | Contract is ready for execution |
+| `planned` | executor | Contract is ready for execution |
 | `executing` | executor | Scoped implementation work is active |
 | `verifying` | verifier | Implementation is under verification |
 | `replan` | planner | Verification or scope discovery requires a new plan |
-| `approved` | verifier | Verification passed and human approval was recorded |
+| `approved` | finisher | Verification passed and human approval was recorded |
 | `finishing` | finisher | Merge/cleanup handoff is active |
 | `done` | none | Terminal lifecycle state |
 
-One stage has one legal writer. That single-writer rule is the concurrency
-protocol for `.worktree-task.md`.
+The responsible role and the owner of a transition are related but distinct.
+For example, the planner creates a `planned` contract and hands responsibility
+to the executor. The transition owner is the only legal writer for that stage
+change; that single-writer rule is the concurrency protocol for
+`.worktree-task.md`.
 
 ## Allowed transitions
 
-```text
-planned   -> executing
-executing -> verifying
-verifying -> replan | approved
-replan    -> planned
-approved  -> finishing
-finishing -> done
-```
+| Transition | Owner |
+|---|---|
+| `planned -> executing` | executor |
+| `executing -> verifying` | executor |
+| `verifying -> replan` | verifier |
+| `verifying -> approved` | finisher, after human gate |
+| `replan -> planned` | planner |
+| `approved -> finishing` | finisher |
+| `finishing -> done` | finisher |
 
 No other transition is legal in v1.
 
-Each transition must be deliberate and attributable to the role that owns the
-source stage. A frontend may request a transition, but wtcraft validates it
-against this table before writing.
+Each transition must be deliberate and attributable to its owner. A frontend
+may request a transition, but wtcraft validates it against this table before
+writing.
 
 ## Transition preconditions
 
@@ -94,7 +99,7 @@ alarm cites a rule in this document or the task contract.
 | `illegal-transition` | Observed stage transition is not in the table | violation |
 | `bypass` | Pre-execution stage has code changes or an active session | warning |
 | `verification-unproven` | `approved`, `finishing`, or `done` lacks passing verification evidence | violation |
-| `role-mismatch` | Current writer/role does not own the stage | warning |
+| `role-mismatch` | `role` is not the responsible role for the current stage | warning |
 | `stale-execution` | `executing` has no live session or recent Git activity | warning |
 | `uncontracted` | Worktree/session exists without a task contract | warning |
 | `contract-tampered` | Scope or Off-limits differs from the plan-time snapshot | violation |

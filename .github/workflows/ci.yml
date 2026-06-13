@@ -30,3 +30,24 @@ jobs:
         run: |
           chmod +x tests/integration.sh
           tests/integration.sh
+
+  rust-core:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: 1.82.0
+          components: rustfmt, clippy
+
+      - name: Check formatting
+        run: cargo fmt --check
+
+      - name: Test core workspace
+        run: cargo test --workspace
+
+      - name: Lint core workspace
+        run: cargo clippy --workspace --all-targets -- -D warnings
