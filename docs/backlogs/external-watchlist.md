@@ -161,8 +161,8 @@ reads `worktrees/**/.worktree-task.md` + `wtcraft status --json` — the
 bounded delta, since worktree support already exists. Sublime-Merge-class
 client, fits "GUI instead of CLI" preference.
 
-Full customization plan with mount points and weekend scope:
-`sourcegit-governance-fork.md`.
+Full customization plan and architecture research:
+`../sourcegitfork/`.
 
 ## Account-side quota: access paths (2026-06 state)
 

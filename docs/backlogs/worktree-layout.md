@@ -61,6 +61,6 @@ same enumerate-via-git rule (fork plan gotchas).
 ## Related
 
 - `external-watchlist.md` § GitKraken Agent Mode anatomy — layout survey
-- `sourcegit-governance-fork.md` — fork-side gotcha (same rule)
+- `../sourcegitfork/implementation-plan.md` — fork-side gotcha (same rule)
 - `stage-state-machine.md` — vendor-free principle; `status --json` should
   ship after step 1 so the JSON is layout-agnostic from day one

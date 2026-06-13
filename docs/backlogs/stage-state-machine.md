@@ -184,8 +184,8 @@ tools are agent *runners* while this is a read-only *observer* — it composes
 with any runner. See `external-watchlist.md` § Worktree agent GUIs.
 
 The concrete GUI is a SourceGit fork (separate repo); plan with exact mount
-points and weekend scope: `sourcegit-governance-fork.md`. Items 4 (`--json`)
-and 5 (`role:`) above are its wtcraft-side dependencies.
+points and weekend scope: `../sourcegitfork/`. Items 4 (`--json`) and 5
+(`role:`) above are its wtcraft-side dependencies.
 
 ## Already in place (as of 2026-06-10)
 

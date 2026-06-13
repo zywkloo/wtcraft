@@ -15,8 +15,8 @@ reasoning isn't re-derived later.
   plan paying for itself" report (idea)
 - [external-watchlist.md](external-watchlist.md) — upstream projects to watch
   or contribute to (tokscale, usage tooling, git GUI landscape)
-- [sourcegit-governance-fork.md](sourcegit-governance-fork.md) — SourceGit
-  fork plan: two-layer governance panel, upstream strategy, weekend scope
+- [../sourcegitfork/](../sourcegitfork/) — SourceGit fork research:
+  architecture boundaries, implementation plan, upstream and release strategy
 - [worktree-layout.md](worktree-layout.md) — enumerate worktrees via
   `git worktree list` instead of glob; flip default layout to sibling dir
 
