@@ -28,6 +28,8 @@ Usage:
   wtcraft check [--json] [--repo <path>] <worktree-path-or-name>
   wtcraft verify [--json] [--repo <path>] <worktree-path-or-name>
   wtcraft capabilities --json
+  wtcraft doctor
+  wtcraft migrate [--yes]
   wtcraft --version
   wtcraft help [command]
 EOF
@@ -215,6 +217,37 @@ wtcraft capabilities --json
 EOF
 }
 
+usage_doctor() {
+  cat <<'EOF'
+wtcraft doctor
+
+  Diagnose the current wtcraft installation and repository scaffold.
+
+  Reports:
+    - CLI path and version
+    - other wtcraft installations on PATH (shadow detection)
+    - scaffold file completeness (when inside a git repository)
+    - legacy file detection (.worktree-task.template.md)
+    - template directory status
+    - git credential helper
+EOF
+}
+
+usage_migrate() {
+  cat <<'EOF'
+wtcraft migrate [--yes]
+
+  Ensure all scaffold files are present and remove legacy files.
+
+  Runs `wtcraft init` to fill in any missing scaffold, then offers to
+  delete known legacy files such as .worktree-task.template.md.
+
+  Options:
+    --yes   Skip the interactive confirmation prompt and delete legacy
+            files automatically. Useful for CI and scripted usage.
+EOF
+}
+
 cmd_help() {
   if [ $# -eq 0 ]; then
     usage
@@ -230,6 +263,9 @@ cmd_help() {
     check)   usage_check ;;
     verify)  usage_verify ;;
     capabilities) usage_capabilities ;;
+    doctor)  usage_doctor ;;
+    migrate) usage_migrate ;;
+    version) usage ;;
     help)    usage ;;
     *) die "no help topic for: $1" ;;
   esac
@@ -512,6 +548,14 @@ EOF
   if [ "$local_mode" = true ]; then
     echo
     echo "Local mode enabled: wtcraft scaffold is ignored via .git/info/exclude in this clone only."
+  fi
+
+  echo
+  echo "Initialized wtcraft harness using wtcraft $(read_cli_version)"
+  if [ -f "${repo_root}/.worktree-task.template.md" ]; then
+    echo
+    echo "Legacy scaffold detected: .worktree-task.template.md"
+    echo "Run: wtcraft migrate"
   fi
 }
 
@@ -1342,6 +1386,111 @@ cmd_capabilities() {
     "$(json_field "$(read_cli_version)")"
 }
 
+cmd_doctor() {
+  local cli_path cli_version
+  cli_path="$(command -v wtcraft || echo "$0")"
+  cli_version="$(read_cli_version)"
+  echo "CLI path: $cli_path"
+  echo "Version: ${cli_version}"
+
+  local other_installs
+  other_installs="$(type -a wtcraft 2>/dev/null | grep -v " is $cli_path" | awk '{print $3}' | sort -u || true)"
+  if [ -n "$other_installs" ]; then
+    echo "Other installations:"
+    for inst in $other_installs; do
+      local inst_ver
+      inst_ver="$("$inst" --version 2>/dev/null || echo "unknown")"
+      if [ -z "$inst_ver" ]; then inst_ver="unknown"; fi
+      echo "  $inst ($inst_ver)"
+    done
+
+    if echo "$other_installs" | grep -iq "homebrew"; then
+       if echo "$cli_path" | grep -iq -e "pipx" -e "\.local/bin"; then
+         echo "Warning: a pipx installation shadows Homebrew"
+       fi
+    fi
+  fi
+
+  echo ""
+  echo "Checking repository context..."
+  if git rev-parse --show-toplevel >/dev/null 2>&1; then
+    local repo_root
+    repo_root="$(git rev-parse --show-toplevel)"
+
+    local missing=0
+    for file in .agent-harness/planner.md .agent-harness/executor.md .agent-harness/finisher.md .agent-harness/role-models.yml .claude/commands/planwt.md; do
+      if [ ! -f "$repo_root/$file" ]; then
+        echo "Missing scaffold: $file"
+        missing=$((missing + 1))
+      fi
+    done
+    if [ "$missing" -eq 0 ]; then
+      echo "Scaffold files: Complete"
+    fi
+
+    if [ -f "$repo_root/.worktree-task.template.md" ]; then
+      echo "Legacy file detected: .worktree-task.template.md (run 'wtcraft migrate' to fix)"
+    fi
+  else
+    echo "Not inside a git repository."
+  fi
+
+  echo ""
+  echo "Checking environment..."
+  local cred_helper
+  cred_helper="$(git config --get credential.helper || echo "None")"
+  echo "Git credential helper: $cred_helper"
+
+  if [ ! -d "$TEMPLATE_DIR" ] || [ -z "$(ls -A "$TEMPLATE_DIR" 2>/dev/null)" ]; then
+    echo "Warning: Template directory '$TEMPLATE_DIR' is missing or empty."
+  else
+    echo "Template directory: Complete ($TEMPLATE_DIR)"
+  fi
+}
+
+cmd_migrate() {
+  local auto_yes=false
+  local repo_arg="."
+  while [ $# -gt 0 ]; do
+    case "$1" in
+      --yes) auto_yes=true ;;
+      --repo) shift; repo_arg="${1:?--repo requires a path}" ;;
+      *) die "unknown migrate option: $1" ;;
+    esac
+    shift
+  done
+  ensure_git_path "$repo_arg"
+  local repo_root
+  repo_root="$(current_worktree_root "$repo_arg")"
+
+  echo "Running wtcraft init to ensure all scaffolds are present..."
+  cmd_init --repo "$repo_root"
+
+  if [ -f "$repo_root/.worktree-task.template.md" ]; then
+    if [ "$auto_yes" = true ]; then
+      rm -f "$repo_root/.worktree-task.template.md"
+      echo "Deleted .worktree-task.template.md"
+    elif [ -t 0 ]; then
+      echo ""
+      read -r -p "Delete legacy file '.worktree-task.template.md'? [y/N] " response
+      case "$response" in
+        [yY][eE][sS]|[yY])
+          rm -f "$repo_root/.worktree-task.template.md"
+          echo "Deleted .worktree-task.template.md"
+          ;;
+        *)
+          echo "Skipped deletion."
+          ;;
+      esac
+    else
+      echo "Legacy file detected: .worktree-task.template.md"
+      echo "Run with --yes to delete automatically."
+    fi
+  else
+    echo "No legacy files to migrate."
+  fi
+}
+
 main() {
   [ $# -ge 1 ] || { usage; exit 1; }
   local cmd="$1"
@@ -1357,6 +1506,8 @@ main() {
     check)       cmd_check "$@" ;;
     verify)      cmd_verify "$@" ;;
     capabilities) cmd_capabilities "$@" ;;
+    doctor)      cmd_doctor "$@" ;;
+    migrate)     cmd_migrate "$@" ;;
     help)        cmd_help "$@" ;;
     version|--version) printf '%s\n' "$(read_cli_version)" ;;
     -h|--help)   usage ;;
