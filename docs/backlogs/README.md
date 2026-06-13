@@ -9,6 +9,8 @@ reasoning isn't re-derived later.
 
 - [stage-state-machine.md](stage-state-machine.md) — `stage:` lifecycle in task
   frontmatter + unified progress view
+- [session-runtime-protocol.md](session-runtime-protocol.md) — GUI/session
+  launch contract, machine protocol, and interactive-vs-headless follow-on work
 - [model-select-quota.md](model-select-quota.md) — quota-aware model
   recommendation: "for the next executor task, use X"
 - [subscription-fit.md](subscription-fit.md) — personal, rule-based "is my
