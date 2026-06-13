@@ -9,6 +9,8 @@ core:
   ownership, transitions, and recovery
 - [Task State Machine v1](task-state-machine-v1.md): declared governance
   lifecycle, legal writers, transitions, invariants, and observer alarms
+- [Contract Test Specification](contract-tests.md): shared fixture format,
+  comparison rules, minimum coverage, and Bash/Rust compatibility gates
 
 The Bash CLI is the current reference implementation. The future Rust core must
 preserve these contracts rather than expose implementation-specific behavior to
@@ -36,7 +38,8 @@ rule-backed results for humans and clients to act on.
 Rust implementation work may begin incrementally now, but the Bash CLI remains
 authoritative until these readiness items are complete:
 
-- protocol fixtures cover success, gate failure, and fatal error shapes
+- protocol fixtures cover success, gate failure, and fatal error shapes as
+  defined by the [Contract Test Specification](contract-tests.md)
 - session fixtures cover every state and identity-loss recovery
 - state-machine tests cover every legal and illegal transition
 - unknown fields/states have explicit compatibility behavior
