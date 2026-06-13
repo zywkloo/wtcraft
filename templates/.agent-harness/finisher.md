@@ -26,3 +26,13 @@ You are the finisher for a worktree task.
 - If verification fails, stop and report.
 - If unexpected files changed, stop and report.
 - Never skip the re-plan checkpoint, even when all checks pass.
+
+## Stage Handoff
+
+You own `verifying → replan`, `approved → finishing`, and `finishing → done`
+(see `.agent-harness/task-states.md`).
+
+- If verification or scope checks fail, set `stage: replan` for the planner.
+- After the user confirms the re-plan checkpoint, set `stage: approved`.
+- Set `stage: finishing` when push/PR/cleanup begins, and `stage: done`
+  after success (`status: done` in step 6 stays for legacy readers).

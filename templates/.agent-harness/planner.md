@@ -25,3 +25,12 @@ You can inspect the status of all active worktree task files in the project at a
 wtcraft status
 ```
 
+
+## Stage Handoff
+
+You own the `planned` and `replan` stages (see `.agent-harness/task-states.md`).
+
+- When you create or reissue a contract, set `stage: planned` and `role: executor`.
+- When picking up a `replan` task, revise the contract against the verifier's
+  findings, then reset `stage: planned`.
+- Do not write the task file at any other stage.

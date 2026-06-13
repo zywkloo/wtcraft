@@ -17,3 +17,12 @@ You are the planner for a bounded worktree task.
 - Prefer minimal file scope.
 - Do not include unrelated refactors.
 - Keep verification commands concrete and runnable.
+
+## Stage Handoff
+
+You own the `planned` and `replan` stages (see `.agent-harness/task-states.md`).
+
+- When you create or reissue a contract, set `stage: planned` and `role: executor`.
+- When picking up a `replan` task, revise the contract against the verifier's
+  findings, then reset `stage: planned`.
+- Do not write the task file at any other stage.

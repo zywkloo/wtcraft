@@ -57,6 +57,15 @@ no multiplexer at all.
 Estimated ~0.5–1 day total. Template + live file pairs must stay in sync
 (CLAUDE.md rule).
 
+> **Shipped 2026-06-12** (all five items): `.agent-harness/task-states.md`
+> (lifecycle + transition table + single-writer rule), Stage Handoff
+> sections in role docs, `stage:`/`role:` in the task template with
+> `cmd_new` backfill, Stage/Role columns in `wtcraft status` (legacy
+> `status:` fallback), and `wtcraft status --json`. Enumeration is
+> layout-agnostic (worktree-layout.md step 1) — `uncontracted` and
+> `zombie` worktrees are surfaced. Alarm *evaluation* (illegal-transition,
+> bypass, stale…) remains future work for `check`/observer.
+
 ## Declared vs actual (observer design, recorded 2026-06-11)
 
 Frontmatter is *declared* state only — an agent that crashes after writing
