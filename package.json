@@ -5,7 +5,8 @@
   "license": "Apache-2.0",
   "bin": {
     "wtcraft": "scripts/wtcraft",
-    "wtc": "scripts/wtcraft"
+    "wtc": "scripts/wtcraft",
+    "wtf": "scripts/wtcraft"
   },
   "files": [
     "scripts/",
