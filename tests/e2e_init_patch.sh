@@ -90,10 +90,38 @@ test_patch_unpatch_roundtrip() {
   ! "$CLI" unpatch extra 2>/dev/null
 }
 
+test_init_local_in_linked_worktree_uses_git_info_exclude() {
+  local repo="$1"
+  cd "$repo"
+  git config user.name "wtcraft-smoke"
+  git config user.email "wtcraft-smoke@example.com"
+  echo "seed" > .wtcraft-seed
+  git add .wtcraft-seed
+  git commit -q -m "seed"
+
+  local current_branch
+  current_branch="$(git branch --show-current)"
+  WTCRAFT_BASE_BRANCH="$current_branch" "$CLI" new chore/local-init
+
+  (
+    cd worktrees/chore/local-init
+    "$CLI" init --local
+  )
+
+  local exclude_file
+  exclude_file="$(git -C worktrees/chore/local-init rev-parse --git-path info/exclude)"
+  grep -qxF '# wtcraft local scaffold' "$exclude_file"
+  grep -qxF '/.agent-harness/' "$exclude_file"
+  grep -qxF '/.claude/commands/' "$exclude_file"
+  test -f worktrees/chore/local-init/.agent-harness/planner.md
+  test -z "$(git -C worktrees/chore/local-init status --short)"
+}
+
 run_in_temp_repo test_help_init_status
 run_in_temp_repo test_init_local_keeps_repo_clean
 run_in_temp_repo test_init_local_patch_hides_agent_files
 run_in_temp_repo test_patch_agent_files_idempotent
 run_in_temp_repo test_patch_unpatch_roundtrip
+run_in_temp_repo test_init_local_in_linked_worktree_uses_git_info_exclude
 
 echo "[PASS] e2e_init_patch"

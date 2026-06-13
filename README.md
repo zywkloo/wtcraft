@@ -30,15 +30,23 @@ Short alias available after install: `wtc`
 ## Quick Start
 
 ```bash
+wtcraft --version                        # print the installed CLI version
 wtcraft init                            # scaffold harness into current repo
 wtcraft init --local                    # scaffold locally; ignore via .git/info/exclude
 wtcraft patch                           # append routing stubs to CLAUDE.md / AGENTS.md
 wtcraft lang install --lang zh-CN       # enforce output language in CLAUDE.md
 wtcraft new feat/my-task                # create worktree + task contract
+wtcraft new --base origin/main feat/x   # override the base branch/ref explicitly
 wtcraft status                          # list active worktree contracts
+wtcraft capabilities --json             # discover machine-protocol features
+wtcraft status --json --repo /repo      # machine-readable status for a target repo
 wtcraft check <worktree-name-or-path>   # verify Scope / Off-limits
 wtcraft verify <worktree-name-or-path>  # run Verification commands
 ```
+
+`wtcraft new` resolves its base in this order: `--base`, then
+`WTCRAFT_BASE_BRANCH`, then `origin/HEAD`, then local `main`, local `master`,
+local `develop`, and finally the current branch.
 
 After running `wtcraft init`, you can use these slash commands in Claude Code:
 - `/planwt <task description>`: Plan task + create worktree
@@ -64,14 +72,16 @@ After running `wtcraft init`, you can use these slash commands in Claude Code:
 
 | Command | Arguments | What it does |
 |---|---|---|
-| `wtcraft init` | `[--patch-agent-files] [--local]` | Scaffold harness files. Does not overwrite. `--local` keeps scaffold clone-local via `.git/info/exclude`. |
-| `wtcraft patch` | — | Alias for `init --patch-agent-files`. Appends routing stubs to `CLAUDE.md` / `AGENTS.md`. |
-| `wtcraft unpatch` | — | Remove the routing stub from `CLAUDE.md` / `AGENTS.md`. |
-| `wtcraft lang` | `install\|remove` | Add or remove language enforcement rules (e.g. `install --lang zh-CN`). |
-| `wtcraft new` | `<type/name>` | Create a worktree and local `.worktree-task.md` contract. |
-| `wtcraft status` | — | List active worktree tasks and their status. |
-| `wtcraft check` | `<worktree-path-or-name>` | Verify the worktree's changes stay within Scope / Off-limits boundaries. |
-| `wtcraft verify` | `<worktree-path-or-name>` | Run the Verification commands declared in the worktree's contract. |
+| `wtcraft init` | `[--patch-agent-files] [--local] [--repo <path>]` | Scaffold harness files. Does not overwrite. `--local` keeps scaffold clone-local via Git-resolved `.git/info/exclude`. |
+| `wtcraft patch` | `[--repo <path>]` | Alias for `init --patch-agent-files`. Appends routing stubs to `CLAUDE.md` / `AGENTS.md`. |
+| `wtcraft unpatch` | `[--repo <path>]` | Remove the routing stub from `CLAUDE.md` / `AGENTS.md`. |
+| `wtcraft lang` | `install\|remove [--repo <path>]` | Add or remove language enforcement rules (e.g. `install --lang zh-CN`). |
+| `wtcraft new` | `[--repo <path>] [--base <branch>] <type/name>` | Create a worktree and local `.worktree-task.md` contract. |
+| `wtcraft status` | `[--json] [--repo <path>]` | List active worktree tasks and their status. `--json` is the machine-readable status surface. |
+| `wtcraft check` | `[--json] [--repo <path>] <worktree-path-or-name>` | Verify the worktree's changes stay within Scope / Off-limits boundaries. |
+| `wtcraft verify` | `[--json] [--repo <path>] <worktree-path-or-name>` | Run the Verification commands declared in the worktree's contract. |
+| `wtcraft capabilities` | `--json` | Report supported machine-protocol features for external launchers. |
+| `wtcraft --version` | — | Print the installed CLI version. |
 | `wtcraft help` | `[command]` | Show usage. |
 
 ## Why
@@ -89,6 +99,7 @@ No hosted platform is required. No custom runtime is required. You can use Aider
 
 ## Docs
 
+- [Machine Protocol v1](./docs/protocol/machine-protocol-v1.md)
 - [Roadmap](./docs/roadmap.md)
 - [Gotchas & Coding Survival Guide](./docs/gotchas/README.md)
 - [Principles](./docs/principles.md)
