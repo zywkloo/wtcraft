@@ -39,12 +39,13 @@ test_new_verify_check() {
   "$CLI" status --json | python3 -m json.tool >/dev/null
   "$CLI" status --json | grep -q '"stage":"planned"'
 
-  # a worktree without a contract surfaces as uncontracted (any layout —
-  # this one is a sibling dir outside the repo)
-  git worktree add -q "${repo}/../wt-smoke-wild" -b chore/wild "$current_branch"
+  # a worktree without a contract surfaces as uncontracted (any layout — this
+  # one lives at an arbitrary path outside worktrees/). Kept inside the temp
+  # repo so run_in_temp_repo's rm -rf reclaims it even if an assertion aborts.
+  git worktree add -q "${repo}/wt-smoke-wild" -b chore/wild "$current_branch"
   "$CLI" status | grep -q "uncontracted"
   "$CLI" status --json | grep -q '"contracted":false'
-  git worktree remove --force "${repo}/../wt-smoke-wild"
+  git worktree remove --force "${repo}/wt-smoke-wild"
 
   # a failing verification is recorded as fail
   sed -i.bak "s|echo ok|false|" "$task_file"

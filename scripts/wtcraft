@@ -507,6 +507,11 @@ json_escape() {
   local s="$1"
   s="${s//\\/\\\\}"
   s="${s//\"/\\\"}"
+  # Control chars would otherwise produce invalid JSON; --json is the stable
+  # machine interface, so escape them rather than emit a broken document.
+  s="${s//$'\t'/\\t}"
+  s="${s//$'\r'/\\r}"
+  s="${s//$'\n'/\\n}"
   printf '%s' "$s"
 }
 
@@ -698,17 +703,29 @@ resolve_worktree_path() {
     return 0
   fi
   # Fall back to git's worktree registry: any layout (in-repo, sibling,
-  # agent-created arbitrary paths). Match by branch name or path suffix.
+  # agent-created arbitrary paths). Branch is the authoritative key, so try
+  # an exact branch match first; only then fall back to a path-suffix match.
   local wt branch flags
+  local branch_hit="" suffix_hits=()
   while IFS='|' read -r wt branch flags; do
     [ -z "$wt" ] && continue
     [ "$wt" = "$repo_root" ] && continue
-    if [ "$branch" = "$arg" ] || [[ "$wt" == */"$arg" ]]; then
-      echo "$wt"
-      return 0
+    if [ "$branch" = "$arg" ]; then
+      branch_hit="$wt"
+      break
     fi
+    [[ "$wt" == */"$arg" ]] && suffix_hits+=("$wt")
   done < <(list_worktrees "$repo_root")
-  return 1
+
+  if [ -n "$branch_hit" ]; then
+    echo "$branch_hit"
+    return 0
+  fi
+  case "${#suffix_hits[@]}" in
+    0) return 1 ;;
+    1) echo "${suffix_hits[0]}"; return 0 ;;
+    *) die "ambiguous worktree '${arg}': matches $(printf '%s ' "${suffix_hits[@]}")— disambiguate by branch name or full path" ;;
+  esac
 }
 
 # file_matches_scope_item <file> <pattern>
