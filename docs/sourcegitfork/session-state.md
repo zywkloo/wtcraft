@@ -13,6 +13,9 @@ The intended runtime model is deliberately narrow:
 This keeps the repository/worktree model primary while adding a useful
 runtime entry point.
 
+Default launch stance: interactive external TUI first, optional headless later.
+That decision is recorded in [../adr/005-interactive-first-session-launch.md](../adr/005-interactive-first-session-launch.md).
+
 ## Separate task and session state
 
 Do not put volatile process state into `.worktree-task.md`.
@@ -72,8 +75,8 @@ The distinction is intentional:
 
 - `.worktree-task.md` participates in a shared collaboration protocol, so the
   default ignore rule should follow every clone.
-- `.worktree-session.json` contains PID, terminal identifiers, timestamps,
-  and machine-local paths. It has no value in another clone and should never
+- `.worktree-session.json` contains PID, terminal identifiers, timestamps, and
+  machine-local paths. It has no value in another clone and should never
   modify the repository's `.gitignore`.
 
 Linked worktrees share the repository's Git common directory, so one
