@@ -99,6 +99,7 @@ No hosted platform is required. No custom runtime is required. You can use Aider
 
 ## Docs
 
+- [Contributor Onboarding](./docs/onboarding/README.md)
 - [Protocol Contracts](./docs/protocol/README.md)
 - [Rust Core Extraction ADR](./docs/adr/006-rust-core-extraction.md)
 - [Roadmap](./docs/roadmap.md)

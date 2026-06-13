@@ -20,6 +20,10 @@ without replacing the Bash CLI or introducing process and Git side effects.
 
 ## Collaboration split
 
+A new contributor should begin with the
+[Rust Core First Contribution](../onboarding/rust-core-first-contribution.md)
+guide.
+
 A new contributor can work independently on one of these bounded areas:
 
 1. Add pure JSON contract fixtures for task transitions and reconciliation.
