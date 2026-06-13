@@ -99,7 +99,8 @@ No hosted platform is required. No custom runtime is required. You can use Aider
 
 ## Docs
 
-- [Machine Protocol v1](./docs/protocol/machine-protocol-v1.md)
+- [Protocol Contracts](./docs/protocol/README.md)
+- [Rust Core Extraction ADR](./docs/adr/006-rust-core-extraction.md)
 - [Roadmap](./docs/roadmap.md)
 - [Gotchas & Coding Survival Guide](./docs/gotchas/README.md)
 - [Principles](./docs/principles.md)

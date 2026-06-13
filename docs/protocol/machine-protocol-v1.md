@@ -3,6 +3,11 @@
 `wtcraft` is a human-first CLI. Machine mode is opt-in via `--json` and is
 intended for external launchers such as `wtflow`.
 
+This protocol transports the canonical
+[Session Model v1](session-model-v1.md) and
+[Task State Machine v1](task-state-machine-v1.md) facts without making a
+frontend authoritative for either model.
+
 ## Goals
 
 - keep human-readable output as the default
@@ -156,3 +161,13 @@ Fatal machine-mode errors use this shape:
 `ok: false` means wtcraft itself could not complete the request. By contrast,
 `ok: true` with a non-zero command exit code means the command completed and
 the gate result was negative.
+
+## Compatibility rules
+
+- V1 readers ignore unknown object fields.
+- Existing fields do not change type or meaning within v1.
+- New optional fields may be added within v1.
+- Removing a field, changing a field type, changing exit-code meaning, or
+  changing a success shape requires a new protocol version.
+- Clients discover optional command support through `capabilities --json`.
+- Clients must not infer task transitions or session liveness from human output.

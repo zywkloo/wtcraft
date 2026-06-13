@@ -1,5 +1,9 @@
 # Stage state machine + unified progress view
 
+> Canonical lifecycle contract:
+> [Task State Machine v1](../protocol/task-state-machine-v1.md). This backlog
+> retains observer design notes and future enforcement work.
+
 > Status: not scheduled. Recorded 2026-06-10. This is the pragmatic v1 of
 > roadmap Phase 5's team architecture — human as orchestrator, files as truth.
 

@@ -1,6 +1,15 @@
-# Rust Migration Plan
+# Rust Migration Plan (Superseded)
 
-> Status: **deferred** (2026-06-10) — the premises below no longer justify the cost.
+> Status: **superseded** by
+> [ADR-006: Rust for the extracted wtcraft core](006-rust-core-extraction.md)
+> on 2026-06-13.
+>
+> This document preserves the earlier cost analysis and possible migration
+> sequence. ADR-006 is authoritative for the language decision and requires
+> protocol-first, compatibility-tested extraction.
+>
+> Previous status: **deferred** (2026-06-10) — the premises below did not then
+> justify the cost.
 >
 > - **Windows native as differentiation**: no longer holds. [Worktrunk](https://worktrunk.dev/)
 >   already occupies "Rust worktree CLI that runs on Windows", and the
