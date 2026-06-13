@@ -9,6 +9,7 @@ bash "${SCRIPT_DIR}/unit_codegen.sh"
 bash "${SCRIPT_DIR}/unit_awk.sh"
 bash "${SCRIPT_DIR}/e2e_init_patch.sh"
 bash "${SCRIPT_DIR}/e2e_lifecycle.sh"
+bash "${SCRIPT_DIR}/e2e_doctor_migrate.sh"
 
 # Integration tests require npm and python3 (skip gracefully if unavailable)
 if command -v npm >/dev/null 2>&1 && command -v python3 >/dev/null 2>&1; then
