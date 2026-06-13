@@ -1059,14 +1059,22 @@ cmd_check() {
 
   # Committed changes vs base, plus staged/unstaged edits and untracked files —
   # agents often leave work uncommitted, and a gate that only sees commits has a hole.
-  while IFS= read -r line; do
-    changed_files+=("$line")
+  while IFS= read -r -d '' line; do
+    local already_seen=0
+    local existing
+    for existing in "${changed_files[@]:-}"; do
+      if [ "$existing" = "$line" ]; then
+        already_seen=1
+        break
+      fi
+    done
+    [ "$already_seen" -eq 0 ] && changed_files+=("$line")
   done < <(
     {
-      git -C "$wt_path" diff --name-only "${base_branch}...HEAD"
-      git -C "$wt_path" diff --name-only HEAD
-      git -C "$wt_path" ls-files --others --exclude-standard
-    } | sort -u
+      git -C "$wt_path" diff --name-only -z "${base_branch}...HEAD"
+      git -C "$wt_path" diff --name-only -z HEAD
+      git -C "$wt_path" ls-files -z --others --exclude-standard
+    }
   )
 
   while IFS= read -r line; do
@@ -1232,15 +1240,15 @@ cmd_verify() {
     else
       (cd "$wt_path" && bash -lc "$cmd")
     fi
-    local exit_code=$?
+    local command_exit_code=$?
     set -e
     local elapsed=$((SECONDS - start))
     [ "$as_json" = false ] && echo "----------------------------------------------------------------"
-    if [ "$exit_code" -ne 0 ]; then
+    if [ "$command_exit_code" -ne 0 ]; then
       failures=$((failures + 1))
-      [ "$as_json" = false ] && echo "FAILED (exit ${exit_code}, ${elapsed}s)"
-      result_lines+=("  FAIL  [exit ${exit_code}] (${elapsed}s)  ${cmd}")
-      result_objects+=("{\"index\":${i},\"command\":$(json_field "$cmd"),\"status\":\"fail\",\"exit_code\":${exit_code},\"duration_seconds\":${elapsed}}")
+      [ "$as_json" = false ] && echo "FAILED (exit ${command_exit_code}, ${elapsed}s)"
+      result_lines+=("  FAIL  [exit ${command_exit_code}] (${elapsed}s)  ${cmd}")
+      result_objects+=("{\"index\":${i},\"command\":$(json_field "$cmd"),\"status\":\"fail\",\"exit_code\":${command_exit_code},\"duration_seconds\":${elapsed}}")
     else
       [ "$as_json" = false ] && echo "PASSED (${elapsed}s)"
       result_lines+=("  PASS  [exit 0]       (${elapsed}s)  ${cmd}")
@@ -1268,11 +1276,11 @@ cmd_verify() {
   [ "$as_json" = false ] && echo "Recorded verify_result: ${result} in ${task_file}"
 
   if [ "$as_json" = true ]; then
-    local exit_code=0
-    [ "$failures" -ne 0 ] && exit_code=3
+    local final_exit_code=0
+    [ "$failures" -ne 0 ] && final_exit_code=3
     printf '{"protocol_version":1,"command":"verify","ok":true,"result":"%s","exit_code":%s,"repo_root":%s,"worktree":%s,"task_file":%s,"verify_result":%s,"verified":%s,"results":%s,"summary":{"total":%s,"passed":%s,"failed":%s}}\n' \
       "$result" \
-      "$exit_code" \
+      "$final_exit_code" \
       "$(json_field "$repo_root")" \
       "$(json_field "$wt_path")" \
       "$(json_field "$task_file")" \

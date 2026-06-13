@@ -81,6 +81,27 @@ test_new_verify_check() {
   printf '%s' "$check_json" | python3 -m json.tool >/dev/null
   printf '%s' "$check_json" | grep -q '"kind":"scope"'
   rm "${repo}/worktrees/chore/smoke/rogue.txt"
+
+  # Machine mode preserves paths that line-delimited Git output would quote or
+  # split. JSON encoding is the only representation change.
+  local unusual_path=$'odd path\nline.txt'
+  printf 'rogue\n' > "${repo}/worktrees/chore/smoke/${unusual_path}"
+  set +e
+  check_json="$("$CLI" check --json chore/smoke 2>/dev/null)"
+  check_exit=$?
+  set -e
+  [ "$check_exit" -eq 2 ]
+  CHECK_JSON="$check_json" UNUSUAL_PATH="$unusual_path" python3 - <<'PY'
+import json
+import os
+
+payload = json.loads(os.environ["CHECK_JSON"])
+path = os.environ["UNUSUAL_PATH"]
+assert path in payload["changed_files"]
+assert any(item["file"] == path for item in payload["violations"])
+PY
+  rm "${repo}/worktrees/chore/smoke/${unusual_path}"
+
   mkdir -p "${repo}/worktrees/chore/smoke/src"
   echo "ok" > "${repo}/worktrees/chore/smoke/src/example.ts"
   "$CLI" check chore/smoke
