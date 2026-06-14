@@ -87,6 +87,40 @@ Default path for GUI clients:
 - monitor it through Git facts, task contract, and the session sidecar
 - allow focus, stop, and retry actions without owning the terminal itself
 
+### Task initialization is a Planner-lite step (deferred)
+
+A tempting one-shot flow: the human types a freeform description, a short
+headless call turns it into structured Scope / Off-limits / Steps inside
+`.worktree-task.md`, then an interactive TUI takes over to execute. That init
+call is the **Planner** role in the stage machine (Orchestrator → Planner →
+Executor); the interactive session is the Executor.
+
+It is sound, but it puts a headless dependency in the very first flow, which
+ADR-005 defers. Phasing:
+
+- **v1** — `wtcraft new` already copies the task template with `stage`/`role`/
+  `agent` backfilled. Launch the interactive TUI directly; let the human or the
+  agent's first turn fill Scope/Steps.
+- **v2** — insert the headless Planner-lite init step ahead of the TUI.
+
+Gating the TUI on the init step needs no vendor hooks: watch the
+`.worktree-task.md` mtime/content plus the headless process exit code
+(`exit 0` + expected sections present → launch the TUI). Same vendor-free
+liveness signal the observer already relies on.
+
+### Launch mode is a start-time toggle
+
+The sidecar's `launch mode` (interactive | headless) is the GUI's start-time
+choice, surfaced to the user, not a hidden setting:
+
+- **interactive** (ships first) — external TUI, human drives, GUI observes.
+- **headless / full-auto** (later) — one long `/loop` or `/goal` in auto mode
+  until it hits an alarm, then parks for human review; the GUI surfaces only
+  acceptance/verification, never keystrokes.
+
+Both modes report through the same task contract + sidecar, so the toggle swaps
+the runner, not the observer.
+
 ### Headless later
 
 Headless is still attractive for:

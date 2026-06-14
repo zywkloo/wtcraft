@@ -20,6 +20,16 @@ runtime entry point.
 Default launch stance: interactive external TUI first, optional headless later.
 That decision is recorded in [../adr/005-interactive-first-session-launch.md](../adr/005-interactive-first-session-launch.md).
 
+## Launcher surface vs terminal
+
+The session entry point may be a docked panel — a VS Code-style bottom pane
+with a prompt box, agent picker, launch-mode toggle, start button, and a live
+session-status row. That panel is a **launcher + monitor**, not a terminal: the
+agent TUI opens in an external terminal (Ghostty / Terminal.app / a new tab).
+The moment the docked pane hosts the live TUI it has become an embedded
+emulator — the non-goal above. Placement (top-of-list vs bottom pane) is a free
+UX choice; hosting the TUI is not.
+
 ## Separate task and session state
 
 Do not put volatile process state into `.worktree-task.md`.
@@ -29,6 +39,12 @@ Do not put volatile process state into `.worktree-task.md`.
 .worktree-session.json  launcher-owned local runtime state
 git facts               actual code and worktree state
 ```
+
+`wtcraft new` copies only the `.worktree-task.md` template (with `stage`,
+`role`, and `agent` backfilled). `.worktree-session.json` is never a copied
+template — the launcher writes it when a session starts and remains its only
+writer. Treating it as a `wtcraft new` template artifact would break the
+single-writer rule below.
 
 The task contract contains durable collaboration meaning:
 

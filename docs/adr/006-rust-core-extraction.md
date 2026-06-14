@@ -86,6 +86,17 @@ protocol exactly.
 - Rust's stricter failure handling supports the goal of a stable multi-session
   observer better than adding more implicit shell conventions.
 
+The [`observe` reconciliation surface](../protocol/machine-protocol-v1.md)
+makes the boundary concrete. Bash ships `observe --json` as a one-shot,
+level-triggered command (pull). Edge-triggered push — continuous liveness plus
+transitions streamed over SSE — needs the persistent process, filesystem and
+process event subscriptions, and concurrency that are awkward or simply absent
+in shell. The Rust core adds that delivery *behind* `capabilities --json`
+without changing the `observe --json` output schema clients already bind to: the
+contract is permanent, only the transport is added. This is the extraction's
+clearest motivating case, and it is additive — it does not invalidate the Bash
+one-shot.
+
 ## Consequences
 
 - Rust is the committed long-term core language.

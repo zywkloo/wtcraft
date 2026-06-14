@@ -75,6 +75,11 @@ Fields:
 - `stage`, `role`, `agent`, `status`, `priority`, `created`, `base`
 - `verify_result`, `verified`
 
+`status --json` reports raw task-contract and Git facts only. It does not
+carry reconciled `alarms` or live session state. Cross-source reconciliation is
+`observe --json` (below); per-worktree runtime state lives in the launcher-owned
+`.worktree-session.json` ([Session Model v1](session-model-v1.md)).
+
 Fatal errors in machine mode return a JSON error object instead of the array.
 
 ### `check --json`
@@ -141,6 +146,68 @@ Exit codes:
 - `0`: all verification commands passed
 - `3`: one or more verification commands failed
 - `1`: fatal invocation/runtime error
+
+### `observe --json`
+
+Status: proposed, not yet shipped. Recorded here so clients do not each
+re-implement reconciliation and drift apart.
+
+`status --json` answers "what are the raw facts." `observe --json` answers
+"what is wrong," by reconciling three sources the core already has access to:
+
+1. task-contract facts (`.worktree-task.md`, as in `status --json`)
+2. session facts (`.worktree-session.json`, [Session Model v1](session-model-v1.md))
+3. Git facts
+
+It emits one object per worktree carrying the `status --json` fields plus a
+session summary and an `alarms[]` array. Each alarm is a fact, not a
+presentation: it cites the rule it violates. The reconcile rules are already
+canonical — the
+[Session Model v1 "Reconciliation with task state"](session-model-v1.md) table
+and the
+[Task State Machine v1 "Observer alarms"](task-state-machine-v1.md) table.
+`observe` makes those tables executable so a GUI/TUI renders alarms instead of
+computing them.
+
+Per-alarm shape:
+
+```json
+{
+  "kind": "executor-session-exited",
+  "severity": "warning",
+  "rule": "session-model-v1#reconciliation-with-task-state",
+  "message": "task stage is executing but the recorded session exited"
+}
+```
+
+Rationale for keeping this in the core rather than each client:
+
+- the reconcile tables are a single contract; one implementation cannot drift
+  from another
+- liveness (PID + process-start-time match) is host-local and easy to get
+  subtly wrong; the core should own it once
+- clients stay thin renderers, which is the whole point of the machine protocol
+
+Transport split: the Bash reference core ships `observe --json` as a one-shot
+command (same lifecycle as `status`/`check`/`verify`; it may shell out to read
+`.worktree-session.json`). Push delivery — a long-lived process that streams
+changes over SSE — is intentionally **not** a Bash-core concern. It is deferred
+to the extracted Rust core ([ADR-006](../adr/006-rust-core-extraction.md)),
+where a daemon and filesystem watching are appropriate. Until then, a client
+that wants near-live updates watches `.worktree-task.md` and
+`.worktree-session.json` mtimes itself and re-invokes the one-shot command; the
+contract-test fixtures keep the interim and future implementations in parity.
+
+Why the boundary sits here: the one-shot is *level-triggered* — it reports
+current state on demand. Streaming would add *edge-triggered* delivery (report
+the transition, not just the state) plus continuous liveness, both of which need
+a service runtime (persistent process, filesystem/process event subscriptions, a
+transport) that the Bash core deliberately does not grow. Only the **delivery**
+differs: the `observe --json` object schema is the permanent contract that both
+the Bash one-shot and a future Rust observer must produce identically. A client
+discovers the available delivery through `capabilities --json` and binds to the
+same schema either way. Nail the schema now; the transport is swappable later
+without touching clients.
 
 ## Error objects
 
