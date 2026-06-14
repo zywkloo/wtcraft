@@ -18,22 +18,24 @@ usage() {
 wtcraft - git-native harness helper
 
 Usage:
-  wtcraft init [--patch-agent-files] [--local]
-  wtcraft patch
-  wtcraft unpatch
-  wtcraft lang install [--lang <code>]
-  wtcraft lang remove
-  wtcraft status
-  wtcraft new <type/name>
-  wtcraft check <worktree-path-or-name>
-  wtcraft verify <worktree-path-or-name>
+  wtcraft init [--patch-agent-files] [--local] [--repo <path>]
+  wtcraft patch [--repo <path>]
+  wtcraft unpatch [--repo <path>]
+  wtcraft lang install [--repo <path>] [--lang <code>]
+  wtcraft lang remove [--repo <path>]
+  wtcraft status [--json] [--repo <path>]
+  wtcraft new [--repo <path>] <type/name>
+  wtcraft check [--json] [--repo <path>] <worktree-path-or-name>
+  wtcraft verify [--json] [--repo <path>] <worktree-path-or-name>
+  wtcraft capabilities --json
+  wtcraft --version
   wtcraft help [command]
 EOF
 }
 
 usage_init() {
   cat <<'EOF'
-wtcraft init [--patch-agent-files] [--local]
+wtcraft init [--patch-agent-files] [--local] [--repo <path>]
 
   Scaffold harness files into the current git repository.
   Existing files are never overwritten.
@@ -44,6 +46,8 @@ wtcraft init [--patch-agent-files] [--local]
     --local               Keep wtcraft scaffold local to this clone by
                           writing ignore rules to .git/info/exclude instead
                           of modifying the repo's .gitignore
+    --repo <path>         Target a specific worktree root instead of relying
+                          on the current working directory
 
   Creates:
     .agent-harness/planner.md
@@ -59,7 +63,7 @@ EOF
 
 usage_patch() {
   cat <<'EOF'
-wtcraft patch
+wtcraft patch [--repo <path>]
 
   Explicit alias for `wtcraft init --patch-agent-files`.
   Scaffolds harness files (if missing) and appends the managed wtcraft
@@ -72,7 +76,7 @@ EOF
 
 usage_unpatch() {
   cat <<'EOF'
-wtcraft unpatch
+wtcraft unpatch [--repo <path>]
 
   Remove the managed wtcraft routing stub previously added by
   `wtcraft patch` (or `init --patch-agent-files`) from CLAUDE.md and
@@ -84,8 +88,8 @@ EOF
 
 usage_lang() {
   cat <<'EOF'
-wtcraft lang install [--lang <code>]
-wtcraft lang remove
+wtcraft lang install [--repo <path>] [--lang <code>]
+wtcraft lang remove [--repo <path>]
 
   Install or remove a language-enforcement stub in CLAUDE.md.
   The stub instructs the AI to respond only in the specified language.
@@ -106,7 +110,7 @@ EOF
 
 usage_status() {
   cat <<'EOF'
-wtcraft status [--json]
+wtcraft status [--json] [--repo <path>]
 
   List all linked worktrees with their task contract state. Worktrees are
   enumerated via `git worktree list`, so any layout is covered (in-repo
@@ -117,6 +121,8 @@ wtcraft status [--json]
   fallback applied), role, agent, status, priority, created, base,
   verify_result, verified. Absent fields are null. Intended as the stable
   machine interface for external observers/GUIs.
+  --repo <path> explicitly targets a repository; registry commands normalize
+  linked worktrees to the repository's primary worktree root.
 
   Columns: task file, stage (falls back to legacy `status:` for contracts
   that predate the stage convention — see .agent-harness/task-states.md),
@@ -129,7 +135,7 @@ EOF
 
 usage_new() {
   cat <<'EOF'
-wtcraft new <type/name>
+wtcraft new [--repo <path>] [--base <branch>] <type/name>
 
   Create a new git worktree from the base branch and seed it with a
   .worktree-task.md contract file.
@@ -137,14 +143,26 @@ wtcraft new <type/name>
   Arguments:
     <type/name>   Branch and worktree path (e.g. feat/auth-refactor)
 
+  Options:
+    --repo <path>    Target a specific repository explicitly
+    --base <branch>  Override the base branch/ref for this worktree creation
+
   Environment:
-    WTCRAFT_BASE_BRANCH   Base branch to branch from (default: develop)
+    WTCRAFT_BASE_BRANCH   Base branch/ref to branch from when --base is not
+                          provided
+
+  Default base detection:
+    1. `origin/HEAD`
+    2. local `main`
+    3. local `master`
+    4. local `develop`
+    5. current branch
 EOF
 }
 
 usage_check() {
   cat <<'EOF'
-wtcraft check <worktree-path-or-name>
+wtcraft check [--json] [--repo <path>] <worktree-path-or-name>
 
   Compare files changed in the worktree against the Scope and Off-limits
   sections of the .worktree-task.md contract. Covers commits since the base
@@ -160,12 +178,15 @@ wtcraft check <worktree-path-or-name>
   Exit codes:
     0   No violations detected
     2   One or more Scope or Off-limits violations found
+
+  --json emits a stable machine-readable object to stdout while preserving
+  the same exit codes. Diagnostics remain on stderr.
 EOF
 }
 
 usage_verify() {
   cat <<'EOF'
-wtcraft verify <worktree-path-or-name>
+wtcraft verify [--json] [--repo <path>] <worktree-path-or-name>
 
   Run verification commands listed in the Verification section of the
   .worktree-task.md contract. Each command runs inside the worktree directory.
@@ -178,6 +199,19 @@ wtcraft verify <worktree-path-or-name>
   Exit codes:
     0   All commands passed
     3   One or more commands failed
+
+  --json emits a stable machine-readable object to stdout while preserving
+  the same exit codes. Verification command output remains on stderr.
+EOF
+}
+
+usage_capabilities() {
+  cat <<'EOF'
+wtcraft capabilities --json
+
+  Report the machine-protocol features supported by this wtcraft build.
+  The current output format is JSON-only and is intended for GUI/TUI
+  launchers that need capability discovery before invocation.
 EOF
 }
 
@@ -195,6 +229,7 @@ cmd_help() {
     new)     usage_new ;;
     check)   usage_check ;;
     verify)  usage_verify ;;
+    capabilities) usage_capabilities ;;
     help)    usage ;;
     *) die "no help topic for: $1" ;;
   esac
@@ -205,8 +240,78 @@ die() {
   exit 1
 }
 
-ensure_repo_root() {
-  git rev-parse --show-toplevel >/dev/null 2>&1 || die "not inside a git repository"
+read_cli_version() {
+  if [ -f "${ROOT_DIR}/package.json" ]; then
+    awk -F'"' '/"version"[[:space:]]*:/ { print $4; exit }' "${ROOT_DIR}/package.json"
+    return 0
+  fi
+  if [ -f "${ROOT_DIR}/pyproject.toml" ]; then
+    awk -F'"' '/^version[[:space:]]*=/ { print $2; exit }' "${ROOT_DIR}/pyproject.toml"
+    return 0
+  fi
+  printf 'unknown'
+}
+
+current_worktree_root() {
+  local path="${1:-.}"
+  git -C "$path" rev-parse --show-toplevel 2>/dev/null
+}
+
+primary_worktree_root() {
+  local path="${1:-.}"
+  git -C "$path" worktree list --porcelain 2>/dev/null | awk '
+    /^worktree / {
+      sub(/^worktree /, "", $0)
+      print
+      exit
+    }
+  '
+}
+
+resolve_base_branch() {
+  local repo_root="$1"
+  local explicit_base="${2:-}"
+  if [ -n "$explicit_base" ]; then
+    printf '%s' "$explicit_base"
+    return 0
+  fi
+
+  if [ -n "${WTCRAFT_BASE_BRANCH:-}" ]; then
+    printf '%s' "${WTCRAFT_BASE_BRANCH}"
+    return 0
+  fi
+
+  local candidate
+  candidate="$(git -C "$repo_root" symbolic-ref --quiet --short refs/remotes/origin/HEAD 2>/dev/null || true)"
+  if [ -n "$candidate" ]; then
+    printf '%s' "$candidate"
+    return 0
+  fi
+
+  for candidate in main master develop; do
+    if git -C "$repo_root" show-ref --verify --quiet "refs/heads/${candidate}"; then
+      printf '%s' "$candidate"
+      return 0
+    fi
+  done
+
+  candidate="$(git -C "$repo_root" branch --show-current 2>/dev/null || true)"
+  if [ -n "$candidate" ]; then
+    printf '%s' "$candidate"
+    return 0
+  fi
+
+  die "could not determine a base branch; set WTCRAFT_BASE_BRANCH explicitly"
+}
+
+git_info_exclude_path() {
+  local path="${1:-.}"
+  git -C "$path" rev-parse --git-path info/exclude 2>/dev/null
+}
+
+ensure_git_path() {
+  local path="${1:-.}"
+  git -C "$path" rev-parse --show-toplevel >/dev/null 2>&1 || die "not inside a git repository: ${path}"
 }
 
 copy_if_missing() {
@@ -320,20 +425,22 @@ unpatch_agent_files() {
 }
 
 cmd_init() {
-  ensure_repo_root
   local patch_agent=false
   local local_mode=false
+  local repo_arg="."
   while [ $# -gt 0 ]; do
     case "$1" in
       --patch-agent-files) patch_agent=true ;;
       --local) local_mode=true ;;
+      --repo) shift; repo_arg="${1:?--repo requires a path}" ;;
       *) die "unknown init option: $1" ;;
     esac
     shift
   done
 
   local repo_root
-  repo_root="$(git rev-parse --show-toplevel)"
+  ensure_git_path "$repo_arg"
+  repo_root="$(current_worktree_root "$repo_arg")"
 
   copy_if_missing "${TEMPLATE_DIR}/.agent-harness/planner.md" "${repo_root}/.agent-harness/planner.md"
   copy_if_missing "${TEMPLATE_DIR}/.agent-harness/executor.md" "${repo_root}/.agent-harness/executor.md"
@@ -350,7 +457,9 @@ cmd_init() {
   done
 
   if [ "$local_mode" = true ]; then
-    local exclude_file="${repo_root}/.git/info/exclude"
+    local exclude_file
+    exclude_file="$(git_info_exclude_path "$repo_root")"
+    [ -n "$exclude_file" ] || die "failed to resolve .git/info/exclude for ${repo_root}"
     mkdir -p "$(dirname "$exclude_file")"
     [ -f "$exclude_file" ] || : >"$exclude_file"
     if ! grep -qxF '# wtcraft local scaffold' "$exclude_file"; then
@@ -407,15 +516,21 @@ EOF
 }
 
 cmd_patch() {
-  [ $# -eq 0 ] || die "patch takes no arguments"
-  cmd_init --patch-agent-files
+  cmd_init --patch-agent-files "$@"
 }
 
 cmd_unpatch() {
-  [ $# -eq 0 ] || die "unpatch takes no arguments"
-  ensure_repo_root
+  local repo_arg="."
+  while [ $# -gt 0 ]; do
+    case "$1" in
+      --repo) shift; repo_arg="${1:?--repo requires a path}" ;;
+      *) die "unknown unpatch option: $1" ;;
+    esac
+    shift
+  done
+  ensure_git_path "$repo_arg"
   local repo_root
-  repo_root="$(git rev-parse --show-toplevel)"
+  repo_root="$(current_worktree_root "$repo_arg")"
   echo "Removing wtcraft routing stubs from agent files..."
   unpatch_agent_files "$repo_root"
 }
@@ -423,10 +538,20 @@ cmd_unpatch() {
 cmd_lang() {
   [ $# -ge 1 ] || { usage_lang; exit 1; }
   local subcmd="$1"; shift
-  ensure_repo_root
+  local repo_arg="."
+  local remaining=()
+  while [ $# -gt 0 ]; do
+    case "$1" in
+      --repo) shift; repo_arg="${1:?--repo requires a path}" ;;
+      *) remaining+=("$1") ;;
+    esac
+    shift
+  done
+  ensure_git_path "$repo_arg"
   local repo_root
-  repo_root="$(git rev-parse --show-toplevel)"
+  repo_root="$(current_worktree_root "$repo_arg")"
   local claude_file="${repo_root}/CLAUDE.md"
+  set -- "${remaining[@]}"
 
   case "$subcmd" in
     install)
@@ -521,28 +646,47 @@ set_frontmatter() {
 
 # list_worktrees <repo_root>
 #
-# Emit one `path|branch|flags` line per registered worktree (any layout:
-# in-repo, sibling, agent-created arbitrary paths). Flags: prunable, locked.
+# Emit NUL-delimited triples: worktree-path, branch, flags. Git's `-z` output
+# keeps paths containing newlines intact; this parser must remain NUL-based
+# end-to-end.
 list_worktrees() {
   local repo_root="$1"
-  git -C "$repo_root" worktree list --porcelain | awk '
-    /^worktree /{ if (wt!="") print wt "|" br "|" flags; wt=$0; sub(/^worktree /,"",wt); br=""; flags="" }
-    /^branch /{ br=$0; sub(/^branch refs\/heads\//,"",br) }
-    /^prunable/{ flags=flags "prunable," }
-    /^locked/{ flags=flags "locked," }
-    END{ if (wt!="") print wt "|" br "|" flags }
-  '
+  local field wt="" branch="" flags=""
+  while IFS= read -r -d '' field; do
+    if [ -z "$field" ]; then
+      if [ -n "$wt" ]; then
+        printf '%s\0%s\0%s\0' "$wt" "$branch" "$flags"
+      fi
+      wt=""
+      branch=""
+      flags=""
+      continue
+    fi
+    case "$field" in
+      "worktree "*) wt="${field#worktree }" ;;
+      "branch refs/heads/"*) branch="${field#branch refs/heads/}" ;;
+      prunable*) flags="${flags}prunable," ;;
+      locked*) flags="${flags}locked," ;;
+    esac
+  done < <(git -C "$repo_root" worktree list --porcelain -z)
+  if [ -n "$wt" ]; then
+    printf '%s\0%s\0%s\0' "$wt" "$branch" "$flags"
+  fi
 }
 
 json_escape() {
   local s="$1"
   s="${s//\\/\\\\}"
   s="${s//\"/\\\"}"
-  # Control chars would otherwise produce invalid JSON; --json is the stable
-  # machine interface, so escape them rather than emit a broken document.
-  s="${s//$'\t'/\\t}"
-  s="${s//$'\r'/\\r}"
-  s="${s//$'\n'/\\n}"
+  local code octal char escaped
+  code=1
+  while [ "$code" -le 31 ]; do
+    printf -v octal '%03o' "$code"
+    printf -v char '%b' "\\${octal}"
+    printf -v escaped '\\u%04x' "$code"
+    s="${s//$char/$escaped}"
+    code=$((code + 1))
+  done
   printf '%s' "$s"
 }
 
@@ -555,18 +699,86 @@ json_field() {
   fi
 }
 
+json_error_object() {
+  local command="$1"
+  local code="$2"
+  local message="$3"
+  printf '{"protocol_version":1,"command":"%s","ok":false,"error":{"code":%s,"message":"%s"}}\n' \
+    "$(json_escape "$command")" \
+    "$code" \
+    "$(json_escape "$message")"
+}
+
+machine_error() {
+  local as_json="$1"
+  local command="$2"
+  local message="$3"
+  if [ "$as_json" = true ]; then
+    json_error_object "$command" 1 "$message"
+    exit 1
+  fi
+  die "$message"
+}
+
+json_string_array() {
+  local out="[" first=1 item
+  for item in "$@"; do
+    [ -z "$item" ] && continue
+    if [ "$first" -eq 1 ]; then
+      out="${out}$(json_field "$item")"
+      first=0
+    else
+      out="${out},$(json_field "$item")"
+    fi
+  done
+  printf '%s]' "$out"
+}
+
+json_object_array() {
+  local out="[" first=1 item
+  for item in "$@"; do
+    [ -z "$item" ] && continue
+    if [ "$first" -eq 1 ]; then
+      out="${out}${item}"
+      first=0
+    else
+      out="${out},${item}"
+    fi
+  done
+  printf '%s]' "$out"
+}
+
 cmd_status() {
-  ensure_repo_root
   local as_json=false
+  local repo_arg="."
   while [ $# -gt 0 ]; do
     case "$1" in
-      --json) as_json=true ;;
-      *) die "unknown status option: $1" ;;
+      --json)
+        as_json=true
+        shift
+        ;;
+      --repo)
+        [ $# -ge 2 ] || machine_error "$as_json" "status" "--repo requires a path"
+        repo_arg="$2"
+        shift 2
+        ;;
+      --*)
+        machine_error "$as_json" "status" "unknown status option: $1"
+        ;;
+      *)
+        break
+        ;;
     esac
-    shift
   done
+  [ $# -eq 0 ] || machine_error "$as_json" "status" "status takes no positional arguments"
   local repo_root
-  repo_root="$(git rev-parse --show-toplevel)"
+  repo_root="$(primary_worktree_root "$repo_arg")"
+  if [ -z "$repo_root" ]; then
+    if [ "$as_json" = true ]; then
+      machine_error "$as_json" "status" "not inside a git repository: ${repo_arg}"
+    fi
+    die "not inside a git repository: ${repo_arg}"
+  fi
 
   if [ "$as_json" = false ]; then
     printf "%-45s %-13s %-10s %-8s %-8s %-10s\n" "Worktree / Task" "Stage" "Role" "Agent" "Priority" "Verified"
@@ -575,7 +787,7 @@ cmd_status() {
 
   local found=0 wt branch flags
   local json_entries=()
-  while IFS='|' read -r wt branch flags; do
+  while IFS= read -r -d '' wt && IFS= read -r -d '' branch && IFS= read -r -d '' flags; do
     [ -z "$wt" ] && continue
     # Skip the primary worktree (repo root), keep only linked worktrees.
     [ "$wt" = "$repo_root" ] && continue
@@ -608,7 +820,7 @@ cmd_status() {
 
     if [ "$as_json" = true ]; then
       local entry
-      entry="{\"worktree\":$(json_field "$wt"),\"branch\":$(json_field "$branch"),\"zombie\":${zombie},\"locked\":${locked},\"contracted\":${contracted}"
+      entry="{\"repo_root\":$(json_field "$repo_root"),\"worktree\":$(json_field "$wt"),\"branch\":$(json_field "$branch"),\"zombie\":${zombie},\"locked\":${locked},\"contracted\":${contracted}"
       if [ "$contracted" = true ]; then
         entry="${entry},\"task_file\":$(json_field "$task"),\"stage\":$(json_field "$stage"),\"role\":$(json_field "$role"),\"agent\":$(json_field "$agent"),\"status\":$(json_field "$status_legacy"),\"priority\":$(json_field "$priority"),\"created\":$(json_field "$created"),\"base\":$(json_field "$base"),\"verify_result\":$(json_field "$verify_result"),\"verified\":$(json_field "$verified")"
       fi
@@ -628,12 +840,8 @@ cmd_status() {
   done < <(list_worktrees "$repo_root")
 
   if [ "$as_json" = true ]; then
-    local out="[" first=1 e
-    for e in "${json_entries[@]:-}"; do
-      [ -z "$e" ] && continue
-      if [ "$first" -eq 1 ]; then out="${out}${e}"; first=0; else out="${out},${e}"; fi
-    done
-    printf '%s]\n' "$out"
+    json_object_array "${json_entries[@]:-}"
+    printf '\n'
     return 0
   fi
 
@@ -643,12 +851,34 @@ cmd_status() {
 }
 
 cmd_new() {
-  ensure_repo_root
+  local repo_arg="."
+  local explicit_base=""
+  while [ $# -gt 0 ]; do
+    case "$1" in
+      --repo)
+        [ $# -ge 2 ] || die "--repo requires a path"
+        repo_arg="$2"
+        shift 2
+        ;;
+      --base)
+        [ $# -ge 2 ] || die "--base requires a branch or ref"
+        explicit_base="$2"
+        shift 2
+        ;;
+      --*)
+        die "unknown new option: $1"
+        ;;
+      *)
+        break
+        ;;
+    esac
+  done
   [ $# -eq 1 ] || die "new expects exactly one argument: <type/name>"
   local branch="$1"
   local repo_root base_branch wt_path
-  repo_root="$(git rev-parse --show-toplevel)"
-  base_branch="${WTCRAFT_BASE_BRANCH:-develop}"
+  ensure_git_path "$repo_arg"
+  repo_root="$(primary_worktree_root "$repo_arg")"
+  base_branch="$(resolve_base_branch "$repo_root" "$explicit_base")"
   wt_path="${repo_root}/worktrees/${branch}"
 
   [ ! -e "$wt_path" ] || die "worktree path already exists: ${wt_path}"
@@ -669,10 +899,9 @@ cmd_new() {
 
   local today
   today="$(date +%F)"
-  sed -i.bak "s|^branch: .*|branch: ${branch}|" "$task_file"
-  sed -i.bak "s|^created: .*|created: ${today}|" "$task_file"
-  sed -i.bak "s|^base: .*|base: ${base_branch}|" "$task_file"
-  rm -f "${task_file}.bak"
+  set_frontmatter "$task_file" "branch" "$branch"
+  set_frontmatter "$task_file" "created" "$today"
+  set_frontmatter "$task_file" "base" "$base_branch"
 
   # Plans absorbed from /planwt may predate the stage/role convention.
   [ -n "$(extract_frontmatter "$task_file" "stage")" ] || set_frontmatter "$task_file" "stage" "planned"
@@ -721,41 +950,46 @@ collect_verification_commands() {
   ' "$file"
 }
 
+RESOLVED_WORKTREE_PATH=""
+RESOLVE_WORKTREE_ERROR=""
+
 resolve_worktree_path() {
   local arg="$1"
+  local repo_root="$2"
+  RESOLVED_WORKTREE_PATH=""
+  RESOLVE_WORKTREE_ERROR=""
   if [ -d "$arg" ]; then
-    (cd "$arg" && pwd)
+    RESOLVED_WORKTREE_PATH="$(cd "$arg" && pwd)"
     return 0
   fi
-  local repo_root
-  repo_root="$(git rev-parse --show-toplevel)"
   if [ -d "${repo_root}/worktrees/${arg}" ]; then
-    echo "${repo_root}/worktrees/${arg}"
+    RESOLVED_WORKTREE_PATH="${repo_root}/worktrees/${arg}"
     return 0
   fi
   # Fall back to git's worktree registry: any layout (in-repo, sibling,
   # agent-created arbitrary paths). Branch is the authoritative key, so try
-  # an exact branch match first; only then fall back to a path-suffix match.
+  # an exact branch match first; only then fall back to a basename match.
   local wt branch flags
   local branch_hit="" suffix_hits=()
-  while IFS='|' read -r wt branch flags; do
+  while IFS= read -r -d '' wt && IFS= read -r -d '' branch && IFS= read -r -d '' flags; do
     [ -z "$wt" ] && continue
     [ "$wt" = "$repo_root" ] && continue
+    [[ "$flags" == *prunable,* ]] && continue
     if [ "$branch" = "$arg" ]; then
       branch_hit="$wt"
       break
     fi
-    [[ "$wt" == */"$arg" ]] && suffix_hits+=("$wt")
+    [ "$(basename "$wt")" = "$arg" ] && suffix_hits+=("$wt")
   done < <(list_worktrees "$repo_root")
 
   if [ -n "$branch_hit" ]; then
-    echo "$branch_hit"
+    RESOLVED_WORKTREE_PATH="$branch_hit"
     return 0
   fi
   case "${#suffix_hits[@]}" in
-    0) return 1 ;;
-    1) echo "${suffix_hits[0]}"; return 0 ;;
-    *) die "ambiguous worktree '${arg}': matches $(printf '%s ' "${suffix_hits[@]}")— disambiguate by branch name or full path" ;;
+    0) RESOLVE_WORKTREE_ERROR="worktree not found: $arg"; return 1 ;;
+    1) RESOLVED_WORKTREE_PATH="${suffix_hits[0]}"; return 0 ;;
+    *) RESOLVE_WORKTREE_ERROR="ambiguous worktree '${arg}': matches $(printf '%s ' "${suffix_hits[@]}")- disambiguate by branch name or full path"; return 1 ;;
   esac
 }
 
@@ -775,8 +1009,9 @@ file_matches_scope_item() {
 
   # No wildcards: exact or directory-prefix match (original behaviour)
   if [[ "$pattern" != *"*"* ]]; then
-    [ "$file" = "$pattern" ] && return 0
-    [[ "$file" == "$pattern/"* ]] && return 0
+    local prefix="${pattern%/}"
+    [ "$file" = "$prefix" ] && return 0
+    [[ "$file" == "$prefix/"* ]] && return 0
     return 1
   fi
 
@@ -788,34 +1023,85 @@ file_matches_scope_item() {
 }
 
 cmd_check() {
-  ensure_repo_root
-  [ $# -eq 1 ] || die "check expects exactly one argument"
+  local as_json=false
+  local repo_arg="."
+  while [ $# -gt 0 ]; do
+    case "$1" in
+      --json)
+        as_json=true
+        shift
+        ;;
+      --repo)
+        [ $# -ge 2 ] || machine_error "$as_json" "check" "--repo requires a path"
+        repo_arg="$2"
+        shift 2
+        ;;
+      --*)
+        machine_error "$as_json" "check" "unknown check option: $1"
+        ;;
+      *)
+        break
+        ;;
+    esac
+  done
+  [ $# -eq 1 ] || machine_error "$as_json" "check" "check expects exactly one argument"
+
+  local repo_root
+  repo_root="$(primary_worktree_root "$repo_arg")"
+  if [ -z "$repo_root" ]; then
+    if [ "$as_json" = true ]; then
+      machine_error "$as_json" "check" "not inside a git repository: ${repo_arg}"
+    fi
+    die "not inside a git repository: ${repo_arg}"
+  fi
+
   local wt_path
-  wt_path="$(resolve_worktree_path "$1")" || die "worktree not found: $1"
+  resolve_worktree_path "$1" "$repo_root" ||
+    machine_error "$as_json" "check" "${RESOLVE_WORKTREE_ERROR:-worktree not found: $1}"
+  wt_path="$RESOLVED_WORKTREE_PATH"
 
   local task_file="${wt_path}/.worktree-task.md"
-  [ -f "$task_file" ] || die "missing task file: ${task_file}"
+  if [ ! -f "$task_file" ]; then
+    if [ "$as_json" = true ]; then
+      machine_error "$as_json" "check" "missing task file: ${task_file}"
+    fi
+    die "missing task file: ${task_file}"
+  fi
 
   local base_branch
   base_branch="$(extract_frontmatter "$task_file" "base")"
-  base_branch="${base_branch:-develop}"
+  base_branch="${base_branch:-$(resolve_base_branch "$repo_root")}"
 
   local changed_files=()
   local scope_items=()
   local offlimits_items=()
+  local violation_objects=()
   local line
+  local changed_file_list
+  changed_file_list="$(mktemp)"
 
   # Committed changes vs base, plus staged/unstaged edits and untracked files —
   # agents often leave work uncommitted, and a gate that only sees commits has a hole.
-  while IFS= read -r line; do
-    changed_files+=("$line")
-  done < <(
-    {
-      git -C "$wt_path" diff --name-only "${base_branch}...HEAD"
-      git -C "$wt_path" diff --name-only HEAD
-      git -C "$wt_path" ls-files --others --exclude-standard
-    } | sort -u
-  )
+  if ! {
+    git -C "$wt_path" diff --name-only -z "${base_branch}...HEAD" &&
+      git -C "$wt_path" diff --name-only -z HEAD &&
+      git -C "$wt_path" ls-files -z --others --exclude-standard
+  } >"$changed_file_list"; then
+    rm -f "$changed_file_list"
+    machine_error "$as_json" "check" "failed to enumerate changed files against base: ${base_branch}"
+  fi
+  while IFS= read -r -d '' line; do
+    local already_seen=0
+    local existing
+    for existing in "${changed_files[@]:-}"; do
+      if [ "$existing" = "$line" ]; then
+        already_seen=1
+        break
+      fi
+    done
+    [ "$already_seen" -eq 0 ] && changed_files+=("$line")
+  done <"$changed_file_list"
+  rm -f "$changed_file_list"
 
   while IFS= read -r line; do
     scope_items+=("$line")
@@ -830,7 +1116,9 @@ cmd_check() {
   for f in "${changed_files[@]:-}"; do
     [ -z "$f" ] && continue
     if [ "$f" = ".worktree-task.md" ]; then
-      echo "Task contract violation: .worktree-task.md is local worktree state and must not be committed or merged."
+      local task_msg="Task contract violation: .worktree-task.md is local worktree state and must not be committed or merged."
+      [ "$as_json" = false ] && echo "$task_msg"
+      violation_objects+=("{\"kind\":\"task_contract\",\"file\":$(json_field "$f"),\"matched\":null,\"message\":$(json_field "$task_msg")}")
       has_violations=1
       continue
     fi
@@ -844,34 +1132,99 @@ cmd_check() {
       fi
     done
     if [ "${#scope_items[@]}" -gt 0 ] && [ "$in_scope" -eq 0 ]; then
-      echo "Scope violation: ${f}"
+      local scope_msg="Scope violation: ${f}"
+      [ "$as_json" = false ] && echo "$scope_msg"
+      violation_objects+=("{\"kind\":\"scope\",\"file\":$(json_field "$f"),\"matched\":null,\"message\":$(json_field "$scope_msg")}")
       has_violations=1
     fi
 
     for o in "${offlimits_items[@]:-}"; do
       [ -z "$o" ] && continue
       if file_matches_scope_item "$f" "$o"; then
-        echo "Off-limits violation: ${f} (matched ${o})"
+        local offlimits_msg="Off-limits violation: ${f} (matched ${o})"
+        [ "$as_json" = false ] && echo "$offlimits_msg"
+        violation_objects+=("{\"kind\":\"off_limits\",\"file\":$(json_field "$f"),\"matched\":$(json_field "$o"),\"message\":$(json_field "$offlimits_msg")}")
         has_violations=1
       fi
     done
   done
 
+  if [ "$as_json" = true ]; then
+    local summary_result="pass"
+    local exit_code=0
+    if [ "$has_violations" -ne 0 ]; then
+      summary_result="fail"
+      exit_code=2
+    fi
+    printf '{"protocol_version":1,"command":"check","ok":true,"result":"%s","exit_code":%s,"repo_root":%s,"worktree":%s,"task_file":%s,"base":%s,"changed_files":%s,"scope":%s,"off_limits":%s,"violations":%s,"summary":{"violation_count":%s}}\n' \
+      "$summary_result" \
+      "$exit_code" \
+      "$(json_field "$repo_root")" \
+      "$(json_field "$wt_path")" \
+      "$(json_field "$task_file")" \
+      "$(json_field "$base_branch")" \
+      "$(json_string_array "${changed_files[@]:-}")" \
+      "$(json_string_array "${scope_items[@]:-}")" \
+      "$(json_string_array "${offlimits_items[@]:-}")" \
+      "$(json_object_array "${violation_objects[@]:-}")" \
+      "${#violation_objects[@]}"
+  fi
+
   if [ "$has_violations" -eq 0 ]; then
-    echo "Check passed: no Scope/Off-limits violations in commits since ${base_branch} or the working tree."
+    if [ "$as_json" = false ]; then
+      echo "Check passed: no Scope/Off-limits violations in commits since ${base_branch} or the working tree."
+    fi
+    return 0
   else
     exit 2
   fi
 }
 
 cmd_verify() {
-  ensure_repo_root
-  [ $# -eq 1 ] || die "verify expects exactly one argument"
+  local as_json=false
+  local repo_arg="."
+  while [ $# -gt 0 ]; do
+    case "$1" in
+      --json)
+        as_json=true
+        shift
+        ;;
+      --repo)
+        [ $# -ge 2 ] || machine_error "$as_json" "verify" "--repo requires a path"
+        repo_arg="$2"
+        shift 2
+        ;;
+      --*)
+        machine_error "$as_json" "verify" "unknown verify option: $1"
+        ;;
+      *)
+        break
+        ;;
+    esac
+  done
+  [ $# -eq 1 ] || machine_error "$as_json" "verify" "verify expects exactly one argument"
+
+  local repo_root
+  repo_root="$(primary_worktree_root "$repo_arg")"
+  if [ -z "$repo_root" ]; then
+    if [ "$as_json" = true ]; then
+      machine_error "$as_json" "verify" "not inside a git repository: ${repo_arg}"
+    fi
+    die "not inside a git repository: ${repo_arg}"
+  fi
+
   local wt_path
-  wt_path="$(resolve_worktree_path "$1")" || die "worktree not found: $1"
+  resolve_worktree_path "$1" "$repo_root" ||
+    machine_error "$as_json" "verify" "${RESOLVE_WORKTREE_ERROR:-worktree not found: $1}"
+  wt_path="$RESOLVED_WORKTREE_PATH"
 
   local task_file="${wt_path}/.worktree-task.md"
-  [ -f "$task_file" ] || die "missing task file: ${task_file}"
+  if [ ! -f "$task_file" ]; then
+    if [ "$as_json" = true ]; then
+      machine_error "$as_json" "verify" "missing task file: ${task_file}"
+    fi
+    die "missing task file: ${task_file}"
+  fi
 
   local commands=()
   local line
@@ -880,59 +1233,113 @@ cmd_verify() {
   done < <(collect_verification_commands "$task_file")
 
   if [ "${#commands[@]}" -eq 0 ]; then
+    if [ "$as_json" = true ]; then
+      machine_error "$as_json" "verify" "no verification commands found in ${task_file}"
+    fi
     die "no verification commands found in ${task_file}"
   fi
 
   local failures=0
   local total="${#commands[@]}"
   local result_lines=()
+  local result_objects=()
   local i=0
 
   for cmd in "${commands[@]}"; do
     i=$((i + 1))
     local start=$SECONDS
-    echo ""
-    echo "[${i}/${total}] Running: ${cmd}"
-    echo "----------------------------------------------------------------"
+    if [ "$as_json" = false ]; then
+      echo ""
+      echo "[${i}/${total}] Running: ${cmd}"
+      echo "----------------------------------------------------------------"
+    fi
     set +e
-    (cd "$wt_path" && bash -lc "$cmd")
-    local exit_code=$?
+    if [ "$as_json" = true ]; then
+      (cd "$wt_path" && bash -lc "$cmd") >&2
+    else
+      (cd "$wt_path" && bash -lc "$cmd")
+    fi
+    local command_exit_code=$?
     set -e
     local elapsed=$((SECONDS - start))
-    echo "----------------------------------------------------------------"
-    if [ "$exit_code" -ne 0 ]; then
+    [ "$as_json" = false ] && echo "----------------------------------------------------------------"
+    if [ "$command_exit_code" -ne 0 ]; then
       failures=$((failures + 1))
-      echo "FAILED (exit ${exit_code}, ${elapsed}s)"
-      result_lines+=("  FAIL  [exit ${exit_code}] (${elapsed}s)  ${cmd}")
+      [ "$as_json" = false ] && echo "FAILED (exit ${command_exit_code}, ${elapsed}s)"
+      result_lines+=("  FAIL  [exit ${command_exit_code}] (${elapsed}s)  ${cmd}")
+      result_objects+=("{\"index\":${i},\"command\":$(json_field "$cmd"),\"status\":\"fail\",\"exit_code\":${command_exit_code},\"duration_seconds\":${elapsed}}")
     else
-      echo "PASSED (${elapsed}s)"
+      [ "$as_json" = false ] && echo "PASSED (${elapsed}s)"
       result_lines+=("  PASS  [exit 0]       (${elapsed}s)  ${cmd}")
+      result_objects+=("{\"index\":${i},\"command\":$(json_field "$cmd"),\"status\":\"pass\",\"exit_code\":0,\"duration_seconds\":${elapsed}}")
     fi
   done
 
-  echo ""
-  echo "================================================================"
-  echo "Verification summary: $((total - failures)) passed, ${failures} failed of ${total}"
-  echo "================================================================"
-  for r in "${result_lines[@]}"; do
-    echo "$r"
-  done
-  echo "================================================================"
+  if [ "$as_json" = false ]; then
+    echo ""
+    echo "================================================================"
+    echo "Verification summary: $((total - failures)) passed, ${failures} failed of ${total}"
+    echo "================================================================"
+    for r in "${result_lines[@]}"; do
+      echo "$r"
+    done
+    echo "================================================================"
+  fi
 
   local result="pass"
   [ "$failures" -ne 0 ] && result="fail"
+  local verified_at
+  verified_at="$(date +"%Y-%m-%d %H:%M")"
   set_frontmatter "$task_file" "verify_result" "$result"
-  set_frontmatter "$task_file" "verified" "$(date +"%Y-%m-%d %H:%M")"
-  echo "Recorded verify_result: ${result} in ${task_file}"
+  set_frontmatter "$task_file" "verified" "$verified_at"
+  [ "$as_json" = false ] && echo "Recorded verify_result: ${result} in ${task_file}"
+
+  if [ "$as_json" = true ]; then
+    local final_exit_code=0
+    [ "$failures" -ne 0 ] && final_exit_code=3
+    printf '{"protocol_version":1,"command":"verify","ok":true,"result":"%s","exit_code":%s,"repo_root":%s,"worktree":%s,"task_file":%s,"verify_result":%s,"verified":%s,"results":%s,"summary":{"total":%s,"passed":%s,"failed":%s}}\n' \
+      "$result" \
+      "$final_exit_code" \
+      "$(json_field "$repo_root")" \
+      "$(json_field "$wt_path")" \
+      "$(json_field "$task_file")" \
+      "$(json_field "$result")" \
+      "$(json_field "$verified_at")" \
+      "$(json_object_array "${result_objects[@]:-}")" \
+      "$total" \
+      "$((total - failures))" \
+      "$failures"
+  fi
 
   if [ "$failures" -ne 0 ]; then
-    echo ""
-    echo "Verification FAILED: ${failures} of ${total} command(s) failed."
+    if [ "$as_json" = false ]; then
+      echo ""
+      echo "Verification FAILED: ${failures} of ${total} command(s) failed."
+    fi
     exit 3
   fi
 
-  echo ""
-  echo "Verification PASSED: all ${total} command(s) succeeded."
+  if [ "$as_json" = false ]; then
+    echo ""
+    echo "Verification PASSED: all ${total} command(s) succeeded."
+  fi
+  return 0
+}
+
+cmd_capabilities() {
+  local as_json=false
+  while [ $# -gt 0 ]; do
+    case "$1" in
+      --json) as_json=true ;;
+      *) die "unknown capabilities option: $1" ;;
+    esac
+    shift
+  done
+
+  [ "$as_json" = true ] || die "capabilities currently requires --json"
+
+  printf '{"protocol_version":1,"cli_version":%s,"commands":{"status":{"json":true,"success_shape":"array","supports_repo_option":true},"check":{"json":true,"success_shape":"object","supports_repo_option":true,"exit_codes":[0,2]},"verify":{"json":true,"success_shape":"object","supports_repo_option":true,"exit_codes":[0,3]},"init":{"supports_repo_option":true},"new":{"supports_repo_option":true,"supports_base_option":true}},"repository_targeting":{"option":"--repo","registry_commands":["status","check","verify","new"]},"machine_output":{"stdout":"json only in --json mode","stderr":"human diagnostics and child command output","json_errors":true}}\n' \
+    "$(json_field "$(read_cli_version)")"
 }
 
 main() {
@@ -949,7 +1356,9 @@ main() {
     new)         cmd_new "$@" ;;
     check)       cmd_check "$@" ;;
     verify)      cmd_verify "$@" ;;
+    capabilities) cmd_capabilities "$@" ;;
     help)        cmd_help "$@" ;;
+    version|--version) printf '%s\n' "$(read_cli_version)" ;;
     -h|--help)   usage ;;
     *) usage; die "unknown command: ${cmd}" ;;
   esac

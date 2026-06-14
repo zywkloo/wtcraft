@@ -1,5 +1,9 @@
 # Worktree session state
 
+> The canonical cross-client runtime contract is now
+> [Session Model v1](../protocol/session-model-v1.md). This document retains
+> SourceGit/wtflow-specific integration notes.
+
 ## Boundary
 
 The intended runtime model is deliberately narrow:
