@@ -198,6 +198,17 @@ that wants near-live updates watches `.worktree-task.md` and
 `.worktree-session.json` mtimes itself and re-invokes the one-shot command; the
 contract-test fixtures keep the interim and future implementations in parity.
 
+Why the boundary sits here: the one-shot is *level-triggered* — it reports
+current state on demand. Streaming would add *edge-triggered* delivery (report
+the transition, not just the state) plus continuous liveness, both of which need
+a service runtime (persistent process, filesystem/process event subscriptions, a
+transport) that the Bash core deliberately does not grow. Only the **delivery**
+differs: the `observe --json` object schema is the permanent contract that both
+the Bash one-shot and a future Rust observer must produce identically. A client
+discovers the available delivery through `capabilities --json` and binds to the
+same schema either way. Nail the schema now; the transport is swappable later
+without touching clients.
+
 ## Error objects
 
 Fatal machine-mode errors use this shape:
