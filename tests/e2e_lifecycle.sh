@@ -84,7 +84,7 @@ test_new_verify_check() {
 
   # Machine mode preserves paths that line-delimited Git output would quote or
   # split. JSON encoding is the only representation change.
-  local unusual_path=$'odd path\nline.txt'
+  local unusual_path=$'odd path\ncontrol\001line.txt'
   printf 'rogue\n' > "${repo}/worktrees/chore/smoke/${unusual_path}"
   set +e
   check_json="$("$CLI" check --json chore/smoke 2>/dev/null)"
@@ -102,6 +102,25 @@ assert any(item["file"] == path for item in payload["violations"])
 PY
   rm "${repo}/worktrees/chore/smoke/${unusual_path}"
 
+  # A missing/invalid base is a fatal gate error, never an empty-diff pass.
+  sed -i.bak "s|^base: .*|base: does-not-exist|" "$task_file"
+  rm -f "${task_file}.bak"
+  set +e
+  check_json="$("$CLI" check --json chore/smoke 2>/dev/null)"
+  check_exit=$?
+  set -e
+  [ "$check_exit" -eq 1 ]
+  CHECK_JSON="$check_json" python3 - <<'PY'
+import json
+import os
+
+payload = json.loads(os.environ["CHECK_JSON"])
+assert payload["ok"] is False
+assert "failed to enumerate changed files" in payload["error"]["message"]
+PY
+  sed -i.bak "s|^base: .*|base: ${current_branch}|" "$task_file"
+  rm -f "${task_file}.bak"
+
   mkdir -p "${repo}/worktrees/chore/smoke/src"
   echo "ok" > "${repo}/worktrees/chore/smoke/src/example.ts"
   "$CLI" check chore/smoke
@@ -111,6 +130,70 @@ PY
   ! "$CLI" check chore/smoke
   git -C "${repo}/worktrees/chore/smoke" checkout -- .wtcraft-seed
   "$CLI" check chore/smoke
+}
+
+test_machine_mode_fatal_errors_are_json() {
+  local repo="$1"
+  cd "$repo"
+
+  local command output exit_code
+  for command in check verify; do
+    set +e
+    output="$("$CLI" "$command" --json 2>/dev/null)"
+    exit_code=$?
+    set -e
+    [ "$exit_code" -eq 1 ]
+    COMMAND="$command" OUTPUT="$output" python3 - <<'PY'
+import json
+import os
+
+payload = json.loads(os.environ["OUTPUT"])
+assert payload["command"] == os.environ["COMMAND"]
+assert payload["ok"] is False
+assert payload["error"]["code"] == 1
+PY
+  done
+
+  set +e
+  output="$("$CLI" status --json unexpected 2>/dev/null)"
+  exit_code=$?
+  set -e
+  [ "$exit_code" -eq 1 ]
+  OUTPUT="$output" python3 - <<'PY'
+import json
+import os
+
+payload = json.loads(os.environ["OUTPUT"])
+assert payload["command"] == "status"
+assert payload["ok"] is False
+assert payload["error"]["code"] == 1
+PY
+}
+
+test_status_preserves_newline_worktree_paths() {
+  local repo="$1"
+  cd "$repo"
+  git config user.name "wtcraft-smoke"
+  git config user.email "wtcraft-smoke@example.com"
+  echo "seed" > .wtcraft-seed
+  git add .wtcraft-seed
+  git commit -q -m "seed"
+
+  local unusual_worktree="${repo}/worktree"$'\n'"newline"
+  git worktree add -q "$unusual_worktree" -b chore/newline
+
+  local registered_worktree status_json
+  registered_worktree="$(cd "$unusual_worktree" && pwd -P)"
+  status_json="$("$CLI" status --json)"
+  STATUS_JSON="$status_json" UNUSUAL_WORKTREE="$registered_worktree" python3 - <<'PY'
+import json
+import os
+
+payload = json.loads(os.environ["STATUS_JSON"])
+assert any(item["worktree"] == os.environ["UNUSUAL_WORKTREE"] for item in payload)
+PY
+
+  git worktree remove --force "$unusual_worktree"
 }
 
 test_check_rejects_task_contract_changes() {
@@ -183,10 +266,16 @@ test_new_prefers_origin_head_and_accepts_base_override() {
   "$CLI" new --base master chore/explicit-base
   grep -q "^base: master" "${repo}/worktrees/chore/explicit-base/.worktree-task.md"
 
+  "$CLI" new --base master 'chore/ampersand&branch'
+  grep -qxF 'branch: chore/ampersand&branch' \
+    "${repo}/worktrees/chore/ampersand&branch/.worktree-task.md"
+
   rm -rf "$remote_repo"
 }
 
 run_in_temp_repo test_new_verify_check
+run_in_temp_repo test_machine_mode_fatal_errors_are_json
+run_in_temp_repo test_status_preserves_newline_worktree_paths
 run_in_temp_repo test_check_rejects_task_contract_changes
 run_in_temp_repo test_new_defaults_to_master_or_main
 run_in_temp_repo test_new_prefers_origin_head_and_accepts_base_override

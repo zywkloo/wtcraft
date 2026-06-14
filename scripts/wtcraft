@@ -646,32 +646,47 @@ set_frontmatter() {
 
 # list_worktrees <repo_root>
 #
-# Emit NUL-delimited triples: worktree-path, branch, flags. This avoids
-# choosing a printable delimiter that might legitimately appear in a path.
-# Flags remain a comma-joined string because the set is fixed (prunable,
-# locked).
+# Emit NUL-delimited triples: worktree-path, branch, flags. Git's `-z` output
+# keeps paths containing newlines intact; this parser must remain NUL-based
+# end-to-end.
 list_worktrees() {
   local repo_root="$1"
-  git -C "$repo_root" worktree list --porcelain | awk '
-    /^worktree /{ if (wt!="") printf "%s%c%s%c%s%c", wt, 0, br, 0, flags, 0; wt=$0; sub(/^worktree /,"",wt); br=""; flags="" }
-    /^branch /{ br=$0; sub(/^branch refs\/heads\//,"",br) }
-    /^prunable/{ flags=flags "prunable," }
-    /^locked/{ flags=flags "locked," }
-    END{ if (wt!="") printf "%s%c%s%c%s%c", wt, 0, br, 0, flags, 0 }
-  '
+  local field wt="" branch="" flags=""
+  while IFS= read -r -d '' field; do
+    if [ -z "$field" ]; then
+      if [ -n "$wt" ]; then
+        printf '%s\0%s\0%s\0' "$wt" "$branch" "$flags"
+      fi
+      wt=""
+      branch=""
+      flags=""
+      continue
+    fi
+    case "$field" in
+      "worktree "*) wt="${field#worktree }" ;;
+      "branch refs/heads/"*) branch="${field#branch refs/heads/}" ;;
+      prunable*) flags="${flags}prunable," ;;
+      locked*) flags="${flags}locked," ;;
+    esac
+  done < <(git -C "$repo_root" worktree list --porcelain -z)
+  if [ -n "$wt" ]; then
+    printf '%s\0%s\0%s\0' "$wt" "$branch" "$flags"
+  fi
 }
 
 json_escape() {
   local s="$1"
-  s="$(printf '%s' "$s" | LC_ALL=C tr -d '\000-\007\013\016-\037')"
   s="${s//\\/\\\\}"
   s="${s//\"/\\\"}"
-  # Preserve the remaining JSON-valid control escapes explicitly.
-  s="${s//$'\b'/\\b}"
-  s="${s//$'\f'/\\f}"
-  s="${s//$'\t'/\\t}"
-  s="${s//$'\r'/\\r}"
-  s="${s//$'\n'/\\n}"
+  local code octal char escaped
+  code=1
+  while [ "$code" -le 31 ]; do
+    printf -v octal '%03o' "$code"
+    printf -v char '%b' "\\${octal}"
+    printf -v escaped '\\u%04x' "$code"
+    s="${s//$char/$escaped}"
+    code=$((code + 1))
+  done
   printf '%s' "$s"
 }
 
@@ -692,6 +707,17 @@ json_error_object() {
     "$(json_escape "$command")" \
     "$code" \
     "$(json_escape "$message")"
+}
+
+machine_error() {
+  local as_json="$1"
+  local command="$2"
+  local message="$3"
+  if [ "$as_json" = true ]; then
+    json_error_object "$command" 1 "$message"
+    exit 1
+  fi
+  die "$message"
 }
 
 json_string_array() {
@@ -732,24 +758,24 @@ cmd_status() {
         shift
         ;;
       --repo)
-        [ $# -ge 2 ] || die "--repo requires a path"
+        [ $# -ge 2 ] || machine_error "$as_json" "status" "--repo requires a path"
         repo_arg="$2"
         shift 2
         ;;
       --*)
-        die "unknown status option: $1"
+        machine_error "$as_json" "status" "unknown status option: $1"
         ;;
       *)
         break
         ;;
     esac
   done
+  [ $# -eq 0 ] || machine_error "$as_json" "status" "status takes no positional arguments"
   local repo_root
   repo_root="$(primary_worktree_root "$repo_arg")"
   if [ -z "$repo_root" ]; then
     if [ "$as_json" = true ]; then
-      json_error_object "status" 1 "not inside a git repository: ${repo_arg}"
-      exit 1
+      machine_error "$as_json" "status" "not inside a git repository: ${repo_arg}"
     fi
     die "not inside a git repository: ${repo_arg}"
   fi
@@ -873,10 +899,9 @@ cmd_new() {
 
   local today
   today="$(date +%F)"
-  sed -i.bak "s|^branch: .*|branch: ${branch}|" "$task_file"
-  sed -i.bak "s|^created: .*|created: ${today}|" "$task_file"
-  sed -i.bak "s|^base: .*|base: ${base_branch}|" "$task_file"
-  rm -f "${task_file}.bak"
+  set_frontmatter "$task_file" "branch" "$branch"
+  set_frontmatter "$task_file" "created" "$today"
+  set_frontmatter "$task_file" "base" "$base_branch"
 
   # Plans absorbed from /planwt may predate the stage/role convention.
   [ -n "$(extract_frontmatter "$task_file" "stage")" ] || set_frontmatter "$task_file" "stage" "planned"
@@ -925,18 +950,20 @@ collect_verification_commands() {
   ' "$file"
 }
 
+RESOLVED_WORKTREE_PATH=""
 RESOLVE_WORKTREE_ERROR=""
 
 resolve_worktree_path() {
   local arg="$1"
   local repo_root="$2"
+  RESOLVED_WORKTREE_PATH=""
   RESOLVE_WORKTREE_ERROR=""
   if [ -d "$arg" ]; then
-    (cd "$arg" && pwd)
+    RESOLVED_WORKTREE_PATH="$(cd "$arg" && pwd)"
     return 0
   fi
   if [ -d "${repo_root}/worktrees/${arg}" ]; then
-    echo "${repo_root}/worktrees/${arg}"
+    RESOLVED_WORKTREE_PATH="${repo_root}/worktrees/${arg}"
     return 0
   fi
   # Fall back to git's worktree registry: any layout (in-repo, sibling,
@@ -956,12 +983,12 @@ resolve_worktree_path() {
   done < <(list_worktrees "$repo_root")
 
   if [ -n "$branch_hit" ]; then
-    echo "$branch_hit"
+    RESOLVED_WORKTREE_PATH="$branch_hit"
     return 0
   fi
   case "${#suffix_hits[@]}" in
     0) RESOLVE_WORKTREE_ERROR="worktree not found: $arg"; return 1 ;;
-    1) echo "${suffix_hits[0]}"; return 0 ;;
+    1) RESOLVED_WORKTREE_PATH="${suffix_hits[0]}"; return 0 ;;
     *) RESOLVE_WORKTREE_ERROR="ambiguous worktree '${arg}': matches $(printf '%s ' "${suffix_hits[@]}")- disambiguate by branch name or full path"; return 1 ;;
   esac
 }
@@ -1005,44 +1032,38 @@ cmd_check() {
         shift
         ;;
       --repo)
-        [ $# -ge 2 ] || die "--repo requires a path"
+        [ $# -ge 2 ] || machine_error "$as_json" "check" "--repo requires a path"
         repo_arg="$2"
         shift 2
         ;;
       --*)
-        die "unknown check option: $1"
+        machine_error "$as_json" "check" "unknown check option: $1"
         ;;
       *)
         break
         ;;
     esac
   done
-  [ $# -eq 1 ] || die "check expects exactly one argument"
+  [ $# -eq 1 ] || machine_error "$as_json" "check" "check expects exactly one argument"
 
   local repo_root
   repo_root="$(primary_worktree_root "$repo_arg")"
   if [ -z "$repo_root" ]; then
     if [ "$as_json" = true ]; then
-      json_error_object "check" 1 "not inside a git repository: ${repo_arg}"
-      exit 1
+      machine_error "$as_json" "check" "not inside a git repository: ${repo_arg}"
     fi
     die "not inside a git repository: ${repo_arg}"
   fi
 
   local wt_path
-  wt_path="$(resolve_worktree_path "$1" "$repo_root")" || {
-    if [ "$as_json" = true ]; then
-      json_error_object "check" 1 "${RESOLVE_WORKTREE_ERROR:-worktree not found: $1}"
-      exit 1
-    fi
-    die "${RESOLVE_WORKTREE_ERROR:-worktree not found: $1}"
-  }
+  resolve_worktree_path "$1" "$repo_root" ||
+    machine_error "$as_json" "check" "${RESOLVE_WORKTREE_ERROR:-worktree not found: $1}"
+  wt_path="$RESOLVED_WORKTREE_PATH"
 
   local task_file="${wt_path}/.worktree-task.md"
   if [ ! -f "$task_file" ]; then
     if [ "$as_json" = true ]; then
-      json_error_object "check" 1 "missing task file: ${task_file}"
-      exit 1
+      machine_error "$as_json" "check" "missing task file: ${task_file}"
     fi
     die "missing task file: ${task_file}"
   fi
@@ -1056,9 +1077,19 @@ cmd_check() {
   local offlimits_items=()
   local violation_objects=()
   local line
+  local changed_file_list
+  changed_file_list="$(mktemp)"
 
   # Committed changes vs base, plus staged/unstaged edits and untracked files —
   # agents often leave work uncommitted, and a gate that only sees commits has a hole.
+  if ! {
+    git -C "$wt_path" diff --name-only -z "${base_branch}...HEAD" &&
+      git -C "$wt_path" diff --name-only -z HEAD &&
+      git -C "$wt_path" ls-files -z --others --exclude-standard
+  } >"$changed_file_list"; then
+    rm -f "$changed_file_list"
+    machine_error "$as_json" "check" "failed to enumerate changed files against base: ${base_branch}"
+  fi
   while IFS= read -r -d '' line; do
     local already_seen=0
     local existing
@@ -1069,13 +1100,8 @@ cmd_check() {
       fi
     done
     [ "$already_seen" -eq 0 ] && changed_files+=("$line")
-  done < <(
-    {
-      git -C "$wt_path" diff --name-only -z "${base_branch}...HEAD"
-      git -C "$wt_path" diff --name-only -z HEAD
-      git -C "$wt_path" ls-files -z --others --exclude-standard
-    }
-  )
+  done <"$changed_file_list"
+  rm -f "$changed_file_list"
 
   while IFS= read -r line; do
     scope_items+=("$line")
@@ -1164,44 +1190,38 @@ cmd_verify() {
         shift
         ;;
       --repo)
-        [ $# -ge 2 ] || die "--repo requires a path"
+        [ $# -ge 2 ] || machine_error "$as_json" "verify" "--repo requires a path"
         repo_arg="$2"
         shift 2
         ;;
       --*)
-        die "unknown verify option: $1"
+        machine_error "$as_json" "verify" "unknown verify option: $1"
         ;;
       *)
         break
         ;;
     esac
   done
-  [ $# -eq 1 ] || die "verify expects exactly one argument"
+  [ $# -eq 1 ] || machine_error "$as_json" "verify" "verify expects exactly one argument"
 
   local repo_root
   repo_root="$(primary_worktree_root "$repo_arg")"
   if [ -z "$repo_root" ]; then
     if [ "$as_json" = true ]; then
-      json_error_object "verify" 1 "not inside a git repository: ${repo_arg}"
-      exit 1
+      machine_error "$as_json" "verify" "not inside a git repository: ${repo_arg}"
     fi
     die "not inside a git repository: ${repo_arg}"
   fi
 
   local wt_path
-  wt_path="$(resolve_worktree_path "$1" "$repo_root")" || {
-    if [ "$as_json" = true ]; then
-      json_error_object "verify" 1 "${RESOLVE_WORKTREE_ERROR:-worktree not found: $1}"
-      exit 1
-    fi
-    die "${RESOLVE_WORKTREE_ERROR:-worktree not found: $1}"
-  }
+  resolve_worktree_path "$1" "$repo_root" ||
+    machine_error "$as_json" "verify" "${RESOLVE_WORKTREE_ERROR:-worktree not found: $1}"
+  wt_path="$RESOLVED_WORKTREE_PATH"
 
   local task_file="${wt_path}/.worktree-task.md"
   if [ ! -f "$task_file" ]; then
     if [ "$as_json" = true ]; then
-      json_error_object "verify" 1 "missing task file: ${task_file}"
-      exit 1
+      machine_error "$as_json" "verify" "missing task file: ${task_file}"
     fi
     die "missing task file: ${task_file}"
   fi
@@ -1214,8 +1234,7 @@ cmd_verify() {
 
   if [ "${#commands[@]}" -eq 0 ]; then
     if [ "$as_json" = true ]; then
-      json_error_object "verify" 1 "no verification commands found in ${task_file}"
-      exit 1
+      machine_error "$as_json" "verify" "no verification commands found in ${task_file}"
     fi
     die "no verification commands found in ${task_file}"
   fi
