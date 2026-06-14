@@ -35,6 +35,20 @@ def main() -> None:
     env = os.environ.copy()
     env["WTCRAFT_TEMPLATE_DIR"] = tmpl_dir
 
+    # Stamp the resolved package version so the shell reports it even when no
+    # manifest sits beside the installed script (the pip/pipx layout). The value
+    # comes from the installed package metadata, the single source of truth.
+    if "WTCRAFT_VERSION" not in env:
+        try:
+            from importlib.metadata import PackageNotFoundError, version
+
+            try:
+                env["WTCRAFT_VERSION"] = version("wtcraft")
+            except PackageNotFoundError:
+                pass
+        except ImportError:  # Python < 3.8: leave it to the shell's fallback
+            pass
+
     bash = shutil.which("bash") or r"C:\Program Files\Git\bin\bash.exe"
     os.execve(bash, [bash, shell_path] + sys.argv[1:], env)
 
