@@ -277,6 +277,13 @@ die() {
 }
 
 read_cli_version() {
+  # Installers stamp WTCRAFT_VERSION (brew wrapper, pip _cli.py) so the version
+  # survives even when no manifest sits beside the installed script.
+  if [ -n "${WTCRAFT_VERSION:-}" ]; then
+    printf '%s' "${WTCRAFT_VERSION}"
+    return 0
+  fi
+  # In-repo development: read it straight from the manifest next to the script.
   if [ -f "${ROOT_DIR}/package.json" ]; then
     awk -F'"' '/"version"[[:space:]]*:/ { print $4; exit }' "${ROOT_DIR}/package.json"
     return 0
