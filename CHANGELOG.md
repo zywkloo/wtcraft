@@ -20,6 +20,45 @@ Versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ### Added
 - `tests/e2e_lang.sh` regression coverage for `lang install` / `lang remove` across all four cases: CLAUDE.md-only, AGENTS.md-only, both, and neither (#38).
 
+## [0.4.2] - 2026-06-13
+
+### Added
+- `wtcraft doctor` — diagnoses the install and scaffold: CLI path/version, other-wtcraft-on-PATH shadow detection, scaffold completeness, and legacy-file detection (#31).
+- `wtcraft migrate [--yes]` — fills missing scaffold files and removes known legacy files (#31).
+- `wtcraft status --json` plus machine protocol v1 — layout-agnostic worktree enumeration exposing `stage` / `role`, as a machine interface for observers.
+- `wtcraft --version` command; local init mode and the `wtc` short alias.
+- Stage state-machine convention: `task-states.md` and `stage:` / `role:` task-contract fields.
+
+### Fixed
+- Reliable version resolution — installers stamp `WTCRAFT_VERSION` so `--version` survives brew/pip installs instead of printing `unknown`; `__version__` now derives from package metadata; `scripts/bump-version.sh` single-sources the three build manifests (#36).
+- Hardened machine-protocol edge cases (JSON escaping, unusual worktree paths).
+
+## [0.4.1] - 2026-06-11
+
+### Changed
+- Maintenance republish (version bump only) following `0.4.0`.
+
+## [0.4.0] - 2026-06-11
+
+### Added
+- LLM anti-patterns guide (`.agent-harness/llm-anti-patterns.md`) and `wtcraft lang` language-enforcement patching.
+- role-models v2 — structured `role-models.yml` schema with preset codegen (`presets/`) for model selection.
+- Layered test suite: awk unit tests for the markdown parsers and preset-init assertions.
+
+### Changed
+- Governance pivot: README and tagline reframed around repo/worktree governance and token budget.
+- `check` now covers uncommitted/untracked files; `verify` writes its result into the task-contract frontmatter; `status` gains a Verified column.
+- `finisher` adds a re-plan checkpoint to challenge task premises before push/PR.
+
+### Fixed
+- Restored task-contract violation detection in `check`.
+- Keep worktree task contracts local; stopped mutating `.git/info/exclude`.
+
+## [0.3.9] - 2026-06-03
+
+### Changed
+- Maintenance release (version and Homebrew formula bump only).
+
 ## [0.3.8] - 2026-05-31
 
 ### Added
@@ -38,6 +77,17 @@ Versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ### Changed
 - Integration test now treats pip package install as `SKIP` in offline/network-restricted environments while preserving hard failures for non-network errors.
 - README command reference now includes all commands (`patch`, `unpatch`, and `statuswt` slash command docs alignment).
+
+## [0.3.6] - 2026-05-29
+
+### Added
+- Gemini CLI support in executor guidelines, with `GEMINI.md` patch integration.
+- `/planwt` upgraded to a full orchestrator (one-shot plan + worktree creation).
+- `statuswt` slash command; automated GitHub Release creation on `v*` tag push.
+
+### Changed
+- Eliminated the duplicate shell script and templates via symlinks (#15).
+- README: "Cheap Token Orchestrator (CTO)" tagline, architecture/stack docs, and a Layered Agent Team diagram with Human-in-the-Loop.
 
 ## [0.3.5] - 2026-05-27
 

@@ -33,12 +33,26 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          tag="${{ github.ref_name }}"
+          version="${tag#v}"
+
+          # CHANGELOG.md is the single source of truth for release notes.
+          # Extract this version's section (everything between its header and
+          # the next "## [" header).
+          notes="$(awk -v v="$version" '
+            $0 ~ "^## \\[" v "\\]" { grab=1; next }
+            grab && /^## \[/ { exit }
+            grab { print }
+          ' CHANGELOG.md)"
+
           # Idempotent: skip if the release already exists (e.g. it was created
           # by hand before pushing the tag) instead of failing on a duplicate.
-          if gh release view "${{ github.ref_name }}" >/dev/null 2>&1; then
-            echo "Release ${{ github.ref_name }} already exists; skipping."
+          if gh release view "$tag" >/dev/null 2>&1; then
+            echo "Release $tag already exists; skipping."
+          elif [ -n "$(printf '%s' "$notes" | tr -d '[:space:]')" ]; then
+            echo "Using CHANGELOG.md section for $version."
+            gh release create "$tag" --title "$tag" --notes "$notes"
           else
-            gh release create "${{ github.ref_name }}" \
-              --title "${{ github.ref_name }}" \
-              --generate-notes
+            echo "No CHANGELOG.md section for $version; falling back to generated notes."
+            gh release create "$tag" --title "$tag" --generate-notes
           fi
