@@ -93,12 +93,18 @@ usage_lang() {
 wtcraft lang install [--repo <path>] [--lang <code>]
 wtcraft lang remove [--repo <path>]
 
-  Install or remove a language-enforcement stub in CLAUDE.md.
-  The stub instructs the AI to respond only in the specified language.
+  Install or remove a language-enforcement stub in the agent files
+  (CLAUDE.md and AGENTS.md). The stub instructs the AI to respond only
+  in the specified language.
+
+  Only agent files that already exist are patched; this command never
+  creates one. If neither CLAUDE.md nor AGENTS.md exists, run
+  'wtcraft patch' first to create them.
 
   Subcommands:
-    install   Append a language-enforcement block to CLAUDE.md (idempotent)
-    remove    Strip the language-enforcement block from CLAUDE.md
+    install   Append a language-enforcement block to each existing
+              agent file (idempotent)
+    remove    Strip the language-enforcement block from both agent files
 
   Options for install:
     --lang <code>   Language to enforce (default: en)
@@ -602,7 +608,8 @@ cmd_lang() {
   local repo_root
   repo_root="$(current_worktree_root "$repo_arg")"
   local claude_file="${repo_root}/CLAUDE.md"
-  set -- "${remaining[@]}"
+  local agents_file="${repo_root}/AGENTS.md"
+  set -- ${remaining[@]+"${remaining[@]}"}
 
   case "$subcmd" in
     install)
@@ -639,11 +646,23 @@ EOF
           ;;
       esac
 
-      append_managed_block_if_missing "$claude_file" "$lang_block" "<!-- wtcraft:lang:start -->"
+      # Patch only the agent files that already exist; never conjure one.
+      # CLAUDE.md and AGENTS.md are created by `wtcraft patch`.
+      if [ ! -f "$claude_file" ] && [ ! -f "$agents_file" ]; then
+        die "no CLAUDE.md or AGENTS.md in ${repo_root}. Run 'wtcraft patch' first to create at least one, then re-run lang install."
+      fi
+      if [ -f "$claude_file" ]; then
+        append_managed_block_if_missing "$claude_file" "$lang_block" "<!-- wtcraft:lang:start -->"
+      fi
+      if [ -f "$agents_file" ]; then
+        append_managed_block_if_missing "$agents_file" "$lang_block" "<!-- wtcraft:lang:start -->"
+      fi
       ;;
     remove)
       [ $# -eq 0 ] || die "lang remove takes no arguments"
       remove_managed_block "$claude_file" \
+        "<!-- wtcraft:lang:start -->" "<!-- wtcraft:lang:end -->"
+      remove_managed_block "$agents_file" \
         "<!-- wtcraft:lang:start -->" "<!-- wtcraft:lang:end -->"
       ;;
     *)
