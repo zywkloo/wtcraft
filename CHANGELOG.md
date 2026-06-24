@@ -7,6 +7,19 @@ Versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.4.3] - 2026-06-24
+
+### Fixed
+- `wtcraft lang install` crashed on macOS bash 3.2 (`remaining[@]: unbound variable`) when no extra arguments were passed, due to empty-array expansion under `set -u`; fixed with the bash-3.2-safe expansion idiom (#38).
+- Test suite used the bash-4-only `mapfile` builtin, which prevented `tests/run_all.sh` from running at all on macOS bash 3.2; replaced with a portable `while read` loop (#38).
+- Added `.agent-harness/llm-anti-patterns.md`, which the `CLAUDE.md` routing stub referenced (`read .agent-harness/llm-anti-patterns.md`) but was never committed, leaving a dangling reference after `wtcraft init` (#39).
+
+### Changed
+- `wtcraft lang install` / `lang remove` now mirror the language-enforcement block into `AGENTS.md` (not just `CLAUDE.md`) when that file exists, matching how `patch` / `unpatch` treat agent files. Only existing agent files are patched — never created; if neither `CLAUDE.md` nor `AGENTS.md` exists, the command exits non-zero and points the user at `wtcraft patch` (#38).
+
+### Added
+- `tests/e2e_lang.sh` regression coverage for `lang install` / `lang remove` across all four cases: CLAUDE.md-only, AGENTS.md-only, both, and neither (#38).
+
 ## [0.3.8] - 2026-05-31
 
 ### Added
