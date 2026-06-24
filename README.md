@@ -1,6 +1,6 @@
 # wtcraft
 
-> **Git-native governance for agent worktrees.**
+> **Git-native agent governance core.**
 >
 > `wtcraft` is a lightweight governance core for worktree-based agent
 > workflows. It defines task contracts, tracks lifecycle state, and exposes

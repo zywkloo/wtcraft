@@ -1,7 +1,7 @@
 {
   "name": "wtcraft",
   "version": "0.4.3",
-  "description": "Zero-trust containment and governance for AI-generated code.",
+  "description": "Git-native agent governance core — task contracts and deterministic scope/verification checks that keep coding agents in their lanes.",
   "license": "Apache-2.0",
   "bin": {
     "wtcraft": "scripts/wtcraft",
