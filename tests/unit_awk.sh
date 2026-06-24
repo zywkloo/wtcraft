@@ -80,7 +80,7 @@ EOF
 
   local items
   items=()
-  mapfile -t items < <(collect_section_items "$file" "Scope")
+  while IFS= read -r line; do items+=("$line"); done < <(collect_section_items "$file" "Scope")
 
   if [ "${#items[@]}" -ne 2 ] || [ "${items[0]}" != "src/" ] || [ "${items[1]}" != "tests/" ]; then
     echo "[FAIL] collect_section_items Scope. Got: ${items[*]}"
@@ -100,7 +100,7 @@ EOF
 
   local cmds
   cmds=()
-  mapfile -t cmds < <(collect_verification_commands "$file")
+  while IFS= read -r line; do cmds+=("$line"); done < <(collect_verification_commands "$file")
 
   if [ "${#cmds[@]}" -ne 2 ] || [ "${cmds[0]}" != "npm run test" ] || [ "${cmds[1]}" != "echo \"done\"" ]; then
     echo "[FAIL] collect_verification_commands. Got: ${cmds[*]}"
