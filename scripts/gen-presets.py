@@ -72,11 +72,11 @@ def update_readme(role_blocks):
     bullets = []
     # Descriptions are hardcoded to match the original README, but we insert the STOT model
     descs = {
-        'orchestrator': "Sits at the top of the workflow. Highly tool-agentic, low-latency, and coordinates the overall project state. It focuses on environment orchestration, git logistics, verification suites, and telemetry. Core features like cross-repository worktree monitoring, automated session summarization, and active agent handoff routing are **coming soon (upcoming role integration)**.",
-        'planner': "The slow, high-reasoning \"architect\". It reads the requirement, analyzes the code context, and designs the bounded execution contract (`.worktree-task.md`) specifying Scope, Off-limits, and Verification steps.",
-        'executor': "The precision coder. It is budget-friendly, highly focused, and operates strictly inside the isolated worktree sandbox, adhering strictly to the contract boundaries.",
-        'verifier': "The quality gatekeeper. It automatically conducts code reviews, checks for style/security constraints, and runs PR-level checks. If verification fails, it can trigger a feedback loop back to the Planner or Executor.",
-        'finisher': "Performs deterministic boundary validation (`wtcraft check`), test suite verification (`wtcraft verify`), and cleans up local worktree assets after a successful merge to keep the development disk clean. Additionally, in an upcoming release (integrating with PR #12), the Finisher will aggregate and report **token telemetry** to track cost, budget, and API usage per agent model (**Coming Soon**)."
+        'orchestrator': "An optional coordination profile for environment and Git logistics. `wtcraft` does not launch, route, or monitor this role.",
+        'planner': "A suggested planning profile that writes the local task contract (`.worktree-task.md`) with Scope, Off-limits, and Verification sections.",
+        'executor': "A suggested implementation profile working in a dedicated Git worktree. `wtcraft check` detects out-of-scope changes when invoked; it does not sandbox the agent runtime.",
+        'verifier': "A human or agent review profile that can consume `check --json` and `verify --json`. `wtcraft` does not automatically run a review agent or a PR gate.",
+        'finisher': "A suggested workflow profile that runs `wtcraft check` and `wtcraft verify`, then performs the repository's normal handoff and cleanup steps. Token telemetry is not implemented."
     }
 
     for role, cli, model, fallback, _ in role_blocks:

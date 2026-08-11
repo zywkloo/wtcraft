@@ -5,9 +5,10 @@ It avoids private assumptions and keeps all tradeoffs explicit.
 
 ## Scope Statement
 
-`wtcraft` is a local harness for git worktree task orchestration.
+`wtcraft` is a local, Git-native verification harness for worktree tasks.
 It does not try to replace coding agents, editors, CI, or hosting platforms.
-It provides a contract and guardrail layer for parallel task execution.
+It provides task contracts, deterministic changeset checks, lifecycle facts,
+and evidence that other tools can consume.
 
 ## Phase 0: Bootstrap (Done)
 
@@ -87,26 +88,103 @@ Non-goals:
 - replacing agent CLIs
 - creating a hosted control plane
 
-## Phase 5: Layered Multi-Agent Orchestration (v0.4.0)
+## Phase 5: Governance Foundation (v0.4.0-v0.4.3)
 
-Goal: Enable high-efficiency, budget-aware multi-agent team hierarchies.
+Status: completed release line
 
-> [!IMPORTANT]
-> **Milestone Status**:
-> - **Gemini Support & Orchestrator Routing**: Not yet wired up in the current release. Slated for the next version (`v0.4.0`).
-> - **Token Telemetry**: Currently incomplete/in-progress and pending implementation in the next release.
+Goal: establish a useful local verification core before adding enforcement or
+automation.
 
-### The Team Architecture:
-- **Orchestrator Agent (e.g., Gemini 3.6 Flash)**: Low-latency, tool-heavy, cross-repository status tracking, environment setup, and release management coordinator.
-- **Planner Agent (e.g., Claude Opus 5 / GPT-5.6 Sol)**: High-reasoning, session-based strategic task architect responsible for analyzing requirements and writing the task contract (`.worktree-task.md`).
-- **Executor Agent (e.g., GPT-5.5 / Claude Sonnet 5)**: Highly focused, budget-friendly coder working strictly inside sandboxed worktrees under contract guardrails.
-- **Verifier Agent (e.g., Claude Opus 5 / GPT-5.5 / Claude Fable 5)**: Code review, security/style checks, and PR-level quality gatekeeper.
-- **Finisher Agent (e.g., Gemini Flash 3.6 / Claude Haiku 4.5 / GPT-5.4)**: Verification and cleanup script runner.
+Delivered:
 
-### Deliverables:
-- [ ] **Orchestrator Guides**: Prompt and configuration files for fast, cross-repo Orchestrator agents.
-- [ ] **Dual-Tier Commands**: Clear division between *Strategic Actions* (Slash commands for high-level workflow orchestration) and *Tactical Actions* (direct atomic CLI commands).
-- [ ] **Context-Gathering Pipings**: Tooling to easily extract cross-repo states gathered by the Orchestrator and present them cleanly to the high-reasoning Planner.
+- [x] `check` covers committed, staged, unstaged, and untracked changes
+- [x] stable `check --json` and `verify --json` machine output
+- [x] verification results written back to local task state
+- [x] `stage:` / `role:` conventions and status visibility
+- [x] `status --json`, `capabilities --json`, and machine protocol v1
+- [x] role-model configuration and generated provider presets
+- [x] language-policy scaffolding and LLM anti-pattern guidance
+- [x] `doctor` / `migrate` and macOS Bash 3.2 portability fixes
+
+The v0.4.x line does **not** provide runtime role routing, automatic agent
+launching, token telemetry, immutable task authorization, Git-hook
+enforcement, or a required CI merge gate. Role and model files are editable
+guidance; stage and role fields are currently reported facts rather than a
+security boundary.
+
+## Phase 6: Trusted Change Authorization (target: v0.5.0)
+
+Goal: bind a reviewed task authorization to a Git changeset and produce a
+verifiable verdict at a protected merge boundary.
+
+Trust model:
+
+```text
+local task working state
+        |
+        v
+reviewed policy envelope
+  task id + base SHA + allowed paths + verification + approver + digest
+        |
+        v
+protected required check
+        |
+        v
+merge verdict + evidence
+```
+
+Deliverables:
+
+- [ ] document the threat model and policy-authority boundary
+- [ ] define a reviewed policy-envelope schema separate from mutable local task state
+- [ ] bind local worktree state to a policy identity and base revision
+- [ ] teach the existing JSON verifier to emit policy provenance and evidence
+- [ ] add `wtcraft init-ci` for a required GitHub Actions check
+- [ ] document the repository ruleset needed to make that check merge-blocking
+- [ ] add optional local hook installation for fast feedback, explicitly documented as bypassable
+- [ ] add adversarial tests for policy widening, stale base revisions, and missing authorization
+
+Acceptance criteria:
+
+- an executor cannot silently widen its approved path set and still receive a passing protected-check verdict
+- CI evaluates the PR changeset against an available, reviewed source of policy
+- a passing result identifies the task, base revision, policy digest, changed paths, and verification outcome
+- docs distinguish local feedback from remote merge enforcement
+
+## Phase 7: Minimal Task Lifecycle (after v0.5.0)
+
+Goal: validate lifecycle facts without becoming an agent orchestrator.
+
+Possible deliverables:
+
+- [ ] freeze the lifecycle vocabulary and keep `orchestrator` outside the task FSM
+- [ ] `wtcraft stage <task> <new-stage>` with legal-transition validation
+- [ ] derive `responsible_role` and report role mismatch
+- [ ] `wtcraft next` returns allowed transitions, responsible role, and blockers only
+- [ ] language-neutral contract fixtures for lifecycle behavior
+
+Deferred until there is an active client:
+
+- `fsm --json` as a standalone protocol surface
+- GUI-specific state-machine APIs
+
+## Phase 8: Composability and Team UX (evidence-driven)
+
+Potential work, ordered by demonstrated users rather than novelty:
+
+- MCP access to stable `check` / `verify` / status facts
+- GitHub or GitLab integration around approval identity and evidence retention
+- cross-repository audit and policy distribution
+- dashboard or wtflow integration when an active client needs it
+
+## Explicitly Deferred
+
+- role-to-model recommendation and quota-aware model selection
+- token-usage dashboards already served by dedicated tools
+- automatic model routing, process launching, and agent scheduling
+- hosted control plane
+- Rust migration before distribution or performance requires it
+- proprietary team features before external teams validate the open verifier
 
 
 ## Design Constraints
@@ -114,7 +192,7 @@ Goal: Enable high-efficiency, budget-aware multi-agent team hierarchies.
 - Git-native first
 - Local-first first
 - Public-docs first
-- Bounded automation over opaque autonomy
+- Verified authorization over opaque autonomy
 - Explicit ownership over implicit behavior
 
 ## Naming and Branding
@@ -122,13 +200,15 @@ Goal: Enable high-efficiency, budget-aware multi-agent team hierarchies.
 Working name: `wtcraft`.
 
 Positioning:
-- "craft bounded multi-agent workflows with git-native worktrees"
+- "verify authorized agent changes at the Git boundary"
 
 ## Contributor Note
 
-The first stable release should prioritize:
+The next stable milestone should prioritize:
 1. clear boundaries
-2. trustworthy checks
-3. minimal setup cost
+2. trustworthy policy provenance
+3. protected merge evidence
+4. minimal setup cost
 
-Fancy orchestration should wait until those three are solid.
+Orchestration and model routing remain outside the core until those properties
+are solid and users demonstrate a need.

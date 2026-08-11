@@ -53,18 +53,23 @@ After running `wtcraft init`, you can use these slash commands in Claude Code:
 - `/finishwt <worktree-name>`: Run verification and finish
 - `/statuswt`: List active worktree task files
 
-## The Layered Agent Team
+## Suggested Workflow Roles
+
+These roles and the models in `role-models.yml` are editable workflow guidance.
+The current CLI does not launch agents, route models, enforce role handoffs, or
+run token telemetry.
+
 
 <!-- wtcraft:models:start -->
-* **Orchestrator (e.g., Gemini 3.6 Flash)**: Sits at the top of the workflow. Highly tool-agentic, low-latency, and coordinates the overall project state. It focuses on environment orchestration, git logistics, verification suites, and telemetry. Core features like cross-repository worktree monitoring, automated session summarization, and active agent handoff routing are **coming soon (upcoming role integration)**.
+* **Orchestrator (e.g., Gemini 3.6 Flash)**: An optional coordination profile for environment and Git logistics. `wtcraft` does not launch, route, or monitor this role.
 
-* **Planner (e.g., Claude Opus 5)**: The slow, high-reasoning "architect". It reads the requirement, analyzes the code context, and designs the bounded execution contract (`.worktree-task.md`) specifying Scope, Off-limits, and Verification steps.
+* **Planner (e.g., Claude Opus 5)**: A suggested planning profile that writes the local task contract (`.worktree-task.md`) with Scope, Off-limits, and Verification sections.
 
-* **Executor (e.g., GPT-5.5)**: The precision coder. It is budget-friendly, highly focused, and operates strictly inside the isolated worktree sandbox, adhering strictly to the contract boundaries.
+* **Executor (e.g., GPT-5.5)**: A suggested implementation profile working in a dedicated Git worktree. `wtcraft check` detects out-of-scope changes when invoked; it does not sandbox the agent runtime.
 
-* **Verifier (e.g., Claude Opus 5)**: The quality gatekeeper. It automatically conducts code reviews, checks for style/security constraints, and runs PR-level checks. If verification fails, it can trigger a feedback loop back to the Planner or Executor.
+* **Verifier (e.g., Claude Opus 5)**: A human or agent review profile that can consume `check --json` and `verify --json`. `wtcraft` does not automatically run a review agent or a PR gate.
 
-* **Finisher (e.g., Gemini Flash 3.6)**: Performs deterministic boundary validation (`wtcraft check`), test suite verification (`wtcraft verify`), and cleans up local worktree assets after a successful merge to keep the development disk clean. Additionally, in an upcoming release (integrating with PR #12), the Finisher will aggregate and report **token telemetry** to track cost, budget, and API usage per agent model (**Coming Soon**).
+* **Finisher (e.g., Gemini Flash 3.6)**: A suggested workflow profile that runs `wtcraft check` and `wtcraft verify`, then performs the repository's normal handoff and cleanup steps. Token telemetry is not implemented.
 <!-- wtcraft:models:end -->
 
 ## Commands
@@ -87,14 +92,22 @@ After running `wtcraft init`, you can use these slash commands in Claude Code:
 
 AI agents (and human contributors) hallucinate, over-engineer, and accidentally break unrelated code. While parallel agents are useful, raw parallelism creates common problems: unclear handoffs, context pollution, and file collisions.
 
-`wtcraft` provides a definitive safety harness. It focuses on handoff, boundaries, and deterministic containment, not just concurrency. 
+`wtcraft` provides a small, inspectable verification harness. It focuses on
+handoff, task boundaries, and deterministic checks rather than agent runtime
+control.
 
-- **Git-Native Containment:** Keep agent work physically isolated with `git worktree`.
+- **Git-Native Task Isolation:** Keep parallel task changes separated with `git worktree`.
 - **Task Contracts:** Make agent handoffs explicit with a per-task whitelist in `.worktree-task.md`.
-- **Deterministic Gating:** Enforce scope boundaries at the commit/PR level. If a task isn't in scope, the code doesn't merge.
-- **Budget-Aware:** Avoid infinite LLM loops and track API usage per worktree.
+- **Deterministic Checks:** Detect out-of-scope files and run declared verification commands on demand.
+- **Machine-Readable Facts:** Expose status, scope results, and verification results as stable JSON.
 
-No hosted platform is required. No custom runtime is required. You can use Aider, Cursor, Claude, or Devin — `wtcraft` simply wraps your working directory in a zero-trust governance layer.
+No hosted platform or custom agent runtime is required. You can use Aider,
+Cursor, Claude, or another coding agent because the checks operate on Git and
+the worktree changeset.
+
+The current local task contract is mutable and is not, by itself, a security
+boundary. A reviewed policy envelope and protected required check are planned
+for the next milestone; see the [Roadmap](./docs/roadmap.md).
 
 ## Docs
 
