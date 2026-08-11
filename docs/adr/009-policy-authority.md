@@ -42,6 +42,29 @@ The policy envelope intentionally does **not** contain an authoritative
 Approval identity comes from the protected branch's pull-request/review history
 or, in a later release, from a cryptographic attestation.
 
+## Implementation boundary
+
+P1 adds `scripts/policy_evaluator.py` as a reference evaluator with contract
+fixtures. It accepts an already-selected policy file and immutable changeset
+facts; it intentionally does not fetch Git refs, execute verification commands,
+or claim that a local file was reviewed. Keeping those responsibilities out of
+the evaluator prevents a local task branch from becoming an implicit policy
+authority.
+
+P2 must provide the GitHub adapter and evidence transport. Before it can call
+the evaluator a required workflow must:
+
+1. obtain repository, head ref, and merge-base facts from the pull request;
+2. fetch policy from the fixed `wtcraft-policy` remote ref, not from the PR
+   checkout or a PR-supplied ref name;
+3. record the resolved policy branch commit and canonical policy digest;
+4. run the reviewed verification plan with least-privilege workflow permissions;
+5. publish a single machine-readable evidence object and a required check
+   conclusion.
+
+`init-ci` may scaffold that adapter, but cannot create trust by itself: branch
+rules, review rights, and workflow protection remain repository administration.
+
 ## Why a separate branch
 
 - The task author can modify every file in an implementation PR, so a policy

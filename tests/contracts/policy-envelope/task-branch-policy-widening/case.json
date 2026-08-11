@@ -2,6 +2,7 @@
   "contract_version": 1,
   "id": "policy-envelope.task-branch-policy-widening",
   "subject": "policy-envelope",
+  "expected_exit_code": 2,
   "policy_source": "protected-branch",
   "policy": "policy.json",
   "untrusted_task_policy": "task-branch-policy.json",

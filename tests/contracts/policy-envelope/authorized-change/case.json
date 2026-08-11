@@ -2,6 +2,7 @@
   "contract_version": 1,
   "id": "policy-envelope.authorized-change",
   "subject": "policy-envelope",
+  "expected_exit_code": 0,
   "policy_source": "protected-branch",
   "policy": "policy.json",
   "change": "change.json",

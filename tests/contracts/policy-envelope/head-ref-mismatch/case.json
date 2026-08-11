@@ -1,9 +1,10 @@
 {
   "contract_version": 1,
-  "id": "policy-envelope.missing-authoritative-policy",
+  "id": "policy-envelope.head-ref-mismatch",
   "subject": "policy-envelope",
-  "expected_exit_code": 1,
+  "expected_exit_code": 2,
   "policy_source": "protected-branch",
+  "policy": "policy.json",
   "change": "change.json",
   "expected": "expected.json"
 }

@@ -15,5 +15,6 @@ Each case supplies:
 The evaluator must validate the authoritative envelope against
 [`policy-envelope-v1.schema.json`](../../../schemas/policy-envelope-v1.schema.json)
 before evaluating paths. It must fail closed for a missing, malformed, stale,
-or mismatched policy. A future P1 runner will execute these cases and attach
-policy commit/digest provenance to its evidence.
+or mismatched policy. `tests/contract_policy_envelope.sh` runs the P1 reference
+evaluator against these cases. A later CI adapter will attach policy
+commit/digest provenance to its evidence.
