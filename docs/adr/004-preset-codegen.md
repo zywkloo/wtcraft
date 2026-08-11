@@ -87,5 +87,5 @@ Matching rules are enforced by agents and (eventually) `wtcraft model-select`.
   command; see `../model-select.md`
 - README cleanup — deferred until codegen markers are in; see
   `../readme-cleanup.md`
-- Rust migration — `model-select` is the recommended first Rust module;
-  see `../rust-migration.md`
+- Rust core extraction — `model-select` is the recommended first module to
+  port (pure functions, zero IO); see [006-rust-core-extraction.md](006-rust-core-extraction.md)

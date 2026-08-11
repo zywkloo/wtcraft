@@ -4,8 +4,7 @@
 
 Accepted. Recorded 2026-06-13.
 
-Supersedes the deferred language decision in
-[003-rust-migration.md](003-rust-migration.md).
+Supersedes the earlier deferred language decision.
 
 ## Context
 

@@ -97,5 +97,5 @@ more important than inventing a runner.
 
 - [../backlogs/session-runtime-protocol.md](../backlogs/session-runtime-protocol.md)
 - [../backlogs/stage-state-machine.md](../backlogs/stage-state-machine.md)
-- [../sourcegitfork/session-state.md](../sourcegitfork/session-state.md)
+- [../protocol/session-model-v1.md](../protocol/session-model-v1.md)
 - [001-task-contract-local-state.md](001-task-contract-local-state.md)

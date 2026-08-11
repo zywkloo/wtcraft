@@ -5,8 +5,7 @@
 > (`list_worktrees` helper); uncontracted and zombie (prunable) worktrees
 > are surfaced; layout is configuration, not contract. Step 2 (flip the
 > default to a sibling dir) not scheduled. Originally recorded 2026-06-12,
-> from the GitKraken trial findings in `external-watchlist.md`
-> § GitKraken Agent Mode anatomy.
+> from a survey of how other worktree tools lay out their directories.
 
 ## Problem
 
@@ -60,12 +59,10 @@ worktrees dir — finisher cleanup + `git worktree prune` is the backstop.
 `scripts/wtcraft` (`cmd_new` path, `cmd_status`/`cmd_check` enumeration,
 `cmd_init` gitignore), `.agent-harness/*.md` + `.claude/commands/*.md` docs
 mentioning `worktrees/`, and their `templates/` twins (CLAUDE.md dual-write
-rule). The SourceGit fork panel is unaffected — it already follows the
-same enumerate-via-git rule (fork plan gotchas).
+rule). GUI clients are unaffected as long as they follow the same
+enumerate-via-git rule.
 
 ## Related
 
-- `external-watchlist.md` § GitKraken Agent Mode anatomy — layout survey
-- `../sourcegitfork/implementation-plan.md` — fork-side gotcha (same rule)
 - `stage-state-machine.md` — vendor-free principle; `status --json` should
   ship after step 1 so the JSON is layout-agnostic from day one

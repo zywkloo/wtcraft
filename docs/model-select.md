@@ -98,5 +98,6 @@ A future feedback loop (budget data influencing routing, e.g. "burn rate high â†
 - The flat role-models.yml schema is deliberately one-line-per-field so the existing
   awk patterns in `scripts/wtcraft` (`extract_frontmatter` style) can parse it â€”
   no new runtime dependency required for a bash implementation
-- If the Rust migration (see `docs/rust-migration.md`) proceeds, `model-select` is
-  the natural first candidate: pure function, easily unit-tested, no git side effects
+- If the Rust core extraction (see [adr/006-rust-core-extraction.md](adr/006-rust-core-extraction.md))
+  proceeds, `model-select` is the natural first candidate: pure function, easily
+  unit-tested, no git side effects

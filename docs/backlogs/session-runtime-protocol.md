@@ -146,4 +146,4 @@ will feel opaque and brittle.
 - [../adr/005-interactive-first-session-launch.md](../adr/005-interactive-first-session-launch.md)
 - [stage-state-machine.md](stage-state-machine.md)
 - [worktree-layout.md](worktree-layout.md)
-- [../sourcegitfork/session-state.md](../sourcegitfork/session-state.md)
+- [../protocol/session-model-v1.md](../protocol/session-model-v1.md)

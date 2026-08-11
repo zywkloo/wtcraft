@@ -87,7 +87,7 @@ All three agree = green. Disagreements get names. Catalog principle
 (recorded 2026-06-12): **every alarm must cite the declared rule it
 violates** (TASK.md section, transition table, role-models.yml, ADR) —
 no rule, no alarm. This is the line between contract checking and the
-git-generic heuristics GUIs like GitKraken ship. Severity: violation
+git-generic heuristics a GUI can compute on its own. Severity: violation
 (red) / warning (yellow) / info (grey).
 
 ### Contract vs git facts (core governance)
@@ -178,8 +178,9 @@ Liveness should not depend on agents dutifully updating fields (they won't).
 
 **Vendor-dependency principle (decided 2026-06-11):** defer anything that
 depends on vendor surfaces (Claude Code hooks, Codex `notify`, TUI output
-formats — they churn at vendor release pace and break silently, see
-GitKraken's per-CLI adapter matrix). Build on vendor-free signals first:
+formats — they churn at vendor release pace and break silently, and any
+per-CLI adapter list is closed by construction). Build on vendor-free
+signals first:
 
 - Liveness v1 = **fs mtime** of the worktree (POSIX-stable, works for any
   agent, any runner, zero setup). Minute-granularity is enough for
@@ -190,15 +191,13 @@ GitKraken's per-CLI adapter matrix). Build on vendor-free signals first:
   never depends on them. If a hook breaks, `last_active` goes stale and
   the stale alarm fires: the failure is visible and named, not silent.
 
-Any GUI stays a thin renderer over `wtcraft status --json`. The
-differentiator vs GitKraken Agent Mode / Vibe Kanban / Conductor etc. is
-state-in-repo (files as truth) vs state-in-app (their own DB), and that those
-tools are agent *runners* while this is a read-only *observer* — it composes
-with any runner. See `external-watchlist.md` § Worktree agent GUIs.
+Any GUI stays a thin renderer over `wtcraft status --json`. The design stance
+is state-in-repo (files as truth) rather than state-in-app, and a read-only
+*observer* rather than an agent *runner* — so it composes with any runner
+instead of replacing one.
 
-The concrete GUI is a SourceGit fork (separate repo); plan with exact mount
-points and weekend scope: `../sourcegitfork/`. Items 4 (`--json`) and 5
-(`role:`) above are its wtcraft-side dependencies.
+Items 4 (`--json`) and 5 (`role:`) above are the wtcraft-side dependencies any
+such GUI needs.
 
 ## Already in place (as of 2026-06-10)
 
@@ -220,12 +219,13 @@ surface as panes in "waiting" state; in the progress view as tasks parked at
 
 - Automated Orchestrator agent (spawning panes, dispatching subtasks,
   cross-repo coordination) — that's the full roadmap Phase 5
-- Token telemetry in the progress view — feed from ccusage/tokscale later;
-  see `model-select-quota.md` and `external-watchlist.md`
+- Token telemetry in the progress view — feed from an external usage tool
+  (ccusage/tokscale) later
 
 ## Related
 
-- `model-select-quota.md` — at each stage handoff, the orchestrator (human or
-  agent) asks model-select which CLI/model the next role should use
-- Roadmap Phase 4 lists "workmux session orchestration" and "dashboard-style
-  status output" as intended integrations — this memo is the concrete shape
+- [../model-select.md](../model-select.md) — at each stage handoff, the
+  orchestrator (human or agent) asks model-select which CLI/model the next
+  role should use
+- Roadmap Phase 4 lists session orchestration and dashboard-style status
+  output as intended integrations — this memo is the concrete shape
