@@ -1,0 +1,6 @@
+{
+  "result": "fail",
+  "reason": "scope_violation",
+  "policy_id": "trusted-change-002",
+  "violations": ["docs/release-notes.md"]
+}

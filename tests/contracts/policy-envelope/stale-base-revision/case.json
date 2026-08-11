@@ -1,0 +1,9 @@
+{
+  "contract_version": 1,
+  "id": "policy-envelope.stale-base-revision",
+  "subject": "policy-envelope",
+  "policy_source": "protected-branch",
+  "policy": "policy.json",
+  "change": "change.json",
+  "expected": "expected.json"
+}

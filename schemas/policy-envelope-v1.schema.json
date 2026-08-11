@@ -1,0 +1,105 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://wtcraft.dev/schemas/policy-envelope-v1.schema.json",
+  "title": "wtcraft Policy Envelope v1",
+  "description": "A reviewed authorization record. The authoritative source is defined by docs/adr/009-policy-authority.md, not by this file's location in an implementation branch.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "policy_id",
+    "task_id",
+    "repository",
+    "head_ref",
+    "base_sha",
+    "allowed_paths",
+    "off_limits",
+    "verification"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": 1
+    },
+    "policy_id": {
+      "type": "string",
+      "description": "Immutable policy record identifier. Do not reuse it for a replacement authorization.",
+      "pattern": "^[a-z0-9][a-z0-9._-]{2,127}$"
+    },
+    "task_id": {
+      "type": "string",
+      "description": "Human-facing task identifier. It is not an approval identity.",
+      "minLength": 1,
+      "maxLength": 256
+    },
+    "repository": {
+      "type": "string",
+      "description": "Canonical Git-hosting owner/name identity used by CI.",
+      "pattern": "^[^/\\s]+/[^/\\s]+$"
+    },
+    "head_ref": {
+      "type": "string",
+      "description": "Exact implementation branch ref authorized by this envelope.",
+      "pattern": "^refs/heads/[A-Za-z0-9][A-Za-z0-9._/-]*$"
+    },
+    "base_sha": {
+      "type": "string",
+      "description": "Exact 40-character Git commit SHA that the authorized branch must merge-base against.",
+      "pattern": "^[0-9a-f]{40}$"
+    },
+    "allowed_paths": {
+      "type": "array",
+      "description": "Repository-relative path patterns. Pattern semantics are defined by the verifier, not JSON Schema.",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 1024,
+        "pattern": "^(?!/)(?!.*(?:^|/)\\.\\.(?:/|$)).+$"
+      }
+    },
+    "off_limits": {
+      "type": "array",
+      "description": "Repository-relative deny patterns evaluated before allowed_paths.",
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 1024,
+        "pattern": "^(?!/)(?!.*(?:^|/)\\.\\.(?:/|$)).+$"
+      }
+    },
+    "verification": {
+      "type": "array",
+      "description": "Reviewed commands executed by the future protected verifier.",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["name", "command"],
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "command": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 4096
+          },
+          "timeout_seconds": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 3600
+          }
+        }
+      }
+    },
+    "valid_until": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Optional expiration time enforced by CI once implemented."
+    }
+  }
+}

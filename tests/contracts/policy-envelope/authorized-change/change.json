@@ -1,0 +1,6 @@
+{
+  "repository": "acme/widget",
+  "head_ref": "refs/heads/feat/trusted-change",
+  "merge_base_sha": "1111111111111111111111111111111111111111",
+  "changed_files": ["src/policy.sh", "tests/unit_policy.sh"]
+}

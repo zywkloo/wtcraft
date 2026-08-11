@@ -1,0 +1,5 @@
+{
+  "result": "fail",
+  "reason": "stale_base",
+  "policy_id": "trusted-change-003"
+}

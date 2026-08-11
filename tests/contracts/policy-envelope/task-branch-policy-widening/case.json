@@ -1,0 +1,10 @@
+{
+  "contract_version": 1,
+  "id": "policy-envelope.task-branch-policy-widening",
+  "subject": "policy-envelope",
+  "policy_source": "protected-branch",
+  "policy": "policy.json",
+  "untrusted_task_policy": "task-branch-policy.json",
+  "change": "change.json",
+  "expected": "expected.json"
+}

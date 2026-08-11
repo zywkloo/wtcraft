@@ -1,0 +1,8 @@
+{
+  "contract_version": 1,
+  "id": "policy-envelope.missing-authoritative-policy",
+  "subject": "policy-envelope",
+  "policy_source": "protected-branch",
+  "change": "change.json",
+  "expected": "expected.json"
+}

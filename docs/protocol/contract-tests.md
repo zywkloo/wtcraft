@@ -22,6 +22,7 @@ The shared suite covers:
 - legal and illegal task-stage transitions
 - session-state transitions and identity-loss recovery
 - reconciliation alarms derived from task, session, and Git facts
+- trusted policy-envelope authorization and failure cases
 - forward-compatible handling of unknown optional fields
 
 Human-readable output, terminal integration, agent-provider behavior, and exact
@@ -54,6 +55,12 @@ tests/contracts/
       case.json
       input.json
       expected.json
+  policy-envelope/
+    stale-base-revision/
+      case.json
+      policy.json
+      change.json
+      expected.json
 ```
 
 Committed fixture repositories contain only the minimum files needed to express
@@ -82,8 +89,8 @@ Required fields:
 |---|---|
 | `contract_version` | Fixture schema version; currently `1` |
 | `id` | Stable, globally unique case identifier |
-| `subject` | `cli`, `task-state`, `session`, or `reconciliation` |
-| `expected_exit_code` | Expected process/result exit code |
+| `subject` | `cli`, `task-state`, `session`, `reconciliation`, or `policy-envelope` |
+| `expected_exit_code` | Expected process/result exit code; required for `cli` fixtures. Pure-core fixtures, including `policy-envelope`, use their structured expected result instead. |
 
 Subject-specific fields such as `command`, `input`, `stdout`, and `expected`
 are permitted. Unknown manifest fields must be ignored by v1 runners.
@@ -200,6 +207,15 @@ Before Rust becomes the default implementation, the shared suite must include:
 - consistent task/session/Git facts that produce no alarm
 - multiple simultaneous alarms with deterministic ordering
 
+### Trusted policy envelope
+
+- approved policy accepts a matching repository, branch, base SHA, and paths
+- a task-branch copy of policy cannot widen an authoritative policy-branch scope
+- stale base revisions and branch mismatches fail closed
+- absent or malformed authoritative policy fails closed
+- evidence records the authoritative policy source commit and canonical digest
+  once the protected verifier is implemented
+
 ## Change policy
 
 A behavior change that affects a contract fixture requires:
@@ -226,4 +242,3 @@ protocol changes require a new protocol version.
 4. Run the same suite against Rust during extraction.
 5. Consider Rust eligible to become the default only when both implementations
    pass the required v1 fixture set.
-

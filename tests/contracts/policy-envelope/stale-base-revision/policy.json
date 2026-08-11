@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "policy_id": "trusted-change-003",
+  "task_id": "reject stale bases",
+  "repository": "acme/widget",
+  "head_ref": "refs/heads/feat/trusted-change",
+  "base_sha": "1111111111111111111111111111111111111111",
+  "allowed_paths": ["src/**"],
+  "off_limits": [],
+  "verification": [
+    {"name": "unit", "command": "bash tests/run_all.sh"}
+  ]
+}
