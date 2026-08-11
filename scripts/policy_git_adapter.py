@@ -60,7 +60,7 @@ def load_policy_at_ref(repo, policy_ref, path):
         raise AdapterError("invalid policy JSON at {}: {}".format(path, error))
 
 
-def policy_candidates(repo, policy_ref, repository, head_ref, base_sha):
+def policy_candidates(repo, policy_ref, repository, head_ref, merge_base_sha):
     candidates = []
     for path in list_policy_paths(repo, policy_ref):
         policy = load_policy_at_ref(repo, policy_ref, path)
@@ -70,7 +70,7 @@ def policy_candidates(repo, policy_ref, repository, head_ref, base_sha):
             verdict(policy, {
                 "repository": repository,
                 "head_ref": head_ref,
-                "merge_base_sha": base_sha,
+                "merge_base_sha": merge_base_sha,
                 "changed_files": [],
             })
         except InvalidPolicy as error:
@@ -78,7 +78,7 @@ def policy_candidates(repo, policy_ref, repository, head_ref, base_sha):
         if (
             policy["repository"] == repository
             and policy["head_ref"] == head_ref
-            and policy["base_sha"] == base_sha
+            and policy["base_sha"] == merge_base_sha
         ):
             candidates.append(policy)
     return candidates
@@ -108,7 +108,7 @@ def main():
     parser.add_argument("--repository", required=True, help="canonical owner/name repository identity")
     parser.add_argument("--head-ref", required=True, help="expected implementation refs/heads/... name")
     parser.add_argument("--head-sha", required=True, help="implementation head commit SHA")
-    parser.add_argument("--base-sha", required=True, help="approved base commit SHA")
+    parser.add_argument("--base-sha", required=True, help="current target-base commit SHA used to compute merge-base")
     parser.add_argument("--policy-ref", default="refs/heads/wtcraft-policy", help="pre-fetched protected policy ref")
     args = parser.parse_args()
 
@@ -126,7 +126,7 @@ def main():
             if path
         ]
         candidates = policy_candidates(
-            args.repo, args.policy_ref, args.repository, args.head_ref, args.base_sha
+            args.repo, args.policy_ref, args.repository, args.head_ref, merge_base
         )
     except AdapterError as error:
         return adapter_error("invalid_policy", str(error))
@@ -160,7 +160,7 @@ def main():
         "change": {
             "repository": args.repository,
             "head_ref": args.head_ref,
-            "base_sha": args.base_sha,
+            "base_ref_sha": args.base_sha,
             "merge_base_sha": merge_base,
             "head_sha": args.head_sha,
             "changed_files": changed_files,

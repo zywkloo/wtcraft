@@ -51,8 +51,11 @@ or claim that a local file was reviewed. Keeping those responsibilities out of
 the evaluator prevents a local task branch from becoming an implicit policy
 authority.
 
-P2 must provide the GitHub adapter and evidence transport. Before it can call
-the evaluator a required workflow must:
+P2 provides `scripts/policy_git_adapter.py`, which binds an already fetched
+policy ref and Git changeset to provenance-bearing evidence. The remaining
+GitHub workflow transport is documented in
+[`github-actions-integration.md`](../security/github-actions-integration.md).
+Before a repository can call the adapter from a required workflow it must:
 
 1. obtain repository, head ref, and merge-base facts from the pull request;
 2. fetch policy from the fixed `wtcraft-policy` remote ref, not from the PR

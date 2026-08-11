@@ -30,9 +30,12 @@ including `/`. `off_limits` always takes precedence over `allowed_paths`.
 
 ## Policy selection
 
-The Git adapter lists `.wtcraft/policies/*.json` at the policy ref. It accepts
-exactly one schema-valid record where `repository`, `head_ref`, and `base_sha`
-match the repository adapter's immutable change facts. Zero matches is
+The Git adapter computes the implementation head's actual merge-base against
+the current target-base ref, then lists `.wtcraft/policies/*.json` at the
+policy ref. It accepts exactly one schema-valid record where `repository`,
+`head_ref`, and `base_sha` match those immutable facts. This deliberately
+allows the target branch to advance after authorization; rebasing the
+implementation branch changes its merge-base and requires a new policy. Zero matches is
 `policy_not_found`; more than one is `ambiguous_policy`. A malformed policy
 record on the authority ref is an `invalid_policy` error, not an artifact to
 silently skip.
@@ -70,7 +73,7 @@ includes:
   "change": {
     "repository": "owner/repo",
     "head_ref": "refs/heads/feat/example",
-    "base_sha": "...",
+    "base_ref_sha": "...",
     "merge_base_sha": "...",
     "head_sha": "...",
     "changed_files": ["src/example.ts"]
