@@ -21,7 +21,7 @@ for the upcoming stage.
 
 ```bash
 wtcraft model-select --role executor
-# codex (GPT-5.4) — claude window 87% used, codex 12% used
+# codex (GPT-5.5) — claude window 87% used, codex 12% used
 ```
 
 ### Pacing advisor (same data, second output dimension)
@@ -40,7 +40,7 @@ CLI — windows don't roll over, so unused quota at reset is wasted
 
 ```bash
 wtcraft model-select --role executor --pace
-# codex (GPT-5.4)
+# codex (GPT-5.5)
 # claude: 87% used, resets 14:00 (2h10m) → ease off
 # codex:  12% used, resets 16:30 (4h40m) → push
 ```

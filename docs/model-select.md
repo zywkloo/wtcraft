@@ -9,7 +9,7 @@ A CLI command that turns `.agent-harness/role-models.yml` from documentation int
 ```bash
 wtcraft model-select --role executor --available-cli "claude,gemini"
 # codex unavailable → falls back in order → prints:
-# claude "Claude Sonnet 4.6"
+# claude "Claude Sonnet 5"
 ```
 
 ## Why (the three levels)
@@ -56,7 +56,7 @@ use, based on role, stage, and remaining token quota.**
 
 ```bash
 wtcraft model-select --role executor
-# codex (GPT-5.4) — claude window 87% used, codex 12% used
+# codex (GPT-5.5) — claude window 87% used, codex 12% used
 ```
 
 Resolution order:

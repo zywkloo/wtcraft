@@ -15,7 +15,7 @@
 # Matching rules (top-level constraints, enforced by agents and tooling):
 matching:
   fuzzy: true              # normalize spaces, dashes, underscores, case
-                           # "claude-opus-4.8" == "Claude Opus 4.8" == "claudeopus4.8"
+                           # "claude-opus-5" == "Claude Opus 5" == "claudeopus5"
   freshness_tolerance: 0.2 # max version gap within the same model family to count
                            # as a hit: primary 4.8 → 4.7 hits, 4.6 does not
 
@@ -23,30 +23,30 @@ roles:
 
   orchestrator:
     cli: claude
-    model: Claude Sonnet 4.6
-    fallback: gemini:Gemini 3.5 Flash, codex:GPT-5.4
+    model: Claude Sonnet 5
+    fallback: gemini:Gemini 3.6 Flash, codex:GPT-5.4
     rationale: low-latency, tool-heavy, cross-repo coordination
 
   planner:
     cli: claude
-    model: Claude Opus 4.8
-    fallback: codex:GPT-5.5, gemini:Gemini Pro 3.1
+    model: Claude Opus 5
+    fallback: codex:GPT-5.6 Sol, claude:Claude Fable 5, gemini:Gemini Pro 3.1
     rationale: high-reasoning, session-based strategic planning
 
   executor:
     cli: claude
-    model: Claude Sonnet 4.6
-    fallback: codex:GPT-5.4, gemini:Gemini Pro 3.1
+    model: Claude Sonnet 5
+    fallback: codex:GPT-5.5, gemini:Gemini Pro 3.1
     rationale: focused coder, budget-friendly, sandboxed worktree
 
   verifier:
     cli: claude
-    model: Claude Opus Fable 5
-    fallback: claude:Claude Opus 4.8, gemini:Gemini Pro 3.1, codex:GPT-5.5
+    model: Claude Opus 5
+    fallback: codex:GPT-5.5, claude:Claude Fable 5, gemini:Gemini Pro 3.1
     rationale: code review, security/style checks, PR-level gating
 
   finisher:
     cli: claude
     model: Claude Haiku 4.5
-    fallback: gemini:Gemini Flash 3.5, codex:GPT-5.4-Mini
+    fallback: gemini:Gemini Flash 3.6, codex:GPT-5.4
     rationale: worktree and local branch cleanup runner

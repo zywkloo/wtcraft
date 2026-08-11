@@ -97,10 +97,11 @@ Goal: Enable high-efficiency, budget-aware multi-agent team hierarchies.
 > - **Token Telemetry**: Currently incomplete/in-progress and pending implementation in the next release.
 
 ### The Team Architecture:
-- **Orchestrator Agent (e.g., Gemini 3.5 Flash)**: Low-latency, tool-heavy, cross-repository status tracking, environment setup, and release management coordinator.
-- **Planner Agent (e.g., Claude Opus / GPT-5.5)**: High-reasoning, session-based strategic task architect responsible for analyzing requirements and writing the task contract (`.worktree-task.md`).
-- **Executor Agent (e.g., GPT-5.3-codex / Claude Sonnet)**: Highly focused, budget-friendly coder working strictly inside sandboxed worktrees under contract guardrails.
-- **Finisher Agent (e.g., Gemini Flash / Claude Haiku)**: Verification and cleanup script runner.
+- **Orchestrator Agent (e.g., Gemini 3.6 Flash)**: Low-latency, tool-heavy, cross-repository status tracking, environment setup, and release management coordinator.
+- **Planner Agent (e.g., Claude Opus 5 / GPT-5.6 Sol)**: High-reasoning, session-based strategic task architect responsible for analyzing requirements and writing the task contract (`.worktree-task.md`).
+- **Executor Agent (e.g., GPT-5.5 / Claude Sonnet 5)**: Highly focused, budget-friendly coder working strictly inside sandboxed worktrees under contract guardrails.
+- **Verifier Agent (e.g., Claude Opus 5 / GPT-5.5 / Claude Fable 5)**: Code review, security/style checks, and PR-level quality gatekeeper.
+- **Finisher Agent (e.g., Gemini Flash 3.6 / Claude Haiku 4.5 / GPT-5.4)**: Verification and cleanup script runner.
 
 ### Deliverables:
 - [ ] **Orchestrator Guides**: Prompt and configuration files for fast, cross-repo Orchestrator agents.
