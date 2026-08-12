@@ -7,6 +7,17 @@ Versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added
+- `wtcraft agent init` initializes `AGENTS.md` as the canonical shared
+  instruction file and makes `CLAUDE.md` import it with `@AGENTS.md`. The
+  command is idempotent, preserves existing content, and works without Git.
+
+### Changed
+- File-only project setup and maintenance commands no longer require a Git
+  repository. `init`, `patch`, `unpatch`, `lang`, and `migrate` can operate in
+  a plain directory; `init --local` still requires Git because it writes
+  `.git/info/exclude`.
+
 ## [0.4.3] - 2026-06-24
 
 ### Fixed

@@ -18,6 +18,7 @@ usage() {
 wtcraft - git-native harness helper
 
 Usage:
+  wtcraft agent init [--path <path>]
   wtcraft init [--patch-agent-files] [--local] [--repo <path>]
   wtcraft patch [--repo <path>]
   wtcraft unpatch [--repo <path>]
@@ -35,11 +36,32 @@ Usage:
 EOF
 }
 
+usage_agent() {
+  cat <<'EOF'
+wtcraft agent init [--path <path>]
+
+  Initialize shared coding-agent instructions in a project directory.
+  Git is not required.
+
+  AGENTS.md is the canonical instruction file. CLAUDE.md imports it with
+  @AGENTS.md so shared instructions only need to be maintained once.
+  Existing content is never overwritten, and re-running is idempotent.
+
+  Options:
+    --path <path>   Target a project directory instead of the current one
+
+  Creates when missing:
+    AGENTS.md
+    CLAUDE.md
+EOF
+}
+
 usage_init() {
   cat <<'EOF'
 wtcraft init [--patch-agent-files] [--local] [--repo <path>]
 
-  Scaffold harness files into the current git repository.
+  Scaffold harness files into the current project directory.
+  Git is not required unless --local is used.
   Existing files are never overwritten.
 
   Options:
@@ -48,7 +70,7 @@ wtcraft init [--patch-agent-files] [--local] [--repo <path>]
     --local               Keep wtcraft scaffold local to this clone by
                           writing ignore rules to .git/info/exclude instead
                           of modifying the repo's .gitignore
-    --repo <path>         Target a specific worktree root instead of relying
+    --repo <path>         Target a specific project directory instead of relying
                           on the current working directory
 
   Creates:
@@ -99,7 +121,7 @@ wtcraft lang remove [--repo <path>]
 
   Only agent files that already exist are patched; this command never
   creates one. If neither CLAUDE.md nor AGENTS.md exists, run
-  'wtcraft patch' first to create them.
+  'wtcraft agent init' first to create them.
 
   Subcommands:
     install   Append a language-enforcement block to each existing
@@ -260,6 +282,7 @@ cmd_help() {
     return 0
   fi
   case "$1" in
+    agent)   usage_agent ;;
     init)    usage_init ;;
     patch)   usage_patch ;;
     unpatch) usage_unpatch ;;
@@ -361,6 +384,28 @@ git_info_exclude_path() {
 ensure_git_path() {
   local path="${1:-.}"
   git -C "$path" rev-parse --show-toplevel >/dev/null 2>&1 || die "not inside a git repository: ${path}"
+}
+
+directory_root() {
+  local path="${1:-.}"
+  [ -d "$path" ] || die "project directory does not exist: ${path}"
+  (cd "$path" && pwd -P)
+}
+
+# Resolve a project root without requiring Git. Inside a repository this keeps
+# the existing behavior of targeting the worktree root; elsewhere, the target
+# directory itself is the project root.
+project_root() {
+  local path="${1:-.}"
+  [ -d "$path" ] || die "project directory does not exist: ${path}"
+
+  local git_root
+  git_root="$(git -C "$path" rev-parse --show-toplevel 2>/dev/null || true)"
+  if [ -n "$git_root" ]; then
+    printf '%s' "$git_root"
+  else
+    directory_root "$path"
+  fi
 }
 
 copy_if_missing() {
@@ -473,6 +518,61 @@ unpatch_agent_files() {
     "<!-- wtcraft:agents:start -->" "<!-- wtcraft:agents:end -->"
 }
 
+cmd_agent_init() {
+  local path_arg="."
+  while [ $# -gt 0 ]; do
+    case "$1" in
+      --path) shift; path_arg="${1:?--path requires a path}" ;;
+      *) die "unknown agent init option: $1" ;;
+    esac
+    shift
+  done
+
+  local root agents_file claude_file
+  root="$(directory_root "$path_arg")"
+  agents_file="${root}/AGENTS.md"
+  claude_file="${root}/CLAUDE.md"
+
+  if { [ -e "$agents_file" ] || [ -L "$agents_file" ]; } && [ ! -f "$agents_file" ]; then
+    die "AGENTS.md exists but is not a regular file: ${agents_file}"
+  fi
+  if { [ -e "$claude_file" ] || [ -L "$claude_file" ]; } && [ ! -f "$claude_file" ]; then
+    die "CLAUDE.md exists but is not a regular file: ${claude_file}"
+  fi
+
+  if [ ! -e "$agents_file" ]; then
+    printf '# Project Instructions\n' >"$agents_file"
+    echo "Created: ${agents_file}"
+  else
+    echo "Existing content preserved: ${agents_file}"
+  fi
+
+  if [ ! -e "$claude_file" ]; then
+    printf '@AGENTS.md\n' >"$claude_file"
+    echo "Created with AGENTS.md import: ${claude_file}"
+  elif grep -Eq '(^|[[:space:]])@(\./)?AGENTS\.md([[:space:]]|$)' "$claude_file"; then
+    echo "AGENTS.md import already present: ${claude_file}"
+  else
+    if [ -s "$claude_file" ]; then
+      printf '\n@AGENTS.md\n' >>"$claude_file"
+    else
+      printf '@AGENTS.md\n' >>"$claude_file"
+    fi
+    echo "Added AGENTS.md import: ${claude_file}"
+  fi
+}
+
+cmd_agent() {
+  [ $# -ge 1 ] || { usage_agent; exit 1; }
+  local subcmd="$1"
+  shift
+  case "$subcmd" in
+    init) cmd_agent_init "$@" ;;
+    -h|--help|help) usage_agent ;;
+    *) die "unknown agent subcommand: ${subcmd}. Use init" ;;
+  esac
+}
+
 cmd_init() {
   local patch_agent=false
   local local_mode=false
@@ -488,8 +588,10 @@ cmd_init() {
   done
 
   local repo_root
-  ensure_git_path "$repo_arg"
-  repo_root="$(current_worktree_root "$repo_arg")"
+  if [ "$local_mode" = true ]; then
+    ensure_git_path "$repo_arg"
+  fi
+  repo_root="$(project_root "$repo_arg")"
 
   copy_if_missing "${TEMPLATE_DIR}/.agent-harness/planner.md" "${repo_root}/.agent-harness/planner.md"
   copy_if_missing "${TEMPLATE_DIR}/.agent-harness/executor.md" "${repo_root}/.agent-harness/executor.md"
@@ -585,9 +687,8 @@ cmd_unpatch() {
     esac
     shift
   done
-  ensure_git_path "$repo_arg"
   local repo_root
-  repo_root="$(current_worktree_root "$repo_arg")"
+  repo_root="$(project_root "$repo_arg")"
   echo "Removing wtcraft routing stubs from agent files..."
   unpatch_agent_files "$repo_root"
 }
@@ -604,9 +705,8 @@ cmd_lang() {
     esac
     shift
   done
-  ensure_git_path "$repo_arg"
   local repo_root
-  repo_root="$(current_worktree_root "$repo_arg")"
+  repo_root="$(project_root "$repo_arg")"
   local claude_file="${repo_root}/CLAUDE.md"
   local agents_file="${repo_root}/AGENTS.md"
   set -- ${remaining[@]+"${remaining[@]}"}
@@ -649,7 +749,7 @@ EOF
       # Patch only the agent files that already exist; never conjure one.
       # CLAUDE.md and AGENTS.md are created by `wtcraft patch`.
       if [ ! -f "$claude_file" ] && [ ! -f "$agents_file" ]; then
-        die "no CLAUDE.md or AGENTS.md in ${repo_root}. Run 'wtcraft patch' first to create at least one, then re-run lang install."
+        die "no CLAUDE.md or AGENTS.md in ${repo_root}. Run 'wtcraft agent init' first, then re-run lang install."
       fi
       if [ -f "$claude_file" ]; then
         append_managed_block_if_missing "$claude_file" "$lang_block" "<!-- wtcraft:lang:start -->"
@@ -1485,9 +1585,8 @@ cmd_migrate() {
     esac
     shift
   done
-  ensure_git_path "$repo_arg"
   local repo_root
-  repo_root="$(current_worktree_root "$repo_arg")"
+  repo_root="$(project_root "$repo_arg")"
 
   echo "Running wtcraft init to ensure all scaffolds are present..."
   cmd_init --repo "$repo_root"
@@ -1523,6 +1622,7 @@ main() {
   shift
 
   case "$cmd" in
+    agent)       cmd_agent "$@" ;;
     init)        cmd_init "$@" ;;
     patch)       cmd_patch "$@" ;;
     unpatch)     cmd_unpatch "$@" ;;

@@ -76,13 +76,13 @@ test_lang_install_neither() {
   rc=$?
   set -e
   [ "$rc" -ne 0 ] || { echo "[FAIL] lang install neither: expected non-zero exit, got 0"; exit 1; }
-  echo "$out" | grep -qi "wtcraft patch" || {
-    echo "[FAIL] lang install neither: error should mention 'wtcraft patch'"; exit 1
+  echo "$out" | grep -qi "wtcraft agent init" || {
+    echo "[FAIL] lang install neither: error should mention 'wtcraft agent init'"; exit 1
   }
   [ ! -f "${repo}/CLAUDE.md" ] && [ ! -f "${repo}/AGENTS.md" ] || {
     echo "[FAIL] lang install neither: should not create any files"; exit 1
   }
-  echo "[PASS] lang install exits 1 and mentions 'wtcraft patch' when neither file exists"
+  echo "[PASS] lang install exits 1 and mentions 'wtcraft agent init' when neither file exists"
 }
 
 run_in_temp_repo test_lang_install_claude_only

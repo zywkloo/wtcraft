@@ -31,7 +31,8 @@ Short alias available after install: `wtc`
 
 ```bash
 wtcraft --version                        # print the installed CLI version
-wtcraft init                            # scaffold harness into current repo
+wtc agent init                          # create AGENTS.md + CLAUDE.md; no Git required
+wtcraft init                            # scaffold harness; no Git required
 wtcraft init --local                    # scaffold locally; ignore via .git/info/exclude
 wtcraft patch                           # append routing stubs to CLAUDE.md / AGENTS.md
 wtcraft lang install --lang zh-CN       # enforce output language in CLAUDE.md
@@ -76,7 +77,8 @@ run token telemetry.
 
 | Command | Arguments | What it does |
 |---|---|---|
-| `wtcraft init` | `[--patch-agent-files] [--local] [--repo <path>]` | Scaffold harness files. Does not overwrite. `--local` keeps scaffold clone-local via Git-resolved `.git/info/exclude`. |
+| `wtcraft agent init` | `[--path <path>]` | Create or preserve canonical `AGENTS.md` instructions and make `CLAUDE.md` import them. Does not require Git. |
+| `wtcraft init` | `[--patch-agent-files] [--local] [--repo <path>]` | Scaffold harness files without requiring Git. Does not overwrite. `--local` requires Git because it uses `.git/info/exclude`. |
 | `wtcraft patch` | `[--repo <path>]` | Alias for `init --patch-agent-files`. Appends routing stubs to `CLAUDE.md` / `AGENTS.md`. |
 | `wtcraft unpatch` | `[--repo <path>]` | Remove the routing stub from `CLAUDE.md` / `AGENTS.md`. |
 | `wtcraft lang` | `install\|remove [--repo <path>]` | Add or remove language enforcement rules (e.g. `install --lang zh-CN`). |
