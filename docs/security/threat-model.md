@@ -60,7 +60,10 @@ A passing protected-check verdict must establish these properties:
 4. **Scope binding.** Every changed path is checked against the authoritative
    allowed-path and off-limits rules.
 5. **Verification binding.** Evidence records the reviewed verification plan
-   and its outcome. A task-branch edit cannot silently replace that plan.
+   and its execution status. A task-branch edit cannot silently replace that
+   plan. The v0.5 adapter reports the plan with `"status": "not_executed"`;
+   running those commands needs a separate least-privilege design, so an
+   authorization pass is not yet a statement about verification results.
 6. **Merge enforcement.** A local pass, hook pass, or self-reported task state
    is never equivalent to the required remote verdict.
 
@@ -74,6 +77,7 @@ A passing protected-check verdict must establish these properties:
 | Executor changes a workflow to skip the verifier | Repository workflow protection/review prevents it from becoming the authoritative check |
 | Policy is absent or malformed | Fail closed with a machine-readable authorization error |
 | Changed path is outside the envelope | Fail with the offending paths in evidence |
+| Executor renames a protected file out of an off-limits directory | Both sides of the rename appear in the changeset; the off-limits path fails closed |
 | Policy is edited after approval | New policy-branch commit is visible in provenance; a replacement authorization requires review |
 | Local hook is bypassed | No effect on the protected merge verdict |
 

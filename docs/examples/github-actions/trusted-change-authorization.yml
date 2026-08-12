@@ -26,12 +26,18 @@ jobs:
 
       # pull_request_target uses the target repository's workflow context.
       # Pin the checkout to the target/base commit so this script is not read
-      # from the pull request under review.
+      # from the pull request under review, and pin the action itself by commit
+      # SHA before making this check required.
+      #
+      # fetch-depth: 0 is required, not a convenience. The adapter computes the
+      # merge base between the base tip and the PR head; on a shallow clone the
+      # fork point sits behind the graft boundary and git cannot answer, which
+      # fails every PR whose base branch has advanced since it was opened.
       - name: Checkout trusted base revision
         uses: actions/checkout@v5
         with:
           ref: ${{ github.event.pull_request.base.sha }}
-          fetch-depth: 1
+          fetch-depth: 0
 
       - name: Fetch policy and pull request head without checking out PR code
         env:
@@ -48,6 +54,10 @@ jobs:
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
         run: |
+          # Capture the exit code instead of letting `set -e` abort here. A
+          # denial exits non-zero, and aborting would discard the evidence in
+          # exactly the case a reviewer needs to read it.
+          set +e
           python3 scripts/policy_git_adapter.py \
             --repo . \
             --repository "${REPOSITORY}" \
@@ -56,4 +66,15 @@ jobs:
             --base-sha "${BASE_SHA}" \
             --policy-ref refs/heads/wtcraft-policy \
             > wtcraft-policy-evidence.json
+          status=$?
+          set -e
           cat wtcraft-policy-evidence.json
+          exit "${status}"
+
+      - name: Publish authorization evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: wtcraft-policy-evidence
+          path: wtcraft-policy-evidence.json
+          if-no-files-found: warn

@@ -8,11 +8,10 @@ ref. This adapter never reads policy from the implementation checkout.
 import argparse
 import hashlib
 import json
-import os
 import subprocess
 import sys
 
-from policy_evaluator import InvalidPolicy, verdict
+from policy_evaluator import InvalidChange, InvalidPolicy, verdict
 
 
 POLICY_DIRECTORY = ".wtcraft/policies"
@@ -50,6 +49,34 @@ def list_policy_paths(repo, policy_ref):
         if path.endswith(".json"):
             paths.append(path)
     return sorted(paths)
+
+
+def changed_paths(repo, merge_base, head_sha):
+    """List every path the changeset touches, on both sides of a rename.
+
+    `--no-renames` is load-bearing. With git's default rename detection,
+    `--name-only` reports only a rename's destination, so moving a file out of
+    an `off_limits` directory hides the path that the policy protects and the
+    change is authorized. Disabling detection reports the delete and the add.
+    """
+
+    raw = git(
+        repo,
+        "diff",
+        "--name-only",
+        "--no-renames",
+        "-z",
+        "{}...{}".format(merge_base, head_sha),
+        text=False,
+    )
+    seen = []
+    for encoded in raw.split(b"\0"):
+        if not encoded:
+            continue
+        path = encoded.decode("utf-8", "surrogateescape")
+        if path not in seen:
+            seen.append(path)
+    return seen
 
 
 def load_policy_at_ref(repo, policy_ref, path):
@@ -119,17 +146,21 @@ def main():
 
     try:
         merge_base = git(args.repo, "merge-base", args.base_sha, args.head_sha).strip()
-        changed_raw = git(args.repo, "diff", "--name-only", "-z", "{}...{}".format(merge_base, args.head_sha), text=False)
-        changed_files = [
-            path.decode("utf-8", "surrogateescape")
-            for path in changed_raw.split(b"\0")
-            if path
-        ]
+    except AdapterError as error:
+        # A shallow clone is the usual cause: the fork point is behind the
+        # graft boundary, so git cannot answer. That is not a policy defect and
+        # must not be reported as one.
+        return adapter_error("merge_base_unavailable", str(error))
+
+    try:
+        changed_files = changed_paths(args.repo, merge_base, args.head_sha)
         candidates = policy_candidates(
             args.repo, args.policy_ref, args.repository, args.head_ref, merge_base
         )
     except AdapterError as error:
         return adapter_error("invalid_policy", str(error))
+    except InvalidChange as error:
+        return adapter_error("invalid_change", str(error))
 
     if not candidates:
         return adapter_error("policy_not_found", "no matching policy envelope on {}".format(args.policy_ref))
@@ -156,6 +187,17 @@ def main():
             "source_ref": args.policy_ref,
             "source_commit": policy_commit,
             "digest": canonical_digest(policy),
+        },
+        # The threat model requires evidence to name the reviewed verification
+        # plan, so a reader can tell which commands were authorized and that
+        # this adapter did not run them. Omitting the field would let a passing
+        # verdict be mistaken for a verified one.
+        "verification": {
+            "status": "not_executed",
+            "plan": [
+                {"name": item["name"], "command": item["command"]}
+                for item in policy["verification"]
+            ],
         },
         "change": {
             "repository": args.repository,

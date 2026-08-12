@@ -11,7 +11,6 @@ import tempfile
 
 REPO_ROOT = os.path.realpath(os.path.join(os.path.dirname(__file__), ".."))
 ADAPTER = os.path.join(REPO_ROOT, "scripts", "policy_git_adapter.py")
-BASE_SHA = "placeholder"
 
 
 def run(repo, *args):
@@ -48,13 +47,14 @@ def make_policy(base_sha):
     }
 
 
-def create_repo(changed_path):
+def create_repo(changed_path=None, rename_from=None, rename_to=None):
     repo = tempfile.mkdtemp(prefix="wtcraft-policy-adapter-")
     run(repo, "init", "-q")
     run(repo, "config", "user.name", "wtcraft-tests")
     run(repo, "config", "user.email", "wtcraft-tests@example.com")
     write(os.path.join(repo, "README.md"), "seed\n")
     write(os.path.join(repo, "src", "seed.txt"), "seed\n")
+    write(os.path.join(repo, ".github", "workflows", "ci.yml"), "protected\n")
     run(repo, "add", ".")
     run(repo, "commit", "-q", "-m", "seed")
     base_sha = run(repo, "rev-parse", "HEAD")
@@ -67,20 +67,52 @@ def create_repo(changed_path):
     policy_commit = run(repo, "rev-parse", "HEAD")
 
     run(repo, "checkout", "-q", "-b", "feat/trusted-change", base_sha)
-    write(os.path.join(repo, changed_path), "change\n")
-    run(repo, "add", changed_path)
+    if rename_from:
+        run(repo, "mv", rename_from, rename_to)
+    if changed_path:
+        write(os.path.join(repo, changed_path), "change\n")
+        run(repo, "add", changed_path)
     run(repo, "commit", "-q", "-m", "implementation")
     return repo, base_sha, run(repo, "rev-parse", "HEAD"), policy_commit
 
 
-def evaluate(repo, base_sha, head_sha):
+def create_shallow_consumer():
+    """Reproduce the CI shape: depth-1 base checkout, base branch moved on.
+
+    Returns the shallow working clone plus the base tip and head SHA a
+    pull_request_target job would pass in.
+    """
+
+    origin, base_sha, head_sha, _ = create_repo("src/implementation.txt")
+    default_branch = "wtcraft-base"
+    run(origin, "checkout", "-q", "-b", default_branch, base_sha)
+    write(os.path.join(origin, "README.md"), "base moved on\n")
+    run(origin, "commit", "-q", "-am", "advance base past the fork point")
+    base_tip = run(origin, "rev-parse", "HEAD")
+
+    workdir = tempfile.mkdtemp(prefix="wtcraft-policy-shallow-")
+    clone = os.path.join(workdir, "work")
+    subprocess.run(
+        ["git", "clone", "-q", "--depth", "1", "--branch", default_branch,
+         "file://" + origin, clone],
+        stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True,
+    )
+    run(clone, "fetch", "-q", "--no-tags", "--depth", "1", "origin",
+        "+refs/heads/wtcraft-policy:refs/heads/wtcraft-policy",
+        "+refs/heads/feat/trusted-change:refs/heads/wtcraft-pr-head")
+    shutil.rmtree(origin, ignore_errors=True)
+    return clone, base_tip, head_sha
+
+
+def evaluate(repo, base_sha, head_sha, head_ref="refs/heads/feat/trusted-change",
+             repository="acme/widget"):
     completed = subprocess.run(
         [
             sys.executable,
             ADAPTER,
             "--repo", repo,
-            "--repository", "acme/widget",
-            "--head-ref", "refs/heads/feat/trusted-change",
+            "--repository", repository,
+            "--head-ref", head_ref,
             "--head-sha", head_sha,
             "--base-sha", base_sha,
         ],
@@ -104,6 +136,11 @@ def main():
         assert evidence["policy"]["source_commit"] == policy_commit
         assert evidence["policy"]["digest"].startswith("sha256:")
         assert evidence["change"]["changed_files"] == ["src/implementation.txt"]
+        # Evidence must name the reviewed plan and admit it did not run it.
+        assert evidence["verification"]["status"] == "not_executed"
+        assert evidence["verification"]["plan"] == [
+            {"name": "unit", "command": "bash tests/run_all.sh"}
+        ]
 
         repo, base_sha, head_sha, policy_commit = create_repo("docs/not-authorized.md")
         repos.append(repo)
@@ -114,6 +151,40 @@ def main():
         assert evidence["verdict"]["reason"] == "scope_violation"
         assert evidence["verdict"]["violations"] == ["docs/not-authorized.md"]
         assert evidence["policy"]["source_commit"] == policy_commit
+
+        # Moving a file out of an off_limits directory must not launder it into
+        # allowed_paths. Git's default rename detection reports only the
+        # destination, which would authorize the change.
+        repo, base_sha, head_sha, _ = create_repo(
+            rename_from=".github/workflows/ci.yml", rename_to="src/ci.yml"
+        )
+        repos.append(repo)
+        code, evidence, stderr = evaluate(repo, base_sha, head_sha)
+        assert code == 2, "rename out of off_limits was authorized: {}".format(evidence)
+        assert evidence["verdict"]["reason"] == "scope_violation"
+        assert evidence["verdict"]["violations"] == [".github/workflows/ci.yml"]
+        assert ".github/workflows/ci.yml" in evidence["change"]["changed_files"]
+        assert "src/ci.yml" in evidence["change"]["changed_files"]
+
+        # Change facts the caller got wrong must still produce parseable
+        # evidence rather than an uncaught traceback.
+        repo, base_sha, head_sha, _ = create_repo("src/implementation.txt")
+        repos.append(repo)
+        code, evidence, stderr = evaluate(repo, base_sha, head_sha, head_ref="feat/trusted-change")
+        assert code == 1, stderr
+        assert evidence["ok"] is False
+        assert evidence["error"]["reason"] == "invalid_change"
+        assert "Traceback" not in stderr
+
+        # A depth-1 clone cannot answer merge-base once the base branch has
+        # advanced past the fork point, which is the ordinary case. That is a
+        # transport defect, not a malformed policy, and must say so.
+        clone, base_tip, head_sha = create_shallow_consumer()
+        repos.append(os.path.dirname(clone))
+        code, evidence, stderr = evaluate(clone, base_tip, head_sha)
+        assert code == 1, "expected shallow merge-base failure, got {}".format(evidence)
+        assert evidence["ok"] is False
+        assert evidence["error"]["reason"] == "merge_base_unavailable", evidence
     except (AssertionError, RuntimeError, ValueError) as error:
         print("[FAIL] integration_policy_git_adapter: {}".format(error), file=sys.stderr)
         return 1

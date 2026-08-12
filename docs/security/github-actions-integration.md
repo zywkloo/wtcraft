@@ -23,7 +23,20 @@ policy commit + digest + changeset verdict
 
 It deliberately does not execute the envelope's verification commands. Running
 untrusted PR code in a privileged event requires a separate, least-privilege
-design and is not solved by copying this workflow.
+design and is not solved by copying this workflow. The evidence still names the
+reviewed plan with `"status": "not_executed"`, so a passing authorization is
+never mistaken for a passing verification.
+
+Two details in the example are load-bearing and must survive any edit:
+
+- `fetch-depth: 0`. The adapter needs the merge base between the base tip and
+  the PR head. A shallow checkout puts the fork point behind the graft
+  boundary, and every PR whose base branch has moved on then fails with
+  `merge_base_unavailable`.
+- the evidence step captures the adapter's exit code instead of letting the
+  shell abort on it, then prints and uploads the JSON. A denial exits non-zero,
+  and aborting early would discard the evidence in the one case a reviewer
+  actually needs to read it.
 
 ## Required repository setup
 
@@ -37,7 +50,9 @@ Before making the check required, an administrator must configure all of these:
 4. Copy the example workflow into the default branch and confirm it runs from
    the trusted base revision.
 5. Open an intentionally unauthorized same-repository PR and verify that the
-   job fails; then open an authorized PR and inspect its evidence JSON.
+   job fails; then open an authorized PR and inspect its evidence JSON. Include
+   a PR that renames a file out of an off-limits path, and one opened before
+   the base branch advanced, so both fail-closed paths are exercised.
 6. Only then make the exact job name `wtcraft / trusted-change-authorization`
    a required status check/ruleset requirement.
 
