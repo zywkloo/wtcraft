@@ -38,8 +38,8 @@
     },
     "head_ref": {
       "type": "string",
-      "description": "Exact implementation branch ref authorized by this envelope.",
-      "pattern": "^refs/heads/[A-Za-z0-9][A-Za-z0-9._/-]*$"
+      "description": "Exact implementation branch ref authorized by this envelope. Any git-legal branch name is accepted, including non-ASCII names; the verifier applies the full git-check-ref-format rules.",
+      "pattern": "^refs/heads/(?!/)(?!@$)(?!.*//)(?!.*\\.\\.)(?!.*@\\{)(?!.*\\.lock(?:/|$))(?!.*[./]$)[^\\u0000-\\u0020\\u007f~^:?*\\[\\\\]+$"
     },
     "base_sha": {
       "type": "string",
@@ -48,25 +48,25 @@
     },
     "allowed_paths": {
       "type": "array",
-      "description": "Repository-relative path patterns. Pattern semantics are defined by the verifier, not JSON Schema.",
+      "description": "Repository-relative path patterns. Pattern semantics are defined by the verifier, not JSON Schema. `*` is the only supported wildcard and it matches `/`; `?` and `[]` are rejected so a pattern cannot mean something narrower in CI than it does in local `wtcraft check`.",
       "minItems": 1,
       "uniqueItems": true,
       "items": {
         "type": "string",
         "minLength": 1,
         "maxLength": 1024,
-        "pattern": "^(?!/)(?!.*(?:^|/)\\.\\.(?:/|$)).+$"
+        "pattern": "^(?!/)(?!.*(?:^|/)\\.\\.(?:/|$))(?!.*[?\\[\\]]).+$"
       }
     },
     "off_limits": {
       "type": "array",
-      "description": "Repository-relative deny patterns evaluated before allowed_paths.",
+      "description": "Repository-relative deny patterns evaluated before allowed_paths. Same wildcard restrictions as allowed_paths.",
       "uniqueItems": true,
       "items": {
         "type": "string",
         "minLength": 1,
         "maxLength": 1024,
-        "pattern": "^(?!/)(?!.*(?:^|/)\\.\\.(?:/|$)).+$"
+        "pattern": "^(?!/)(?!.*(?:^|/)\\.\\.(?:/|$))(?!.*[?\\[\\]]).+$"
       }
     },
     "verification": {
@@ -99,7 +99,8 @@
     "valid_until": {
       "type": "string",
       "format": "date-time",
-      "description": "Optional expiration time enforced by CI once implemented."
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}[Tt]\\d{2}:\\d{2}:\\d{2}(\\.\\d+)?([Zz]|[+-]\\d{2}:\\d{2})$",
+      "description": "Optional expiration time. The evaluator validates the RFC 3339 format so a malformed value fails closed; enforcing the deadline needs a trusted clock and is done by the CI adapter."
     }
   }
 }

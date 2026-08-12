@@ -9,7 +9,6 @@ facts, then preserve this evaluator's fail-closed verdict semantics.
 
 import argparse
 import json
-import os
 import re
 import sys
 
@@ -28,8 +27,18 @@ POLICY_REQUIRED = {
 POLICY_OPTIONAL = {"valid_until"}
 POLICY_ID_RE = re.compile(r"^[a-z0-9][a-z0-9._-]{2,127}$")
 REPOSITORY_RE = re.compile(r"^[^/\s]+/[^/\s]+$")
-HEAD_REF_RE = re.compile(r"^refs/heads/[A-Za-z0-9][A-Za-z0-9._/-]*$")
 SHA_RE = re.compile(r"^[0-9a-f]{40}$")
+RFC3339_RE = re.compile(
+    r"^\d{4}-\d{2}-\d{2}[Tt]\d{2}:\d{2}:\d{2}(\.\d+)?([Zz]|[+-]\d{2}:\d{2})$"
+)
+
+HEAD_REF_PREFIX = "refs/heads/"
+# git-check-ref-format(1): control characters, space, and these bytes are never
+# legal in a ref component. Everything else, including non-ASCII, is legal.
+REF_FORBIDDEN_RE = re.compile(r"[\x00-\x20\x7f~^:?*\[\\]")
+# Shell wildcards other than `*` are rejected rather than reinterpreted, so a
+# pattern can never mean something narrower in CI than it does locally.
+UNSUPPORTED_GLOB_RE = re.compile(r"[?\[\]]")
 
 
 class InvalidPolicy(ValueError):
@@ -52,12 +61,36 @@ def require_string(value, field, maximum=None):
         raise InvalidPolicy("{} exceeds {} characters".format(field, maximum))
 
 
+def is_valid_head_ref(value):
+    """Accept any git-legal `refs/heads/` branch name, including non-ASCII.
+
+    A narrower ASCII-only rule would reject branch names that git and the Git
+    host accept, which fails a legitimate task instead of an unauthorized one.
+    """
+
+    if not isinstance(value, str) or not value.startswith(HEAD_REF_PREFIX):
+        return False
+    name = value[len(HEAD_REF_PREFIX):]
+    if not name or name.startswith("/") or name.endswith("/") or "//" in name:
+        return False
+    if name.endswith(".") or ".." in name or "@{" in name or name == "@":
+        return False
+    if REF_FORBIDDEN_RE.search(name):
+        return False
+    return not any(part.endswith(".lock") for part in name.split("/"))
+
+
 def validate_path_pattern(value, field):
     require_string(value, field, 1024)
     if value.startswith("/"):
         raise InvalidPolicy("{} must be repository-relative".format(field))
     if ".." in value.split("/"):
         raise InvalidPolicy("{} must not contain parent traversal".format(field))
+    if UNSUPPORTED_GLOB_RE.search(value):
+        raise InvalidPolicy(
+            "{} may only use `*` as a wildcard; `?` and `[]` are not supported "
+            "and must be written as separate patterns".format(field)
+        )
 
 
 def validate_path_list(value, field, require_nonempty):
@@ -97,8 +130,8 @@ def validate_policy(policy):
     if not REPOSITORY_RE.match(policy["repository"]):
         raise InvalidPolicy("repository must have owner/name format")
     require_string(policy["head_ref"], "head_ref")
-    if not HEAD_REF_RE.match(policy["head_ref"]):
-        raise InvalidPolicy("head_ref must be a refs/heads/ branch")
+    if not is_valid_head_ref(policy["head_ref"]):
+        raise InvalidPolicy("head_ref must be a git-legal refs/heads/ branch")
     require_string(policy["base_sha"], "base_sha")
     if not SHA_RE.match(policy["base_sha"]):
         raise InvalidPolicy("base_sha must be a lowercase 40-character SHA")
@@ -131,6 +164,10 @@ def validate_policy(policy):
 
     if "valid_until" in policy:
         require_string(policy["valid_until"], "valid_until")
+        # Format is validated here so a malformed value fails closed. Expiry
+        # itself needs a trusted clock and is enforced by the CI adapter.
+        if not RFC3339_RE.match(policy["valid_until"]):
+            raise InvalidPolicy("valid_until must be an RFC 3339 date-time")
 
 
 def validate_change(change):
@@ -144,8 +181,8 @@ def validate_change(change):
         ))
     if not isinstance(change["repository"], str) or not REPOSITORY_RE.match(change["repository"]):
         raise InvalidChange("change repository must have owner/name format")
-    if not isinstance(change["head_ref"], str) or not HEAD_REF_RE.match(change["head_ref"]):
-        raise InvalidChange("change head_ref must be a refs/heads/ branch")
+    if not is_valid_head_ref(change["head_ref"]):
+        raise InvalidChange("change head_ref must be a git-legal refs/heads/ branch")
     if not isinstance(change["merge_base_sha"], str) or not SHA_RE.match(change["merge_base_sha"]):
         raise InvalidChange("change merge_base_sha must be a lowercase 40-character SHA")
     if not isinstance(change["changed_files"], list):
@@ -162,7 +199,10 @@ def matches_path(path, pattern):
 
     A pattern without `*` is an exact path or directory prefix. A pattern with
     `*` uses the existing wtcraft matching semantics where it may match path
-    separators. Other shell wildcard syntax is deliberately treated literally.
+    separators. `?` and `[]` never reach this function: validate_path_pattern
+    rejects them, because treating them literally here would make an
+    `off_limits` rule match fewer paths in CI than `wtcraft check` matches
+    locally.
     """
 
     if "*" not in pattern:

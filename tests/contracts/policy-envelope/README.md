@@ -18,3 +18,11 @@ before evaluating paths. It must fail closed for a missing, malformed, stale,
 or mismatched policy. `tests/contract_policy_envelope.sh` runs the P1 reference
 evaluator against these cases. A later CI adapter will attach policy
 commit/digest provenance to its evidence.
+
+Two runner behaviors keep these cases honest:
+
+- when a case declares `untrusted_task_policy`, the runner also evaluates that
+  copy and fails the case unless it would have authorized the change. A
+  widening fixture whose untrusted policy denies the change proves nothing.
+- the runner compares the schema's field set against the evaluator's, because
+  nothing else executes the JSON Schema and the two would otherwise drift.

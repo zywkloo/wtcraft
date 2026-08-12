@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "policy_id": "trusted-change-005",
+  "task_id": "a git-legal branch name must not be misreported as a malformed policy",
+  "repository": "acme/widget",
+  "head_ref": "refs/heads/feat/交易对账",
+  "base_sha": "1111111111111111111111111111111111111111",
+  "allowed_paths": ["src/**"],
+  "off_limits": [".github/**"],
+  "verification": [
+    {"name": "unit", "command": "bash tests/run_all.sh"}
+  ]
+}

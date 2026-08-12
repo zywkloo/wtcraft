@@ -90,7 +90,7 @@ Required fields:
 | `contract_version` | Fixture schema version; currently `1` |
 | `id` | Stable, globally unique case identifier |
 | `subject` | `cli`, `task-state`, `session`, `reconciliation`, or `policy-envelope` |
-| `expected_exit_code` | Expected process/result exit code; required for `cli` fixtures. Pure-core fixtures, including `policy-envelope`, use their structured expected result instead. |
+| `expected_exit_code` | Expected process/result exit code; required for `cli` and `policy-envelope` fixtures. Fixtures for a pure-core subject with no process boundary use their structured expected result instead. |
 
 Subject-specific fields such as `command`, `input`, `stdout`, and `expected`
 are permitted. Unknown manifest fields must be ignored by v1 runners.
@@ -213,8 +213,16 @@ Before Rust becomes the default implementation, the shared suite must include:
 - a task-branch copy of policy cannot widen an authoritative policy-branch scope
 - stale base revisions and branch mismatches fail closed
 - absent or malformed authoritative policy fails closed
+- a path pattern using an unsupported wildcard (`?`, `[]`) fails closed rather
+  than silently matching fewer paths in CI than in local `wtcraft check`
+- a git-legal non-ASCII branch name is authorized, not reported as malformed
 - evidence records the authoritative policy source commit and canonical digest
   once the protected verifier is implemented
+
+A widening fixture must also supply `untrusted_task_policy`. The runner
+evaluates that copy as well and rejects the fixture unless the untrusted policy
+would have authorized the same change; otherwise the case silently decays into
+an ordinary scope violation and stops proving authority separation.
 
 ## Change policy
 

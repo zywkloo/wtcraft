@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "policy_id": "trusted-change-006",
+  "task_id": "reject wildcards that do not mean the same thing in CI and locally",
+  "repository": "acme/widget",
+  "head_ref": "refs/heads/feat/trusted-change",
+  "base_sha": "1111111111111111111111111111111111111111",
+  "allowed_paths": ["src/**"],
+  "off_limits": [".github/workflows/*.y?ml"],
+  "verification": [
+    {"name": "unit", "command": "bash tests/run_all.sh"}
+  ]
+}
