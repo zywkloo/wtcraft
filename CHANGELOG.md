@@ -7,6 +7,8 @@ Versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.4.4] - 2026-08-12
+
 ### Added
 - `wtcraft agent init` initializes `AGENTS.md` as the canonical shared
   instruction file and makes `CLAUDE.md` import it with `@AGENTS.md`. The

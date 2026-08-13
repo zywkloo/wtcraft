@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "wtcraft"
-version = "0.4.3"
+version = "0.4.4"
 description = "Git-native agent governance core — task contracts and deterministic scope/verification checks that keep coding agents in their lanes"
 license = { text = "Apache-2.0" }
 requires-python = ">=3.7"
