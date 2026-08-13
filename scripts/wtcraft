@@ -1048,6 +1048,14 @@ cmd_new() {
   local repo_root base_branch wt_path
   ensure_git_path "$repo_arg"
   repo_root="$(primary_worktree_root "$repo_arg")"
+  # Without this, resolve_base_branch names a branch that has no commit behind
+  # it and `git worktree add` aborts with a bare `fatal: invalid reference`.
+  # `agent init` works in a plain directory, so reaching `new` right after a
+  # fresh `git init` is now an ordinary path rather than a corner case.
+  git -C "$repo_root" rev-parse --verify HEAD >/dev/null 2>&1 || die \
+"repository has no commits yet: ${repo_root}
+wtcraft branches a worktree off a base branch, which does not exist until the first commit.
+  git commit --allow-empty -m 'initial commit'"
   base_branch="$(resolve_base_branch "$repo_root" "$explicit_base")"
   wt_path="${repo_root}/worktrees/${branch}"
 

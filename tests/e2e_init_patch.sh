@@ -117,6 +117,21 @@ test_init_local_in_linked_worktree_uses_git_info_exclude() {
   test -z "$(git -C worktrees/chore/local-init status --short)"
 }
 
+test_new_reports_an_empty_repository_in_wtcraft_terms() {
+  local repo="$1"
+  cd "$repo"
+  # `agent init` needs no repository, so users reach `new` straight after a
+  # fresh `git init`, before any commit exists.
+  local output
+  output="$("$CLI" new chore/too-early 2>&1)" && exit 1
+  case "$output" in
+    *"no commits yet"*) ;;
+    *) echo "expected a wtcraft-level message, got: ${output}" >&2; exit 1 ;;
+  esac
+}
+
+run_in_temp_repo test_new_reports_an_empty_repository_in_wtcraft_terms
+
 run_in_temp_repo test_help_init_status
 run_in_temp_repo test_init_local_keeps_repo_clean
 run_in_temp_repo test_init_local_patch_hides_agent_files

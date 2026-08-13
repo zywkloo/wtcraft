@@ -18,6 +18,12 @@ Versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   a plain directory; `init --local` still requires Git because it writes
   `.git/info/exclude`.
 
+### Fixed
+- `wtcraft new` now reports a repository with no commits in its own terms and
+  names the fix, instead of letting git's `fatal: invalid reference` surface.
+  Because `agent init` works without a repository, running `new` right after a
+  fresh `git init` is an ordinary path rather than a corner case.
+
 ## [0.4.3] - 2026-06-24
 
 ### Fixed
