@@ -56,12 +56,11 @@ Reasons, in order of weight:
    and every doc, fixture, and consumer would need updating simultaneously.
    Nothing forces this now; nothing is asking for it.
 
-4. **wtcraft is code-frozen for the current window.** Per the 2026-08-11
-   red/blue-team diagnosis, engineering time is budgeted at roughly two hours
-   a week, design writing only. Adopting in-toto is an implementation change
-   (new dependency or hand-rolled envelope construction, new fixtures, a
-   migration note for the one already-shipped shape) — squarely code work, not
-   an ADR.
+4. **This ADR settles the design question; it does not schedule the work.**
+   Adopting in-toto is an implementation change — a new dependency or
+   hand-rolled envelope construction, new fixtures, and a migration note for
+   the one already-shipped shape. That is separable from deciding whether it's
+   worth doing, which is all this document does.
 
 This is not a rejection of in-toto. The bespoke shape and an in-toto Statement
 carry the same information — `policy.source_commit`/`digest` is provenance,
@@ -109,8 +108,8 @@ consumer, not the existence of the standard.
 
 ### Wrap evidence in in-toto now
 
-Rejected on cost: no consumer, no predicate type to adopt, breaking change to
-a shipped format, and code work during a code-frozen window. See Decision.
+Rejected on cost: no consumer, no predicate type to adopt, and a breaking
+change to an already-shipped format. See Decision.
 
 ### Design a custom `predicateType` for policy authorization now
 
