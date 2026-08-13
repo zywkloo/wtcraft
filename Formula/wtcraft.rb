@@ -3,8 +3,8 @@ class Wtcraft < Formula
   homepage "https://github.com/zywkloo/wtcraft"
   # Update url + sha256 for each release:
   #   curl -sL <url> | shasum -a 256
-  url "https://github.com/zywkloo/wtcraft/archive/refs/tags/v0.4.3.tar.gz"
-  sha256 "6dff4db250df81eee3a7cac87f293837d5c5ff05726babf33c0c2d258a6a4012"
+  url "https://github.com/zywkloo/wtcraft/archive/refs/tags/v0.4.4.tar.gz"
+  sha256 "5dd5309b634738d65fa102a3e2bea2fa65b4cc80081f37c5d70fc2082bbce4ba"
   license "Apache-2.0"
   head "https://github.com/zywkloo/wtcraft.git", branch: "main"
 
