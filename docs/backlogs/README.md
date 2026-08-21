@@ -13,5 +13,8 @@ reasoning isn't re-derived later.
   launch contract, machine protocol, and interactive-vs-headless follow-on work
 - [worktree-layout.md](worktree-layout.md) — enumerate worktrees via
   `git worktree list` instead of glob; flip default layout to sibling dir
+- [quota-aware-task-planning.md](quota-aware-task-planning.md) — classify
+  prompts before execution, forecast token/subscription-quota ranges, recommend
+  role/model tiers, and calibrate against deterministic verification outcomes
 
 *(Note: Completed designs, explicitly rejected ideas, and deferred architectures like the Rust migration have been moved to the `../adr/` directory.)*
