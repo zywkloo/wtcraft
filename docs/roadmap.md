@@ -114,6 +114,9 @@ security boundary.
 
 ## Phase 6: Trusted Change Authorization (target: v0.5.0)
 
+Status: in progress on `main`, unreleased. The schema, reference evaluator,
+Git adapter, and adversarial fixtures exist; the enforcement point does not.
+
 Goal: bind a reviewed task authorization to a Git changeset and produce a
 verifiable verdict at a protected merge boundary.
 
@@ -135,14 +138,41 @@ merge verdict + evidence
 
 Deliverables:
 
-- [ ] document the threat model and policy-authority boundary
-- [ ] define a reviewed policy-envelope schema separate from mutable local task state
-- [ ] bind local worktree state to a policy identity and base revision
-- [ ] teach the existing JSON verifier to emit policy provenance and evidence
-- [ ] add `wtcraft init-ci` for a required GitHub Actions check
-- [ ] document the repository ruleset needed to make that check merge-blocking
-- [ ] add optional local hook installation for fast feedback, explicitly documented as bypassable
-- [ ] add adversarial tests for policy widening, stale base revisions, and missing authorization
+- [x] document the threat model and policy-authority boundary —
+      [threat model](security/threat-model.md), [ADR-009](adr/009-policy-authority.md)
+- [x] define a reviewed policy-envelope schema separate from mutable local task state —
+      [policy-envelope-v1](protocol/policy-envelope-v1.md)
+- [x] bind local worktree state to a policy identity and base revision —
+      `scripts/policy_git_adapter.py`
+- [ ] teach the existing JSON verifier to emit policy provenance and evidence —
+      partial: the standalone adapter emits provenance-bearing evidence, but
+      `scripts/wtcraft` itself has no policy awareness and `verify --json` is
+      unchanged. The two are not yet one surface.
+- [ ] add `wtcraft init-ci` for a required GitHub Actions check —
+      not started; only a hand-copied example workflow is documented
+- [x] document the repository ruleset needed to make that check merge-blocking —
+      [GitHub Actions integration](security/github-actions-integration.md)
+- [ ] add optional local hook installation for fast feedback, explicitly documented as bypassable —
+      not started
+- [x] add adversarial tests for policy widening, stale base revisions, and missing authorization —
+      ten contract cases under `tests/contracts/policy-envelope/`, plus the
+      rename-bypass integration test
+
+Two gaps decide whether this phase means anything:
+
+1. **No enforcement point.** Everything above is a schema plus two reference
+   implementations under `scripts/`. `policy_evaluator.py` says so in its own
+   docstring: it "does not install a public CLI command." Until `init-ci` ships
+   and a repository makes the check required, nothing is enforced anywhere.
+2. **Verification is authorized but never executed.** Evidence reports the
+   reviewed plan with `"status": "not_executed"`. Running those commands means
+   executing task-branch content — including its tests — from the trusted
+   verifier, which is a least-privilege design problem, not a plumbing task.
+   Until it is solved, an authorization pass says nothing about whether the
+   change works. See security property 5 in the threat model.
+
+Gap 2 needs its own ADR before implementation. It is the unfinished part of
+this phase, not a later phase.
 
 Acceptance criteria:
 
