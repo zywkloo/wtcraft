@@ -4,6 +4,31 @@ Status: v0.5 setup guidance. The example workflow is not enabled in the
 wtcraft repository because this repository does not yet operate a protected
 `wtcraft-policy` branch.
 
+## Installing it
+
+```bash
+wtcraft init-ci
+```
+
+This writes `.github/workflows/wtcraft-trusted-change.yml` plus the evaluator
+it runs, at `.wtcraft/policy_git_adapter.py` and `.wtcraft/policy_evaluator.py`.
+
+The evaluator is vendored into the repository rather than installed at check
+time. The job is privileged and runs from the trusted base checkout, so adding
+an install step would both widen it and drop the review requirement this
+document places on the adapter implementation. The tradeoff is that a vendored
+copy does not receive wtcraft's fixes: `init-ci` reports a vendored file that
+differs from the installed wtcraft version, and `--force` refreshes it. Treat
+that report as a security notice, not noise — the rename-bypass fix landed in a
+released version, and a repository pinned to an older copy stays exploitable.
+
+Existing files are never overwritten without `--force`.
+
+The reference copy under
+[`docs/examples/github-actions/`](../examples/github-actions/trusted-change-authorization.yml)
+runs `scripts/policy_git_adapter.py` instead, because in this repository the
+adapter is source, not a vendored artifact.
+
 ## What the example does
 
 [`trusted-change-authorization.yml`](../examples/github-actions/trusted-change-authorization.yml)
@@ -21,9 +46,12 @@ trusted base checkout
 policy commit + digest + changeset verdict
 ```
 
-It deliberately does not execute the envelope's verification commands. Running
-untrusted PR code in a privileged event requires a separate, least-privilege
-design and is not solved by copying this workflow. The evidence still names the
+It deliberately does not execute the envelope's verification commands.
+[ADR-011](../adr/011-verification-execution-least-privilege.md) explains why
+sandboxing alone would not fix this: the adversary controls the task branch, so
+it controls what those commands do, and a command the adversary wrote can
+report whatever it likes. Execution becomes evidence only once the reviewed
+policy also pins the plan's inputs. The evidence still names the
 reviewed plan with `"status": "not_executed"`, so a passing authorization is
 never mistaken for a passing verification.
 
@@ -47,8 +75,9 @@ Before making the check required, an administrator must configure all of these:
    reviewer path for `.wtcraft/policies/**`.
 3. Protect `.github/workflows/wtcraft-trusted-change.yml` and the wtcraft
    adapter implementation from ordinary task changes.
-4. Copy the example workflow into the default branch and confirm it runs from
-   the trusted base revision.
+4. Run `wtcraft init-ci`, commit the result to the default branch, and confirm
+   it runs from the trusted base revision. Pin `actions/checkout` and
+   `actions/upload-artifact` by commit SHA before making the check required.
 5. Open an intentionally unauthorized same-repository PR and verify that the
    job fails; then open an authorized PR and inspect its evidence JSON. Include
    a PR that renames a file out of an off-limits path, and one opened before

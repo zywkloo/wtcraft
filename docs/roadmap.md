@@ -115,7 +115,9 @@ security boundary.
 ## Phase 6: Trusted Change Authorization (target: v0.5.0)
 
 Status: in progress on `main`, unreleased. The schema, reference evaluator,
-Git adapter, and adversarial fixtures exist; the enforcement point does not.
+Git adapter, adversarial fixtures, and the `init-ci` enforcement point exist.
+What a passing verdict is allowed to claim is still narrower than it looks; see
+the remaining items below.
 
 Goal: bind a reviewed task authorization to a Git changeset and produce a
 verifiable verdict at a protected merge boundary.
@@ -148,8 +150,10 @@ Deliverables:
       partial: the standalone adapter emits provenance-bearing evidence, but
       `scripts/wtcraft` itself has no policy awareness and `verify --json` is
       unchanged. The two are not yet one surface.
-- [ ] add `wtcraft init-ci` for a required GitHub Actions check —
-      not started; only a hand-copied example workflow is documented
+- [x] add `wtcraft init-ci` for a required GitHub Actions check —
+      installs the workflow plus the vendored evaluator it runs; the adapter
+      ships in the repository because the privileged job must not install
+      anything at check time
 - [x] document the repository ruleset needed to make that check merge-blocking —
       [GitHub Actions integration](security/github-actions-integration.md)
 - [ ] add optional local hook installation for fast feedback, explicitly documented as bypassable —
@@ -158,21 +162,26 @@ Deliverables:
       ten contract cases under `tests/contracts/policy-envelope/`, plus the
       rename-bypass integration test
 
-Two gaps decide whether this phase means anything:
+Remaining before v0.5:
 
-1. **No enforcement point.** Everything above is a schema plus two reference
-   implementations under `scripts/`. `policy_evaluator.py` says so in its own
-   docstring: it "does not install a public CLI command." Until `init-ci` ships
-   and a repository makes the check required, nothing is enforced anywhere.
-2. **Verification is authorized but never executed.** Evidence reports the
-   reviewed plan with `"status": "not_executed"`. Running those commands means
-   executing task-branch content — including its tests — from the trusted
-   verifier, which is a least-privilege design problem, not a plumbing task.
-   Until it is solved, an authorization pass says nothing about whether the
-   change works. See security property 5 in the threat model.
+1. **The CLI still does not know about policy.** `scripts/wtcraft` has no
+   policy code path; `verify --json` is unchanged, and provenance-bearing
+   evidence comes only from the standalone adapter. Deciding whether these
+   become one surface, or stay deliberately separate so the trusted evaluator
+   keeps no dependency on the local task contract, is the open question.
+2. **Local hooks are not installed.** Fast local feedback, documented as
+   bypassable, is still unbuilt.
+3. **Verification is authorized but never executed.** Evidence reports the
+   reviewed plan with `"status": "not_executed"`.
+   [ADR-011](adr/011-verification-execution-least-privilege.md) settles why: a
+   sandbox cannot make a command the adversary wrote report truthfully, so
+   execution is only evidence once the reviewed policy also pins the plan's
+   inputs. The ADR records the precondition and the two constraints on any
+   implementation; it does not schedule the work.
 
-Gap 2 needs its own ADR before implementation. It is the unfinished part of
-this phase, not a later phase.
+Until item 3 lands, a passing check proves the changeset was authorized and
+says nothing about whether the tests passed. Every surface that shows the
+verdict is expected to say so.
 
 Acceptance criteria:
 

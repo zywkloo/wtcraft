@@ -12,6 +12,18 @@ The corresponding live files in this repo are wtcraft's own dogfooded versions:
 
 When changing harness behavior: update both the template AND the live file.
 
+`wtcraft init-ci` vendors the policy evaluator into user repos, so these must
+stay byte-identical:
+
+  templates/.wtcraft/policy_evaluator.py       ↔  scripts/policy_evaluator.py
+  templates/.wtcraft/policy_git_adapter.py     ↔  scripts/policy_git_adapter.py
+
+They are real copies, not symlinks, because npm omits symlinks from packages.
+`tests/e2e_init_ci.sh` fails the build if they drift — a stale vendored copy
+would keep security fixes out of user repositories. `templates/.github/` has no
+live counterpart: this repository does not operate a protected policy branch,
+so it does not enable its own check.
+
 ## model knowledge policy
 Never rely on your own training knowledge for model names or IDs — it is always outdated.
 For model recommendations, read `.agent-harness/role-models.yml`.

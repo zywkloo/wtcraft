@@ -9,7 +9,8 @@
   },
   "files": [
     "scripts/",
-    "templates/"
+    "templates/",
+    "!**/__pycache__"
   ],
   "keywords": [
     "git",

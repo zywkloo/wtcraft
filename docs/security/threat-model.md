@@ -64,6 +64,9 @@ A passing protected-check verdict must establish these properties:
    plan. The v0.5 adapter reports the plan with `"status": "not_executed"`;
    running those commands needs a separate least-privilege design, so an
    authorization pass is not yet a statement about verification results.
+   [ADR-011](../adr/011-verification-execution-least-privilege.md) records why
+   isolation alone is not that design, and the input-pinning precondition that
+   would make execution meaningful.
 6. **Merge enforcement.** A local pass, hook pass, or self-reported task state
    is never equivalent to the required remote verdict.
 
