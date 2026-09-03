@@ -79,6 +79,7 @@ run token telemetry.
 |---|---|---|
 | `wtcraft agent init` | `[--path <path>]` | Create or preserve canonical `AGENTS.md` instructions and make `CLAUDE.md` import them. Does not require Git. |
 | `wtcraft init` | `[--patch-agent-files] [--local] [--repo <path>]` | Scaffold harness files without requiring Git. Does not overwrite. `--local` requires Git because it uses `.git/info/exclude`. |
+| `wtcraft init-ci` | `[--repo <path>] [--force]` | Install the trusted-change-authorization check and the evaluator it runs. Installing it does not enforce it; the command prints the repository-administration steps that do. |
 | `wtcraft patch` | `[--repo <path>]` | Alias for `init --patch-agent-files`. Appends routing stubs to `CLAUDE.md` / `AGENTS.md`. |
 | `wtcraft unpatch` | `[--repo <path>]` | Remove the routing stub from `CLAUDE.md` / `AGENTS.md`. |
 | `wtcraft lang` | `install\|remove [--repo <path>]` | Add or remove language enforcement rules (e.g. `install --lang zh-CN`). |

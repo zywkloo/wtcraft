@@ -517,6 +517,12 @@ output, cache, reasoning, workflow, evaluation score, and decision IDs.
 
 ## Evaluation plan (`wteval`)
 
+> Superseded in part by
+> [agent-capability-eval.md](agent-capability-eval.md). The deterministic-oracle
+> eval described there stands alone and does not depend on the advisor being
+> built. The dataset below is compatible with it: this section adds the
+> forecast and classification labels an advisor needs on top of the same runs.
+
 ### Dataset
 
 Start with 30–50 real wtcraft/wtflow dogfood tasks across at least two
@@ -700,6 +706,13 @@ Reject or rewrite:
 | Scope becomes an agent platform | Advisory CLI first; no launcher, gateway, account manager, or dashboard. |
 
 ## Resume-readiness gate
+
+This gate governs claiming that **an advisor product exists**. It is not the
+gate for reporting a measurement result: see
+[agent-capability-eval.md](agent-capability-eval.md), which needs neither
+forecasting, tracing, nor a second provider adapter to publish a
+verified-success-rate table honestly. Do not let this heavier bar block the
+lighter one.
 
 Do not describe this as implemented until an end-to-end vertical slice exists.
 A credible portfolio claim requires:

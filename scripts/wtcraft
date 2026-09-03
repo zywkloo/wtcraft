@@ -20,6 +20,7 @@ wtcraft - git-native harness helper
 Usage:
   wtcraft agent init [--path <path>]
   wtcraft init [--patch-agent-files] [--local] [--repo <path>]
+  wtcraft init-ci [--repo <path>] [--force]
   wtcraft patch [--repo <path>]
   wtcraft unpatch [--repo <path>]
   wtcraft lang install [--repo <path>] [--lang <code>]
@@ -82,6 +83,36 @@ wtcraft init [--patch-agent-files] [--local] [--repo <path>]
     .agent-harness/presets/
     .claude/commands/planwt.md
     .claude/commands/finishwt.md
+EOF
+}
+
+usage_init_ci() {
+  cat <<'EOF'
+wtcraft init-ci [--repo <path>] [--force]
+
+  Install the trusted-change-authorization check into a Git repository.
+
+  Writes a pull_request_target workflow plus the policy evaluator it runs.
+  The adapter is vendored because the job must not install anything: it runs
+  privileged, from the trusted base checkout, and never reads the pull
+  request's own copy.
+
+  Existing files are left untouched. A vendored file that differs from this
+  wtcraft version is reported, not overwritten -- a stale copy silently keeps
+  bugs this version fixed. Use --force to replace it.
+
+  Installing the check does not enforce it. Creating and protecting
+  refs/heads/wtcraft-policy and marking the check required are repository
+  administration; the command prints the remaining steps.
+
+  Options:
+    --repo <path>   Target a repository other than the current one
+    --force         Replace vendored files that differ from this version
+
+  Creates when missing:
+    .github/workflows/wtcraft-trusted-change.yml
+    .wtcraft/policy_evaluator.py
+    .wtcraft/policy_git_adapter.py
 EOF
 }
 
@@ -284,6 +315,7 @@ cmd_help() {
   case "$1" in
     agent)   usage_agent ;;
     init)    usage_init ;;
+    init-ci) usage_init_ci ;;
     patch)   usage_patch ;;
     unpatch) usage_unpatch ;;
     lang)    usage_lang ;;
@@ -672,6 +704,97 @@ EOF
     echo "Legacy scaffold detected: .worktree-task.template.md"
     echo "Run: wtcraft migrate"
   fi
+}
+
+# Files init-ci vendors into a target repository. The adapter has to live in
+# the repository, not be installed at check time: the workflow runs under
+# pull_request_target from the trusted base checkout, where adding an install
+# step would both widen the privileged job and drop the review requirement the
+# threat model places on the adapter implementation.
+ci_vendored_files() {
+  cat <<'LIST'
+.github/workflows/wtcraft-trusted-change.yml
+.wtcraft/policy_evaluator.py
+.wtcraft/policy_git_adapter.py
+LIST
+}
+
+cmd_init_ci() {
+  local repo_arg="."
+  local force=false
+  while [ $# -gt 0 ]; do
+    case "$1" in
+      --repo) shift; repo_arg="${1:?--repo requires a path}" ;;
+      --force) force=true ;;
+      *) die "unknown init-ci option: $1" ;;
+    esac
+    shift
+  done
+
+  ensure_git_path "$repo_arg"
+  local repo_root
+  repo_root="$(project_root "$repo_arg")"
+
+  local installed="" drifted="" unchanged=""
+  local rel src dst
+  while IFS= read -r rel; do
+    [ -n "$rel" ] || continue
+    src="${TEMPLATE_DIR}/${rel}"
+    dst="${repo_root}/${rel}"
+    [ -f "$src" ] || die "missing template: ${src}"
+    if [ ! -e "$dst" ]; then
+      mkdir -p "$(dirname "$dst")"
+      cp "$src" "$dst"
+      installed="${installed}   ${rel}"$'\n'
+    elif cmp -s "$src" "$dst"; then
+      unchanged="${unchanged}   ${rel}"$'\n'
+    elif [ "$force" = true ]; then
+      cp "$src" "$dst"
+      installed="${installed}   ${rel} (replaced)"$'\n'
+    else
+      drifted="${drifted}   ${rel}"$'\n'
+    fi
+  done <<EOF
+$(ci_vendored_files)
+EOF
+
+  if [ -n "$installed" ]; then
+    echo "Installed:"
+    printf '%s' "$installed"
+  fi
+  if [ -n "$unchanged" ]; then
+    echo "Already up to date:"
+    printf '%s' "$unchanged"
+  fi
+  if [ -n "$drifted" ]; then
+    echo
+    echo "Differs from this wtcraft version and was NOT changed:"
+    printf '%s' "$drifted"
+    echo
+    echo "A vendored copy does not receive wtcraft's fixes. If you did not edit"
+    echo "these deliberately, refresh them: wtcraft init-ci --force"
+  fi
+
+  cat <<'EOF'
+
+This installs a check. It does not enforce anything yet.
+
+Remaining steps are repository administration and cannot be scripted:
+  1. Create refs/heads/wtcraft-policy and deny executors direct write access.
+  2. Require review for .wtcraft/policies/** (CODEOWNERS or equivalent).
+  3. Protect the workflow and the vendored adapter from ordinary task changes.
+  4. Pin actions/checkout and actions/upload-artifact by commit SHA.
+  5. Open an unauthorized PR and confirm the job fails; then an authorized one
+     and read its evidence JSON. Cover a rename out of an off-limits path and
+     a PR whose base advanced after approval.
+  6. Only then make "wtcraft / trusted-change-authorization" a required check.
+
+The verdict is an authorization gate only. The reviewed verification plan is
+reported with "status": "not_executed" and is never run by this job, so a pass
+does not mean the tests passed. Ordinary CI still owns test, lint, and build.
+
+Setup guide: docs/security/github-actions-integration.md
+EOF
 }
 
 cmd_patch() {
@@ -1516,7 +1639,7 @@ cmd_capabilities() {
 
   [ "$as_json" = true ] || die "capabilities currently requires --json"
 
-  printf '{"protocol_version":1,"cli_version":%s,"commands":{"status":{"json":true,"success_shape":"array","supports_repo_option":true},"check":{"json":true,"success_shape":"object","supports_repo_option":true,"exit_codes":[0,2]},"verify":{"json":true,"success_shape":"object","supports_repo_option":true,"exit_codes":[0,3]},"init":{"supports_repo_option":true},"new":{"supports_repo_option":true,"supports_base_option":true}},"repository_targeting":{"option":"--repo","registry_commands":["status","check","verify","new"]},"machine_output":{"stdout":"json only in --json mode","stderr":"human diagnostics and child command output","json_errors":true}}\n' \
+  printf '{"protocol_version":1,"cli_version":%s,"commands":{"status":{"json":true,"success_shape":"array","supports_repo_option":true},"check":{"json":true,"success_shape":"object","supports_repo_option":true,"exit_codes":[0,2]},"verify":{"json":true,"success_shape":"object","supports_repo_option":true,"exit_codes":[0,3]},"init":{"supports_repo_option":true},"init-ci":{"supports_repo_option":true},"new":{"supports_repo_option":true,"supports_base_option":true}},"repository_targeting":{"option":"--repo","registry_commands":["status","check","verify","new"]},"machine_output":{"stdout":"json only in --json mode","stderr":"human diagnostics and child command output","json_errors":true}}\n' \
     "$(json_field "$(read_cli_version)")"
 }
 
@@ -1632,6 +1755,7 @@ main() {
   case "$cmd" in
     agent)       cmd_agent "$@" ;;
     init)        cmd_init "$@" ;;
+    init-ci)     cmd_init_ci "$@" ;;
     patch)       cmd_patch "$@" ;;
     unpatch)     cmd_unpatch "$@" ;;
     lang)        cmd_lang "$@" ;;

@@ -74,4 +74,7 @@ wtcraft = [
   "templates/.agent-harness/presets/preset-openai.yml",
   "templates/.agent-harness/presets/preset-google.yml",
   "templates/worktrees/.worktree-task.md",
+  "templates/.github/workflows/wtcraft-trusted-change.yml",
+  "templates/.wtcraft/policy_evaluator.py",
+  "templates/.wtcraft/policy_git_adapter.py",
 ]

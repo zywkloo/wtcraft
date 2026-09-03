@@ -114,6 +114,11 @@ security boundary.
 
 ## Phase 6: Trusted Change Authorization (target: v0.5.0)
 
+Status: in progress on `main`, unreleased. The schema, reference evaluator,
+Git adapter, adversarial fixtures, and the `init-ci` enforcement point exist.
+What a passing verdict is allowed to claim is still narrower than it looks; see
+the remaining items below.
+
 Goal: bind a reviewed task authorization to a Git changeset and produce a
 verifiable verdict at a protected merge boundary.
 
@@ -135,14 +140,48 @@ merge verdict + evidence
 
 Deliverables:
 
-- [ ] document the threat model and policy-authority boundary
-- [ ] define a reviewed policy-envelope schema separate from mutable local task state
-- [ ] bind local worktree state to a policy identity and base revision
-- [ ] teach the existing JSON verifier to emit policy provenance and evidence
-- [ ] add `wtcraft init-ci` for a required GitHub Actions check
-- [ ] document the repository ruleset needed to make that check merge-blocking
-- [ ] add optional local hook installation for fast feedback, explicitly documented as bypassable
-- [ ] add adversarial tests for policy widening, stale base revisions, and missing authorization
+- [x] document the threat model and policy-authority boundary —
+      [threat model](security/threat-model.md), [ADR-009](adr/009-policy-authority.md)
+- [x] define a reviewed policy-envelope schema separate from mutable local task state —
+      [policy-envelope-v1](protocol/policy-envelope-v1.md)
+- [x] bind local worktree state to a policy identity and base revision —
+      `scripts/policy_git_adapter.py`
+- [ ] teach the existing JSON verifier to emit policy provenance and evidence —
+      partial: the standalone adapter emits provenance-bearing evidence, but
+      `scripts/wtcraft` itself has no policy awareness and `verify --json` is
+      unchanged. The two are not yet one surface.
+- [x] add `wtcraft init-ci` for a required GitHub Actions check —
+      installs the workflow plus the vendored evaluator it runs; the adapter
+      ships in the repository because the privileged job must not install
+      anything at check time
+- [x] document the repository ruleset needed to make that check merge-blocking —
+      [GitHub Actions integration](security/github-actions-integration.md)
+- [ ] add optional local hook installation for fast feedback, explicitly documented as bypassable —
+      not started
+- [x] add adversarial tests for policy widening, stale base revisions, and missing authorization —
+      ten contract cases under `tests/contracts/policy-envelope/`, plus the
+      rename-bypass integration test
+
+Remaining before v0.5:
+
+1. **The CLI still does not know about policy.** `scripts/wtcraft` has no
+   policy code path; `verify --json` is unchanged, and provenance-bearing
+   evidence comes only from the standalone adapter. Deciding whether these
+   become one surface, or stay deliberately separate so the trusted evaluator
+   keeps no dependency on the local task contract, is the open question.
+2. **Local hooks are not installed.** Fast local feedback, documented as
+   bypassable, is still unbuilt.
+3. **Verification is authorized but never executed.** Evidence reports the
+   reviewed plan with `"status": "not_executed"`.
+   [ADR-011](adr/011-verification-execution-least-privilege.md) settles why: a
+   sandbox cannot make a command the adversary wrote report truthfully, so
+   execution is only evidence once the reviewed policy also pins the plan's
+   inputs. The ADR records the precondition and the two constraints on any
+   implementation; it does not schedule the work.
+
+Until item 3 lands, a passing check proves the changeset was authorized and
+says nothing about whether the tests passed. Every surface that shows the
+verdict is expected to say so.
 
 Acceptance criteria:
 
@@ -169,6 +208,13 @@ Deferred until there is an active client:
 - GUI-specific state-machine APIs
 
 ## Phase 8: Composability and Team UX (evidence-driven)
+
+The evidence this phase is ordered by does not exist yet. The nearest source is
+the deterministic-oracle experiment in
+[agent-capability-eval.md](backlogs/agent-capability-eval.md), whose contract
+arm measures whether a task contract changes verified outcomes at all. It runs
+in `wteval` and reports back here; wtcraft takes the result, not the code. A
+null result would be worth knowing before building anything below.
 
 Potential work, ordered by demonstrated users rather than novelty:
 

@@ -7,6 +7,38 @@ Versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added
+- `wtcraft init-ci` installs the trusted-change-authorization check into a
+  repository: the `pull_request_target` workflow plus the evaluator it runs, at
+  `.wtcraft/policy_git_adapter.py` and `.wtcraft/policy_evaluator.py`. The
+  evaluator is vendored rather than installed at check time, because the job is
+  privileged and runs from the trusted base checkout. Installing the check does
+  not enforce it; the command prints the repository-administration steps that
+  do, and states that a passing verdict says nothing about whether tests passed.
+- `init-ci` reports a vendored file that differs from the installed wtcraft
+  version instead of silently leaving it, and `--force` refreshes it. A stale
+  vendored evaluator keeps bugs a newer wtcraft has fixed, including the
+  off-limits rename bypass.
+- `docs/adr/012-evaluation-evidence-boundary.md` records that trusted evidence
+  carries Git and policy facts only. A proposed "Phase 6.5 evaluation evidence
+  contract" is rejected on two grounds: it repeats the no-consumer-no-format
+  anti-pattern ADR-010 already settled, and its `migration type` / `risk tier`
+  fields are evaluator judgements rather than facts a third party can recompute,
+  so placing them in evidence would pull semantic judgement into the trusted
+  core the threat model excludes.
+- `docs/adr/011-verification-execution-least-privilege.md` records why the
+  reviewed verification plan is still not executed: sandboxing cannot make a
+  command the adversary wrote report truthfully, so execution is only evidence
+  once the reviewed policy pins the plan's inputs.
+
+### Fixed
+- npm packages no longer ship `__pycache__` directories. The `files` field
+  includes listed directories wholesale, so the compiled-bytecode caches needed
+  an explicit negation.
+
+### Changed
+- `capabilities --json` reports `init-ci`. Additive within protocol v1.
+
 ## [0.4.4] - 2026-08-12
 
 ### Added

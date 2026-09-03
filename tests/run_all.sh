@@ -16,6 +16,7 @@ else
 fi
 bash "${SCRIPT_DIR}/e2e_lang.sh"
 bash "${SCRIPT_DIR}/e2e_init_patch.sh"
+bash "${SCRIPT_DIR}/e2e_init_ci.sh"
 bash "${SCRIPT_DIR}/e2e_lifecycle.sh"
 bash "${SCRIPT_DIR}/e2e_doctor_migrate.sh"
 bash "${SCRIPT_DIR}/e2e_version.sh"
