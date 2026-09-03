@@ -18,7 +18,9 @@ reasoning isn't re-derived later.
   role/model tiers, and calibrate against deterministic verification outcomes
 - [agent-capability-eval.md](agent-capability-eval.md) — measure agent task
   outcomes against `check`/`verify` as a deterministic oracle instead of a judge
-  model; records why a Phase 6.5 evidence contract and near-term migration
-  semantic eval were both rejected
+  model; the harness lives in `wteval`, and wtcraft takes back the contract-arm
+  result as Phase 8 evidence. Records why near-term migration semantic eval is
+  deferred; the evidence-contract rejection moved to
+  [ADR-012](../adr/012-evaluation-evidence-boundary.md).
 
 *(Note: Completed designs, explicitly rejected ideas, and deferred architectures like the Rust migration have been moved to the `../adr/` directory.)*

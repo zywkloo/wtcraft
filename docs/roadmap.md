@@ -209,6 +209,13 @@ Deferred until there is an active client:
 
 ## Phase 8: Composability and Team UX (evidence-driven)
 
+The evidence this phase is ordered by does not exist yet. The nearest source is
+the deterministic-oracle experiment in
+[agent-capability-eval.md](backlogs/agent-capability-eval.md), whose contract
+arm measures whether a task contract changes verified outcomes at all. It runs
+in `wteval` and reports back here; wtcraft takes the result, not the code. A
+null result would be worth knowing before building anything below.
+
 Potential work, ordered by demonstrated users rather than novelty:
 
 - MCP access to stable `check` / `verify` / status facts

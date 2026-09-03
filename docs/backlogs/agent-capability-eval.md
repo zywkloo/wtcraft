@@ -91,23 +91,12 @@ Recorded so the reasoning is not re-derived:
 
 ### Rejected: a "Phase 6.5 Evaluation Evidence Contract"
 
-Proposed as a milestone that would define an eval input contract — policy
-digest, base/head SHA, diff, verification results, migration type, risk tier —
-for a future semantic evaluator to consume.
-
-Rejected for two reasons.
-
-First, it repeats the anti-pattern
-[ADR-010](../adr/010-evidence-format-not-in-toto-yet.md) already rejected for
-in-toto: standardizing an evidence format before any consumer exists. That ADR
-states the gate as "a concrete consumer, not the existence of the standard,"
-and keeps the current shape *compatible* with a future wrap at zero cost. The
-same answer applies here. Build a consumer first and let it say what it needs.
-
-Second, `migration type` and `risk tier` are the evaluator's domain model, not
-Git or policy facts. Putting them in Phase 6 evidence would pull exactly the
-semantic-judgement concern into the trusted core that the
-[threat model](../security/threat-model.md) lists as a non-goal.
+Moved to [ADR-012](../adr/012-evaluation-evidence-boundary.md), which settles it
+as an architectural constraint rather than a scheduling note: trusted evidence
+carries Git and policy facts only, and an evaluator's domain model (`migration
+type`, `risk tier`) does not enter it. The consequence for this experiment is
+that it is built as a consumer of existing evidence, needing no change to
+Phase 6.
 
 ### Rejected for now: migration semantic eval
 
@@ -134,6 +123,37 @@ scheduled yet.
 discovery-only. This memo does not authorize P0–P7 there. Note that the roadmap
 also lists quota-aware model selection under Explicitly Deferred, and this memo
 does not change that.
+
+## Where this lives
+
+**The harness lives in `wteval`, published.** wtcraft does not grow an `eval/`
+directory.
+
+Putting it in wtcraft would have been more convenient — the repository is
+already public, already has CI, already has readers. That is the only argument
+for it, and convenience is a poor reason to erode a boundary drawn on purpose.
+This memo's own position is that evaluation *consumes* wtcraft rather than
+living inside it; siting the evaluator in the evaluated repository contradicts
+that on day one, and gets more expensive to undo once the eval grows
+cross-agent and cross-model comparisons that have nothing to do with wtcraft.
+
+wtcraft keeps zero eval dependencies. What it takes back is a citation, not
+code: the contract-arm result belongs in the roadmap as the Phase 8 evidence it
+has been asking for, as a sentence and a link.
+
+### Two experiments, one harness
+
+Naming these separately is what made the placement question tractable — they
+answer different questions and only one of them is about wtcraft:
+
+| Experiment | What it measures | Whose question |
+| --- | --- | --- |
+| Contract arm vs no-contract arm | Whether a task contract changes verified outcomes | wtcraft's own, and the Phase 8 evidence gap |
+| Agent/model comparison scored by the oracle | Agent capability, using wtcraft as the instrument | the eval's |
+
+They share a dataset and a runner, so the code is not split across
+repositories; only the reporting is. The second is the one that carries the
+methodological claim about deterministic scoring.
 
 ## Relationship to the quota-aware memo
 
@@ -172,6 +192,10 @@ finding is itself worth writing down.
   why authorization is not semantic correctness
 - [ADR-010](../adr/010-evidence-format-not-in-toto-yet.md) — the
   no-consumer-no-format rule this memo applies
+- [ADR-011](../adr/011-verification-execution-least-privilege.md) — why a
+  passing authorization is not a statement about tests
+- [ADR-012](../adr/012-evaluation-evidence-boundary.md) — the evidence boundary
+  this experiment is built to respect
 - [Quota-aware task planning](quota-aware-task-planning.md) — the advisor
   application downstream of this dataset
 - [Roadmap](../roadmap.md) — Phase 6 status and the two gaps that block v0.5

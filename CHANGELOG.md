@@ -19,6 +19,13 @@ Versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   version instead of silently leaving it, and `--force` refreshes it. A stale
   vendored evaluator keeps bugs a newer wtcraft has fixed, including the
   off-limits rename bypass.
+- `docs/adr/012-evaluation-evidence-boundary.md` records that trusted evidence
+  carries Git and policy facts only. A proposed "Phase 6.5 evaluation evidence
+  contract" is rejected on two grounds: it repeats the no-consumer-no-format
+  anti-pattern ADR-010 already settled, and its `migration type` / `risk tier`
+  fields are evaluator judgements rather than facts a third party can recompute,
+  so placing them in evidence would pull semantic judgement into the trusted
+  core the threat model excludes.
 - `docs/adr/011-verification-execution-least-privilege.md` records why the
   reviewed verification plan is still not executed: sandboxing cannot make a
   command the adversary wrote report truthfully, so execution is only evidence
