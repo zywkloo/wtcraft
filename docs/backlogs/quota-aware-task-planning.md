@@ -523,6 +523,13 @@ output, cache, reasoning, workflow, evaluation score, and decision IDs.
 > built. The dataset below is compatible with it: this section adds the
 > forecast and classification labels an advisor needs on top of the same runs.
 
+The evaluation lab is the sibling public repository
+[`wteval`](https://github.com/zywkloo/wteval), not a public `eval/` tree in
+this repo. Public wtcraft stays a Git-native governance core. Personal dogfood
+labels stay gitignored in `wteval/datasets/private/`.
+Interview-visible output from the experiment, if any, is a later methodology
+report rather than product code here.
+
 ### Dataset
 
 Start with 30–50 real wtcraft/wtflow dogfood tasks across at least two
@@ -750,6 +757,4 @@ AI engineering; it cannot manufacture years of production LLM experience.
 - [Session Model v1](../protocol/session-model-v1.md)
 - [`wtcraft model-select`](../model-select.md)
 - [Stage state machine backlog](stage-state-machine.md)
-- [wteval competitive landscape](../../../wteval/docs/competitive-landscape-2026-08.md)
-- [TokenTracker integration and fork plan](../../../wteval/docs/tokentracker-integration-plan.md)
-- [wteval Quota Cat overlay UX](../../../wteval/docs/ambient-companion.md)
+- [wteval Quota Cat overlay UX](https://github.com/zywkloo/wteval/blob/main/docs/ambient-companion.md)
