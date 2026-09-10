@@ -54,6 +54,23 @@ After running `wtcraft init`, you can use these slash commands in Claude Code:
 - `/finishwt <worktree-name>`: Run verification and finish
 - `/statuswt`: List active worktree task files
 
+### Routing is opt-in: scaffold, then patch
+
+`wtcraft init` scaffolds the harness files but deliberately leaves your
+`AGENTS.md` and `CLAUDE.md` untouched. Until you also patch them, an agent has
+no pointer to `.agent-harness/` and will not read it automatically:
+
+```bash
+wtcraft init --patch-agent-files    # scaffold + append the routing stub
+# or, equivalently, in two steps:
+wtcraft init && wtcraft patch
+```
+
+The harness still works without the patch, but only through an explicit entry
+point — a Claude Code slash command (`/planwt`) or a DSH-style skill
+(`planwt` / `finishwt` / `statuswt` under `.agents/skills/`). Each of those
+reads `.agent-harness/` itself.
+
 ## Suggested Workflow Roles
 
 These roles and the models in `role-models.yml` are editable workflow guidance.

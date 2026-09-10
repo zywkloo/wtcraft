@@ -67,7 +67,8 @@ wtcraft init [--patch-agent-files] [--local] [--repo <path>]
 
   Options:
     --patch-agent-files   Append a wtcraft routing stub to CLAUDE.md and
-                          AGENTS.md (opt-in only; never overwrites content)
+                          AGENTS.md so agents auto-read .agent-harness/
+                          (opt-in only; never overwrites existing content)
     --local               Keep wtcraft scaffold local to this clone by
                           writing ignore rules to .git/info/exclude instead
                           of modifying the repo's .gitignore
@@ -87,6 +88,13 @@ wtcraft init [--patch-agent-files] [--local] [--repo <path>]
     .agents/skills/planwt/SKILL.md
     .agents/skills/finishwt/SKILL.md
     .agents/skills/statuswt/SKILL.md
+
+  Routing is opt-in:
+    Without --patch-agent-files, AGENTS.md and CLAUDE.md are left untouched, so
+    agents have no pointer to .agent-harness/ and will not read it
+    automatically. The .claude/commands and .agents/skills entry points still
+    work when invoked explicitly (each reads .agent-harness/ itself).
+    Use `wtcraft init --patch-agent-files` (or `wtcraft patch`) to wire routing.
 EOF
 }
 
