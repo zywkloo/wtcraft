@@ -83,6 +83,10 @@ wtcraft init [--patch-agent-files] [--local] [--repo <path>]
     .agent-harness/presets/
     .claude/commands/planwt.md
     .claude/commands/finishwt.md
+    .claude/commands/statuswt.md
+    .agents/skills/planwt/SKILL.md
+    .agents/skills/finishwt/SKILL.md
+    .agents/skills/statuswt/SKILL.md
 EOF
 }
 
@@ -634,6 +638,9 @@ cmd_init() {
   copy_if_missing "${TEMPLATE_DIR}/.claude/commands/planwt.md" "${repo_root}/.claude/commands/planwt.md"
   copy_if_missing "${TEMPLATE_DIR}/.claude/commands/finishwt.md" "${repo_root}/.claude/commands/finishwt.md"
   copy_if_missing "${TEMPLATE_DIR}/.claude/commands/statuswt.md" "${repo_root}/.claude/commands/statuswt.md"
+  copy_if_missing "${TEMPLATE_DIR}/.agents/skills/planwt/SKILL.md" "${repo_root}/.agents/skills/planwt/SKILL.md"
+  copy_if_missing "${TEMPLATE_DIR}/.agents/skills/finishwt/SKILL.md" "${repo_root}/.agents/skills/finishwt/SKILL.md"
+  copy_if_missing "${TEMPLATE_DIR}/.agents/skills/statuswt/SKILL.md" "${repo_root}/.agents/skills/statuswt/SKILL.md"
   
   for preset in balanced anthropic openai google; do
     copy_if_missing "${TEMPLATE_DIR}/.agent-harness/presets/preset-${preset}.yml" "${repo_root}/.agent-harness/presets/preset-${preset}.yml"
@@ -653,6 +660,7 @@ cmd_init() {
       '/.worktree-task.md' \
       '/.agent-harness/' \
       '/.claude/commands/' \
+      '/.agents/skills/' \
       '/AGENTS.md' \
       '/CLAUDE.md'
     do
@@ -680,6 +688,9 @@ cmd_init() {
    .claude/commands/planwt.md
    .claude/commands/finishwt.md
    .claude/commands/statuswt.md
+   .agents/skills/planwt/SKILL.md
+   .agents/skills/finishwt/SKILL.md
+   .agents/skills/statuswt/SKILL.md
 EOF
 
   if [ "$patch_agent" = true ]; then
