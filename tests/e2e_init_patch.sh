@@ -12,6 +12,9 @@ test_help_init_status() {
   test -f .agent-harness/presets/preset-balanced.yml
   test -f .agent-harness/presets/preset-openai.yml
   test -f .agent-harness/presets/preset-google.yml
+  test -f .agents/skills/planwt/SKILL.md
+  test -f .agents/skills/finishwt/SKILL.md
+  test -f .agents/skills/statuswt/SKILL.md
 }
 
 test_init_local_keeps_repo_clean() {
@@ -25,6 +28,7 @@ test_init_local_keeps_repo_clean() {
   grep -qxF '/.worktree-task.md' .git/info/exclude
   grep -qxF '/.agent-harness/' .git/info/exclude
   grep -qxF '/.claude/commands/' .git/info/exclude
+  grep -qxF '/.agents/skills/' .git/info/exclude
   grep -qxF '/AGENTS.md' .git/info/exclude
   grep -qxF '/CLAUDE.md' .git/info/exclude
   test -z "$(git status --short)"
@@ -113,6 +117,7 @@ test_init_local_in_linked_worktree_uses_git_info_exclude() {
   grep -qxF '# wtcraft local scaffold' "$exclude_file"
   grep -qxF '/.agent-harness/' "$exclude_file"
   grep -qxF '/.claude/commands/' "$exclude_file"
+  grep -qxF '/.agents/skills/' "$exclude_file"
   test -f worktrees/chore/local-init/.agent-harness/planner.md
   test -z "$(git -C worktrees/chore/local-init status --short)"
 }
