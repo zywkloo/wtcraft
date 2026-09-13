@@ -17,6 +17,24 @@
   <img src="https://raw.githubusercontent.com/zywkloo/wtcraft/main/wtcraft-icon.PNG" alt="wtcraft icon" width="120" />
 </p>
 
+## Design principle: let the model write the exam, not grade it
+
+A human or Planner agent first inspects the repository and writes task-specific
+Scope, Off-limits, and Verification entries into `.worktree-task.md`. This is
+where an LLM's contextual judgment is useful: choosing checks that fit the
+language, build system, and change.
+
+Grading stays outside the implementing agent. `wtcraft check` mechanically
+compares the Git changeset with the declared boundaries, while `wtcraft verify`
+is language-agnostic: it runs the exact Verification commands and records their
+exit codes. It does not ask a judge model whether the work "looks correct."
+
+That separation does **not** prove the Planner wrote a strong exam. A missing,
+weak, or flaky check can still produce misleading evidence. The separate
+[wteval](https://github.com/zywkloo/wteval) lab tests that acceptance layer with
+mutation and property-based testing: `wtcraft verify` asks whether the declared
+checks passed; `wteval` asks whether those checks can detect defects.
+
 ## Install
 
 ```bash

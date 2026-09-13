@@ -1,6 +1,7 @@
 # Agent capability eval with a deterministic oracle
 
-> Status: planned experiment. Recorded 2026-09-02.
+> Status: active measurement priority; real-run pilot pending. Recorded
+> 2026-09-02; execution sequence reviewed 2026-09-11.
 >
 > This is not a roadmap phase and not a product line. It authorizes a bounded
 > measurement experiment whose output is a report, not a shipped feature. It
@@ -12,12 +13,10 @@ Build a standalone offline eval that measures **coding-agent task outcomes
 scored by a deterministic oracle** — compile, test, and scope checks — rather
 than by a judge model.
 
-The claim being tested:
-
-```text
-wtcraft check + verify already produce a deterministic pass/fail per task.
-That is a ground-truth oracle. Most LLM eval does not have one.
-```
+The hypothesis is that fixed tests and scope checks can score a controlled
+agent task reproducibly, and that showing the task contract may improve the
+outcome. Deterministic scoring is a property to validate on each task; it is
+not by itself proof that the tests cover the intended behavior.
 
 Routing and quota recommendation are one downstream application of the
 resulting dataset. They are not the objective, and nothing here schedules them.
@@ -51,18 +50,25 @@ Deliberately small. The output is a report with real numbers, not a system.
 
 ### Dataset
 
-30–50 tasks, drawn from real commit history in repositories the author already
-owns. Each task is "make this test pass", where the test comes from the actual
-historical commit — so ground truth exists without hand-labeling correctness.
+Target at least 30 qualified tasks for the full paired report. Start with
+5–10 tasks for the execution pilot. History-derived tasks and seeded mutations
+are both eligible, but must be labeled and reported separately. Multiple units
+from one commit or mutations of one function are related samples, not evidence
+of broad task diversity.
 
-Prefer this over a public benchmark as the primary set: a public benchmark
-cannot exercise Scope/Off-limits contracts, which are the part wtcraft
-contributes. A small public-benchmark slice may be added later purely as an
-external reference point.
+A candidate is admitted only after the frozen buggy starting state fails and
+the reference repair passes the same verification reproducibly. Confirm the
+failure is behavioral, not just a broken harness, generated-copy drift, or a
+missing dependency. Historical scans alone do not establish this property.
+
+Private task catalogs remain in wteval. A later external corpus is useful only
+when it adds a concrete generalization test without delaying the first report.
 
 ### Runs
 
-2–3 agent/model configurations across the task set, in two arms:
+First use one fixed agent configuration on 5–10 tasks in two arms. Expand to
+at least 30 qualified paired tasks after that pipeline works; add 2–3
+configurations only when task quality and recording are stable:
 
 ```text
 arm A: agent runs with a wtcraft task contract (Scope, Off-limits, Verification)
@@ -71,7 +77,9 @@ arm B: agent runs with the same prompt and no contract
 
 Arm B exists so the experiment can answer a question the roadmap keeps asking
 and never measures: **does the contract change verified outcomes, or only feel
-tidier?** A null result is a publishable result and should not be suppressed.
+tidier?** A null result is a publishable result and should not be suppressed. It does
+not answer whether teams value a protected authorization gate; that is a
+separate dogfood and adoption question.
 
 ### Metrics
 
@@ -80,7 +88,14 @@ tidier?** A null result is a publishable result and should not be suppressed.
 | Verified success rate | Fraction of tasks where `verify` passes |
 | Scope violation rate | Fraction where `check` reports an out-of-scope path |
 | Repair rounds | Cycles to first pass; unbounded failures recorded as censored |
-| Quota per verified task | Observed consumption divided by successes, not by attempts |
+| Quota per verified task | Consumption and successes from the same quota-observed cohort; missing usage is unknown, not zero |
+
+Freeze scoring outside the agent-editable workspace and score both arms against
+the same scope and verification inputs. Prevent access to reference repairs;
+keep permissions and time budgets equal. Retain failures/timeouts in the
+attempted-run accounting and report paired outcomes and missing-data coverage.
+The executable sequence and record fixes live in
+[wteval’s MVP plan](https://github.com/zywkloo/wteval/blob/main/docs/mvp-plan.md).
 
 Report intervals, not point estimates. At N=40 the intervals will be wide; say
 so rather than implying a ranking the sample cannot support.
@@ -176,7 +191,10 @@ Those two bars are now tracked separately, and this memo owns the second.
 
 Ship the report if all of these hold:
 
-- at least 30 tasks ran to a recorded outcome in both arms;
+- at least 30 qualified tasks ran to a recorded outcome in both arms; pilot
+  findings may be reported earlier, explicitly as pipeline validation;
+- history and mutation results are separated, with related-task clustering and
+  paired differences made visible;
 - the oracle's pass/fail was reproducible on a re-run of the same revision;
 - limitations state sample size, single-codebase provenance, and the
   weak-test-weak-oracle caveat;
@@ -198,4 +216,4 @@ finding is itself worth writing down.
   this experiment is built to respect
 - [Quota-aware task planning](quota-aware-task-planning.md) — the advisor
   application downstream of this dataset
-- [Roadmap](../roadmap.md) — Phase 6 status and the two gaps that block v0.5
+- [Roadmap](../roadmap.md) — Phase 6 authorization release gates and demand-driven follow-on work
