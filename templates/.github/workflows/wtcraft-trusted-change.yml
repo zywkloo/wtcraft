@@ -27,15 +27,21 @@ jobs:
 
       # pull_request_target uses the target repository's workflow context.
       # Pin the checkout to the target/base commit so the adapter is not read
-      # from the pull request under review, and pin the action itself by commit
-      # SHA before making this check required.
+      # from the pull request under review. The action itself is pinned by
+      # commit SHA (v7.0.1); bump the SHA and the version comment together.
+      #
+      # checkout v7 refuses to check out fork pull request code under
+      # pull_request_target unless allow-unsafe-pr-checkout is set; never set it
+      # here. That guard does not cover same-repository pull requests, the only
+      # kind this job accepts, so a checkout of the PR head would still run: the
+      # ban on an untrusted PR checkout above is still enforced only in review.
       #
       # fetch-depth: 0 is required, not a convenience. The adapter computes the
       # merge base between the base tip and the PR head; on a shallow clone the
       # fork point sits behind the graft boundary and git cannot answer, which
       # fails every PR whose base branch has advanced since it was opened.
       - name: Checkout trusted base revision
-        uses: actions/checkout@v5
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ github.event.pull_request.base.sha }}
           fetch-depth: 0
