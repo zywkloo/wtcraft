@@ -6,6 +6,11 @@
 > workflows. It defines task contracts, tracks lifecycle state, and exposes
 > deterministic scope and verification checks for CLIs, agents, and graphical
 > clients.
+>
+> Together with the companion [wteval](https://github.com/zywkloo/wteval) lab,
+> it establishes a closed loop for trustworthy agent execution:
+> - **wtcraft** (Runtime Governance): Enforces worktree boundaries and runs declared acceptance commands.
+> - **wteval** (Offline Evaluation): Evaluates whether those acceptance checks catch defects via mutation testing, and benchmarks agent capability *(experimental open-source lab; not published to package platforms)*.
 
 [![npm version](https://img.shields.io/npm/v/wtcraft.svg?logo=npm&maxAge=300)](https://www.npmjs.com/package/wtcraft)
 [![PyPI version](https://img.shields.io/pypi/v/wtcraft.svg?logo=pypi&maxAge=300)](https://pypi.org/project/wtcraft/)
@@ -30,11 +35,13 @@ is language-agnostic: it runs the exact Verification commands and records their
 exit codes. It does not ask a judge model whether the work "looks correct."
 
 That separation does **not** prove the Planner wrote a strong exam. A missing,
-weak, or flaky check can still produce misleading evidence. The separate
+weak, or flaky check can still produce misleading evidence. The companion
 [wteval](https://github.com/zywkloo/wteval) lab tests that acceptance layer with
 mutation and property-based testing: `wtcraft verify` asks whether the declared
-checks passed; `wteval` asks whether those checks can detect defects. Its
-findings go to human review when intent is ambiguous—for example, to distinguish
+checks passed; `wteval` asks whether those checks can detect defects. *(Note: `wteval`
+is an open-source research and evaluation repository currently in active experimentation;
+unlike `wtcraft`, it is not yet published to any package manager or distribution platform.)*
+Its findings go to human review when intent is ambiguous—for example, to distinguish
 a real test gap from an equivalent mutant and decide whether to harden the tests
 or clarify the specification.
 
@@ -150,7 +157,7 @@ The current local task contract is mutable and is not, by itself, a security
 boundary. A reviewed policy envelope and protected required check are planned
 for the next milestone; see the [Roadmap](./docs/roadmap.md).
 
-## Docs
+## Docs & Ecosystem
 
 - [Protocol Contracts](./docs/protocol/README.md)
 - [Rust Core Extraction ADR](./docs/adr/006-rust-core-extraction.md)
@@ -159,6 +166,7 @@ for the next milestone; see the [Roadmap](./docs/roadmap.md).
 - [Principles](./docs/principles.md)
 - [Migration Notes](./docs/migration.md)
 - [Changelog](./CHANGELOG.md)
+- [wteval](https://github.com/zywkloo/wteval) — Experimental companion evaluation lab (open-source research repo, not yet published to any package platform)
 
 ## Testing
 
