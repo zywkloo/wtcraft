@@ -33,7 +33,10 @@ That separation does **not** prove the Planner wrote a strong exam. A missing,
 weak, or flaky check can still produce misleading evidence. The separate
 [wteval](https://github.com/zywkloo/wteval) lab tests that acceptance layer with
 mutation and property-based testing: `wtcraft verify` asks whether the declared
-checks passed; `wteval` asks whether those checks can detect defects.
+checks passed; `wteval` asks whether those checks can detect defects. Its
+findings go to human review when intent is ambiguous—for example, to distinguish
+a real test gap from an equivalent mutant and decide whether to harden the tests
+or clarify the specification.
 
 ## Install
 
