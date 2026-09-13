@@ -7,10 +7,10 @@
 > deterministic scope and verification checks for CLIs, agents, and graphical
 > clients.
 >
-> Together with the companion [wteval](https://github.com/zywkloo/wteval) lab,
-> it establishes a closed loop for trustworthy agent execution:
+> The companion [wteval](https://github.com/zywkloo/wteval) lab is a separate,
+> experimental repository for evaluating those checks offline:
 > - **wtcraft** (Runtime Governance): Enforces worktree boundaries and runs declared acceptance commands.
-> - **wteval** (Offline Evaluation): Evaluates whether those acceptance checks catch defects via mutation testing, and benchmarks agent capability *(experimental open-source lab; not published to package platforms)*.
+> - **wteval** (Offline Evaluation): Python mutation-testing and property-based-testing instruments, plus a contract/no-contract agent capability experiment whose real runs have not been executed yet *(experimental open-source lab; not published to package platforms)*.
 
 [![npm version](https://img.shields.io/npm/v/wtcraft.svg?logo=npm&maxAge=300)](https://www.npmjs.com/package/wtcraft)
 [![PyPI version](https://img.shields.io/pypi/v/wtcraft.svg?logo=pypi&maxAge=300)](https://pypi.org/project/wtcraft/)
@@ -35,15 +35,18 @@ is language-agnostic: it runs the exact Verification commands and records their
 exit codes. It does not ask a judge model whether the work "looks correct."
 
 That separation does **not** prove the Planner wrote a strong exam. A missing,
-weak, or flaky check can still produce misleading evidence. The companion
-[wteval](https://github.com/zywkloo/wteval) lab tests that acceptance layer with
-mutation and property-based testing: `wtcraft verify` asks whether the declared
-checks passed; `wteval` asks whether those checks can detect defects. *(Note: `wteval`
+weak, or flaky check can still produce misleading evidence. `wtcraft verify`
+asks whether the declared checks passed; the companion
+[wteval](https://github.com/zywkloo/wteval) lab is built to ask whether checks
+can detect defects. Today it offers a mutation tool for Python sources, which
+runs a test command you supply against injected operator mutants, and
+property-based checks of wtcraft's own policy evaluator. It does not yet read a
+task contract's Verification entries. *(Note: `wteval`
 is an open-source research and evaluation repository currently in active experimentation;
 unlike `wtcraft`, it is not yet published to any package manager or distribution platform.)*
-Its findings go to human review when intent is ambiguous—for example, to distinguish
-a real test gap from an equivalent mutant and decide whether to harden the tests
-or clarify the specification.
+Surviving mutants are recorded for human review because intent can be
+ambiguous—for example, to distinguish a real test gap from an equivalent mutant
+and decide whether to harden the tests or clarify the specification.
 
 ## Install
 

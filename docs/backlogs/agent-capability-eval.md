@@ -1,7 +1,9 @@
 # Agent capability eval with a deterministic oracle
 
 > Status: active measurement priority; real-run pilot pending. Recorded
-> 2026-09-02; execution sequence reviewed 2026-09-11.
+> 2026-09-02; execution sequence reviewed 2026-09-11. Reconciled against public
+> wteval on 2026-09-12 ([audit](wteval-reconciliation.md)): its public revision
+> has no agent runner yet, and parts of the oracle described below are not built.
 >
 > This is not a roadmap phase and not a product line. It authorizes a bounded
 > measurement experiment whose output is a report, not a shipped feature. It
@@ -33,8 +35,8 @@ wtcraft's outputs qualify:
 | --- | --- | --- |
 | Task passed | `verify` runs the task contract's declared commands | Deterministic given a fixed revision and toolchain |
 | Change stayed in scope | `check` compares changed paths against Scope/Off-limits | Deterministic |
-| Repair rounds | Count of executor cycles before first pass | Observed, not judged |
-| Token/quota consumption | Provider-reported | Reported, with source confidence |
+| Repair rounds | Count of executor cycles before first pass, recorded by the eval runner (not a wtcraft output) | Observed, not judged |
+| Token/quota consumption | Provider-reported (not a wtcraft output) | Reported, with source confidence |
 
 None of these require a model to score. That is the whole argument, and it is
 worth stating plainly rather than burying it under a routing product.
@@ -141,8 +143,8 @@ does not change that.
 
 ## Where this lives
 
-**The harness lives in `wteval`, published.** wtcraft does not grow an `eval/`
-directory.
+**The harness lives in the public `wteval` repository.** wtcraft does not grow
+an `eval/` directory.
 
 Putting it in wtcraft would have been more convenient — the repository is
 already public, already has CI, already has readers. That is the only argument
@@ -214,6 +216,8 @@ finding is itself worth writing down.
   passing authorization is not a statement about tests
 - [ADR-012](../adr/012-evaluation-evidence-boundary.md) — the evidence boundary
   this experiment is built to respect
+- [wteval reconciliation](wteval-reconciliation.md) — what public wteval
+  implements of this memo, and what the pilot still needs
 - [Quota-aware task planning](quota-aware-task-planning.md) — the advisor
   application downstream of this dataset
 - [Roadmap](../roadmap.md) — Phase 6 authorization release gates and demand-driven follow-on work
