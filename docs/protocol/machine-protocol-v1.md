@@ -72,6 +72,8 @@ Fields:
 - `locked`
 - `contracted`
 - `task_file`, `state_file`, and `state_present` when contracted
+- `state_valid`: `true`/`false` when a sidecar is present, `null` otherwise;
+  lifecycle and result fields are `null` when it is `false`
 - `stage`, `role`, `agent`, `status`, `attempt`, `handoff_from`, `handoff_to`
 - `check_result`, `checked`, `verify_result`, `verified`
 - `created_at`, `updated_at`, `priority`, `created`, `base`

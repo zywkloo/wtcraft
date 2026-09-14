@@ -57,6 +57,18 @@ is a protected authorization source.
 Unknown fields are ignored by v1 readers. A missing sidecar activates the
 legacy Markdown-frontmatter read fallback. New writers always use the sidecar.
 
+## Layout
+
+A v1 sidecar uses the layout wtcraft writes: `{` and `}` on their own lines,
+exactly one field per line, each value a string, integer, boolean, or `null`,
+and every field in the table above present. Other writers must emit the same
+layout.
+
+A reader that finds any other layout, including valid JSON on a single line,
+treats the sidecar as invalid rather than reading empty values:
+`status --json` reports `state_valid: false`, and `state`, `check`, and
+`verify` exit with a fatal error before writing anything.
+
 ## Writers
 
 - `wtcraft new` creates the document by atomic rename.
@@ -65,7 +77,10 @@ legacy Markdown-frontmatter read fallback. New writers always use the sidecar.
 - `wtcraft verify` updates the latest verification fields.
 
 One command publishes its complete update through a single final rename.
-Direct agent edits are outside the protocol.
+Its temporary files (`.worktree-state.json.*`) are removed when the command
+exits early, and `check` and evidence snapshots never count them as task
+changes. Direct agent edits are outside the protocol. Agent and handoff names
+are printable text; control characters are rejected.
 
 ## Evidence freshness
 

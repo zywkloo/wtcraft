@@ -1180,12 +1180,104 @@ state_set_number() {
   state_set_json "$file" "$key" "$value"
 }
 
-state_working_copy() {
+STATE_V1_FIELDS="schema_version task_id stage role agent status attempt handoff_from handoff_to check_result checked check_snapshot verify_result verified verify_snapshot created_at updated_at"
+
+# state_valid <file>
+#
+# Returns 0 when the sidecar uses the v1 layout the Bash reference reads and
+# writes: `{` and `}` on their own lines, one scalar field per line, and every
+# v1 field present. JSON in any other layout (a compact single line, say) is
+# reported as invalid instead of being read as empty values.
+state_valid() {
+  local file="$1"
+  [ -f "$file" ] || return 1
+  awk -v fields="$STATE_V1_FIELDS" '
+    function field_key(line,    rest, key, c, i) {
+      trailing_comma = 0
+      rest = line
+      sub(/^[ \t]*/, "", rest)
+      if (substr(rest, 1, 1) != "\"") return ""
+      rest = substr(rest, 2)
+      i = index(rest, "\"")
+      if (i < 2) return ""
+      key = substr(rest, 1, i - 1)
+      if (key !~ /^[A-Za-z0-9_]+$/) return ""
+      rest = substr(rest, i + 1)
+      sub(/^[ \t]*/, "", rest)
+      if (substr(rest, 1, 1) != ":") return ""
+      rest = substr(rest, 2)
+      sub(/^[ \t]*/, "", rest)
+      if (substr(rest, 1, 1) == "\"") {
+        for (i = 2; i <= length(rest); i++) {
+          c = substr(rest, i, 1)
+          if (c == "\\") { i++; continue }
+          if (c == "\"") break
+        }
+        if (i > length(rest)) return ""
+        rest = substr(rest, i + 1)
+      } else if (match(rest, /^(null|true|false|-?[0-9]+)/)) {
+        rest = substr(rest, RLENGTH + 1)
+      } else {
+        return ""
+      }
+      sub(/[ \t]*$/, "", rest)
+      if (rest == ",") trailing_comma = 1
+      else if (rest != "") return ""
+      return key
+    }
+    { lines++; body[lines] = $0 }
+    END {
+      if (lines < 2 || body[1] !~ /^[ \t]*[{][ \t]*$/ || body[lines] !~ /^[ \t]*[}][ \t]*$/) exit 1
+      for (n = 2; n < lines; n++) {
+        key = field_key(body[n])
+        if (key == "") exit 1
+        if (n < lines - 1 && !trailing_comma) exit 1
+        if (n == lines - 1 && trailing_comma) exit 1
+        seen[key] = 1
+      }
+      count = split(fields, required, " ")
+      for (n = 1; n <= count; n++) if (!(required[n] in seen)) exit 1
+    }
+  ' "$file"
+}
+
+require_valid_state() {
+  local as_json="$1"
+  local command="$2"
+  local state_file="$3"
+  state_valid "$state_file" || machine_error "$as_json" "$command" \
+    "invalid state file: ${state_file} (expected the v1 layout: one field per line, every v1 field present; see docs/protocol/task-state-sidecar-v1.md)"
+}
+
+# A multi-field update edits a private copy of the sidecar and publishes it
+# with one rename. The copy, and any per-field temporary file beside it, is
+# removed if the command exits before publishing.
+STATE_UPDATE_FILE=""
+
+cleanup_state_update() {
+  if [ -n "$STATE_UPDATE_FILE" ]; then
+    rm -f "$STATE_UPDATE_FILE" "$STATE_UPDATE_FILE".tmp.*
+    STATE_UPDATE_FILE=""
+  fi
+}
+
+state_begin_update() {
   local state_file="$1"
-  local working
-  working="$(mktemp "${state_file}.update.XXXXXX")"
-  cp "$state_file" "$working"
-  printf '%s' "$working"
+  trap cleanup_state_update EXIT
+  trap 'cleanup_state_update; exit 130' INT
+  trap 'cleanup_state_update; exit 143' TERM
+  STATE_UPDATE_FILE="$(mktemp "${state_file}.update.XXXXXX")"
+  if ! cp "$state_file" "$STATE_UPDATE_FILE"; then
+    cleanup_state_update
+    die "failed to copy state file: ${state_file}"
+  fi
+}
+
+state_commit_update() {
+  local state_file="$1"
+  mv "$STATE_UPDATE_FILE" "$state_file"
+  STATE_UPDATE_FILE=""
+  trap - EXIT INT TERM
 }
 
 write_task_state() {
@@ -1292,8 +1384,9 @@ worktree_snapshot() {
       git diff --binary HEAD
       printf '\0UNTRACKED\0'
       while IFS= read -r -d '' file; do
-        [ "$file" = ".worktree-task.md" ] && continue
-        [ "$file" = ".worktree-state.json" ] && continue
+        case "$file" in
+          .worktree-task.md|.worktree-state.json|.worktree-state.json.*) continue ;;
+        esac
         printf '%s\0' "$file"
         git hash-object "$file"
         printf '\0'
@@ -1360,7 +1453,7 @@ cmd_status() {
     local stage="" status_legacy="" role="" agent="" priority="" created="" base=""
     local attempt="" handoff_from="" handoff_to="" check_result="" checked=""
     local verify_result="" verified="" created_at="" updated_at=""
-    local state_present=false ready=false evidence_stale=false
+    local state_present=false state_valid_flag=null ready=false evidence_stale=false
     if [ "$zombie" = false ] && [ -f "$task" ]; then
       contracted=true
       priority="$(extract_frontmatter "$task" "priority")"
@@ -1368,6 +1461,15 @@ cmd_status() {
       base="$(extract_frontmatter "$task" "base")"
       if [ -f "$state" ]; then
         state_present=true
+        if state_valid "$state"; then
+          state_valid_flag=true
+        else
+          state_valid_flag=false
+          [ "$as_json" = true ] ||
+            echo "warning: ${state} does not use the v1 state layout; its lifecycle and results are not shown" >&2
+        fi
+      fi
+      if [ "$state_valid_flag" = true ]; then
         stage="$(state_get "$state" "stage")"
         status_legacy="$(state_get "$state" "status")"
         role="$(state_get "$state" "role")"
@@ -1397,7 +1499,7 @@ cmd_status() {
             ready=true
           fi
         fi
-      else
+      elif [ "$state_present" = false ]; then
         # Read-only compatibility for contracts created before state sidecars.
         stage="$(extract_frontmatter "$task" "stage")"
         status_legacy="$(extract_frontmatter "$task" "status")"
@@ -1413,7 +1515,7 @@ cmd_status() {
       local entry
       entry="{\"repo_root\":$(json_field "$repo_root"),\"worktree\":$(json_field "$wt"),\"branch\":$(json_field "$branch"),\"zombie\":${zombie},\"locked\":${locked},\"contracted\":${contracted}"
       if [ "$contracted" = true ]; then
-        entry="${entry},\"task_file\":$(json_field "$task"),\"state_file\":$(json_field "$state"),\"state_present\":${state_present},\"stage\":$(json_field "$stage"),\"role\":$(json_field "$role"),\"agent\":$(json_field "$agent"),\"status\":$(json_field "$status_legacy"),\"attempt\":$(json_number_field "$attempt"),\"handoff_from\":$(json_field "$handoff_from"),\"handoff_to\":$(json_field "$handoff_to"),\"check_result\":$(json_field "$check_result"),\"checked\":$(json_field "$checked"),\"priority\":$(json_field "$priority"),\"created\":$(json_field "$created"),\"base\":$(json_field "$base"),\"verify_result\":$(json_field "$verify_result"),\"verified\":$(json_field "$verified"),\"created_at\":$(json_field "$created_at"),\"updated_at\":$(json_field "$updated_at"),\"ready\":${ready},\"evidence_stale\":${evidence_stale}"
+        entry="${entry},\"task_file\":$(json_field "$task"),\"state_file\":$(json_field "$state"),\"state_present\":${state_present},\"state_valid\":${state_valid_flag},\"stage\":$(json_field "$stage"),\"role\":$(json_field "$role"),\"agent\":$(json_field "$agent"),\"status\":$(json_field "$status_legacy"),\"attempt\":$(json_number_field "$attempt"),\"handoff_from\":$(json_field "$handoff_from"),\"handoff_to\":$(json_field "$handoff_to"),\"check_result\":$(json_field "$check_result"),\"checked\":$(json_field "$checked"),\"priority\":$(json_field "$priority"),\"created\":$(json_field "$created"),\"base\":$(json_field "$base"),\"verify_result\":$(json_field "$verify_result"),\"verified\":$(json_field "$verified"),\"created_at\":$(json_field "$created_at"),\"updated_at\":$(json_field "$updated_at"),\"ready\":${ready},\"evidence_stale\":${evidence_stale}"
       fi
       json_entries+=("${entry}}")
       continue
@@ -1482,6 +1584,12 @@ cmd_state() {
     "") ;;
     *[!0-9]*) machine_error "$as_json" "state" "attempt must be a non-negative integer" ;;
   esac
+  local name
+  for name in "$agent" "$handoff_from" "$handoff_to"; do
+    case "$name" in
+      *[[:cntrl:]]*) machine_error "$as_json" "state" "agent and handoff names must be printable text" ;;
+    esac
+  done
 
   local repo_root wt_path task_file state_file
   repo_root="$(primary_worktree_root "$repo_arg")"
@@ -1494,32 +1602,30 @@ cmd_state() {
   state_file="$(task_state_path "$task_file")" ||
     machine_error "$as_json" "state" "unsupported state_file in ${task_file}"
   ensure_task_state "$task_file" "$state_file"
+  require_valid_state "$as_json" "state" "$state_file"
 
-  local persisted_state_file="$state_file"
-  state_file="$(state_working_copy "$persisted_state_file")"
-
+  state_begin_update "$state_file"
   if [ -n "$stage" ]; then
-    state_set_string "$state_file" "stage" "$stage"
+    state_set_string "$STATE_UPDATE_FILE" "stage" "$stage"
     if [ "$stage" = "done" ]; then
-      state_set_string "$state_file" "status" "done"
+      state_set_string "$STATE_UPDATE_FILE" "status" "done"
     else
-      state_set_string "$state_file" "status" "ready"
+      state_set_string "$STATE_UPDATE_FILE" "status" "ready"
     fi
   fi
-  [ -z "$role" ] || state_set_string "$state_file" "role" "$role"
-  [ -z "$agent" ] || state_set_string "$state_file" "agent" "$agent"
-  [ -z "$attempt" ] || state_set_number "$state_file" "attempt" "$attempt"
+  [ -z "$role" ] || state_set_string "$STATE_UPDATE_FILE" "role" "$role"
+  [ -z "$agent" ] || state_set_string "$STATE_UPDATE_FILE" "agent" "$agent"
+  [ -z "$attempt" ] || state_set_number "$STATE_UPDATE_FILE" "attempt" "$attempt"
   if [ "$handoff_from_set" = true ]; then
     [ "$handoff_from" = "none" ] && handoff_from=""
-    state_set_string "$state_file" "handoff_from" "$handoff_from"
+    state_set_string "$STATE_UPDATE_FILE" "handoff_from" "$handoff_from"
   fi
   if [ "$handoff_to_set" = true ]; then
     [ "$handoff_to" = "none" ] && handoff_to=""
-    state_set_string "$state_file" "handoff_to" "$handoff_to"
+    state_set_string "$STATE_UPDATE_FILE" "handoff_to" "$handoff_to"
   fi
-  state_set_string "$state_file" "updated_at" "$(utc_now)"
-  mv "$state_file" "$persisted_state_file"
-  state_file="$persisted_state_file"
+  state_set_string "$STATE_UPDATE_FILE" "updated_at" "$(utc_now)"
+  state_commit_update "$state_file"
 
   if [ "$as_json" = true ]; then
     local current_attempt
@@ -1772,6 +1878,7 @@ cmd_check() {
   state_file="$(task_state_path "$task_file")" ||
     machine_error "$as_json" "check" "unsupported state_file in ${task_file}"
   ensure_task_state "$task_file" "$state_file"
+  require_valid_state "$as_json" "check" "$state_file"
 
   local base_branch
   base_branch="$(extract_frontmatter "$task_file" "base")"
@@ -1791,7 +1898,8 @@ cmd_check() {
     git -C "$wt_path" diff --name-only -z "${base_branch}...HEAD" &&
       git -C "$wt_path" diff --name-only -z HEAD &&
       git -C "$wt_path" ls-files -z --others --exclude-standard \
-        --exclude=.worktree-task.md --exclude=.worktree-state.json
+        --exclude=.worktree-task.md --exclude=.worktree-state.json \
+        --exclude='.worktree-state.json.*'
   } >"$changed_file_list"; then
     rm -f "$changed_file_list"
     machine_error "$as_json" "check" "failed to enumerate changed files against base: ${base_branch}"
@@ -1864,14 +1972,12 @@ cmd_check() {
   local checked_at check_snapshot
   checked_at="$(utc_now)"
   check_snapshot="$(worktree_snapshot "$wt_path")"
-  local persisted_state_file="$state_file"
-  state_file="$(state_working_copy "$persisted_state_file")"
-  state_set_string "$state_file" "check_result" "$summary_result"
-  state_set_string "$state_file" "checked" "$checked_at"
-  state_set_string "$state_file" "check_snapshot" "$check_snapshot"
-  state_set_string "$state_file" "updated_at" "$checked_at"
-  mv "$state_file" "$persisted_state_file"
-  state_file="$persisted_state_file"
+  state_begin_update "$state_file"
+  state_set_string "$STATE_UPDATE_FILE" "check_result" "$summary_result"
+  state_set_string "$STATE_UPDATE_FILE" "checked" "$checked_at"
+  state_set_string "$STATE_UPDATE_FILE" "check_snapshot" "$check_snapshot"
+  state_set_string "$STATE_UPDATE_FILE" "updated_at" "$checked_at"
+  state_commit_update "$state_file"
 
   if [ "$as_json" = true ]; then
     printf '{"protocol_version":1,"command":"check","ok":true,"result":"%s","exit_code":%s,"repo_root":%s,"worktree":%s,"task_file":%s,"state_file":%s,"snapshot":%s,"base":%s,"changed_files":%s,"scope":%s,"off_limits":%s,"violations":%s,"summary":{"violation_count":%s}}\n' \
@@ -1949,6 +2055,7 @@ cmd_verify() {
   state_file="$(task_state_path "$task_file")" ||
     machine_error "$as_json" "verify" "unsupported state_file in ${task_file}"
   ensure_task_state "$task_file" "$state_file"
+  require_valid_state "$as_json" "verify" "$state_file"
 
   local commands=()
   local line
@@ -2015,14 +2122,12 @@ cmd_verify() {
   local verified_at verify_snapshot
   verified_at="$(utc_now)"
   verify_snapshot="$(worktree_snapshot "$wt_path")"
-  local persisted_state_file="$state_file"
-  state_file="$(state_working_copy "$persisted_state_file")"
-  state_set_string "$state_file" "verify_result" "$result"
-  state_set_string "$state_file" "verified" "$verified_at"
-  state_set_string "$state_file" "verify_snapshot" "$verify_snapshot"
-  state_set_string "$state_file" "updated_at" "$verified_at"
-  mv "$state_file" "$persisted_state_file"
-  state_file="$persisted_state_file"
+  state_begin_update "$state_file"
+  state_set_string "$STATE_UPDATE_FILE" "verify_result" "$result"
+  state_set_string "$STATE_UPDATE_FILE" "verified" "$verified_at"
+  state_set_string "$STATE_UPDATE_FILE" "verify_snapshot" "$verify_snapshot"
+  state_set_string "$STATE_UPDATE_FILE" "updated_at" "$verified_at"
+  state_commit_update "$state_file"
   [ "$as_json" = false ] && echo "Recorded verification result in ${state_file}"
 
   if [ "$as_json" = true ]; then

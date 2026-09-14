@@ -362,6 +362,56 @@ EOF
   grep -q '"verified": "legacy-time"' "$state_file"
 }
 
+test_state_rejects_invalid_sidecar_without_leftovers() {
+  local repo="$1"
+  cd "$repo"
+  git config user.name "wtcraft-smoke"
+  git config user.email "wtcraft-smoke@example.com"
+  echo "seed" > .wtcraft-seed
+  git add .wtcraft-seed
+  git commit -q -m "seed"
+
+  local current_branch
+  current_branch="$(git branch --show-current)"
+  "$CLI" init
+  git add -A && git commit -q -m "wtcraft init"
+  WTCRAFT_BASE_BRANCH="$current_branch" "$CLI" new chore/layout
+
+  local wt="${repo}/worktrees/chore/layout"
+  local state_file="${wt}/.worktree-state.json"
+  python3 - "$state_file" <<'PY'
+import json, sys
+path = sys.argv[1]
+with open(path) as fh:
+    data = json.load(fh)
+with open(path, "w") as fh:
+    json.dump(data, fh, separators=(",", ":"))
+PY
+
+  # Valid JSON in another layout is reported, never read as empty lifecycle.
+  "$CLI" status --json | grep -q '"state_valid":false'
+  "$CLI" status --json | grep -q '"stage":null'
+  ! "$CLI" state chore/layout --stage executing 2>/dev/null || exit 1
+  local output exit_code
+  set +e
+  output="$("$CLI" check --json chore/layout 2>/dev/null)"
+  exit_code=$?
+  set -e
+  [ "$exit_code" -eq 1 ]
+  printf '%s' "$output" | grep -q 'invalid state file'
+  [ -z "$(find "$wt" -maxdepth 1 -name '.worktree-state.json.*' -print)" ]
+
+  # A fresh sidecar is valid again; control characters stay out of it.
+  rm "$state_file"
+  ! "$CLI" state chore/layout --agent "$(printf 'co\tdex')" 2>/dev/null || exit 1
+  "$CLI" state chore/layout --agent codex
+  "$CLI" status --json | grep -q '"state_valid":true'
+
+  # Temporary files left by an interrupted writer are not task changes.
+  touch "${wt}/.worktree-state.json.update.leftover"
+  "$CLI" check chore/layout
+}
+
 test_new_defaults_to_master_or_main() {
   local repo="$1"
   cd "$repo"
@@ -421,6 +471,7 @@ run_in_temp_repo test_check_rejects_task_contract_changes
 run_in_temp_repo test_check_rejects_task_state_changes
 run_in_temp_repo test_status_reads_legacy_frontmatter_without_sidecar
 run_in_temp_repo test_new_absorbs_legacy_plan_into_sidecar
+run_in_temp_repo test_state_rejects_invalid_sidecar_without_leftovers
 run_in_temp_repo test_new_defaults_to_master_or_main
 run_in_temp_repo test_new_prefers_origin_head_and_accepts_base_override
 
