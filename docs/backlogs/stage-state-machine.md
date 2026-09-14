@@ -1,5 +1,10 @@
 # Stage state machine + unified progress view
 
+> Historical design note: ADR-013 supersedes the shared-file portion of this
+> proposal. `.worktree-task.md` is now the stable task specification and
+> `.worktree-state.json` holds mutable lifecycle/results. `wtcraft state` is the
+> write path; PID/session monitoring and a unified dashboard remain deferred.
+
 > Canonical lifecycle contract:
 > [Task State Machine v1](../protocol/task-state-machine-v1.md). This backlog
 > retains observer design notes and future enforcement work.
@@ -99,7 +104,7 @@ git-generic heuristics a GUI can compute on its own. Severity: violation
 | **bypass** (yellow) | declared pre-execution stage, but uncommitted changes exist | transition table | needs table |
 | **uncontracted** (yellow) | worktree exists with no task file (agent-created wild worktree) | work-needs-a-contract principle | needs `worktree-layout.md` step 1 |
 | **contract-tracked** (red) | `.worktree-task.md` added/committed | ADR-001 | ✅ `check` |
-| **contract-tampered** (red) | live Scope/Off-limits differ from plan-time snapshot | snapshot (see integrity section) | needs snapshot |
+| **specification-changed** (red) | live Scope/Off-limits/Verification items differ from the plan-time digest | digest (see integrity section) | ✅ `check` |
 
 ### Contract vs lifecycle (FSM)
 
@@ -155,12 +160,12 @@ Remaining risks and their resolutions:
 3. **Contract integrity — the real hole**: the contract lives in the
    sandbox of the party it constrains; an agent can rewrite its own
    Scope/Off-limits to legitimize a breach and `check` would pass.
-   Fix: at `wtcraft new`, snapshot the contract to
-   `.git/wtcraft/<branch>/contract.snapshot` (`.git` is the natural
-   out-of-tree, untracked, per-repo anchor — git itself keeps worktree
-   metadata there). `check` diffs live Scope/Off-limits against the
-   snapshot → **contract-tampered**. Legitimate scope changes go through
-   the planner reissuing the snapshot.
+   Implemented (ADR-013): `wtcraft new` and `wtcraft state --stage planned`
+   record a digest of the Scope, Off-limits, and Verification items at
+   `$(git rev-parse --git-path wtcraft/spec.digest)` — the per-worktree git
+   directory, outside the worktree and removed with it. `check` compares
+   the live items with it → **specification-changed**. Legitimate scope
+   changes go through the planner re-recording the digest.
 4. **Audit survival**: state dies with the worktree by design; the
    finisher archives the final task file (`.git/wtcraft/archive/` or
    simply the PR body) before removal. Archive, don't centralize.

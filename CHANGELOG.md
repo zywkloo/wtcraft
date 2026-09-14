@@ -8,6 +8,28 @@ Versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ## [Unreleased]
 
 ### Added
+- `.worktree-state.json` separates mutable lifecycle, assignment, handoff, and
+  latest check/verification results from the stable `.worktree-task.md` task
+  specification. New specifications declare the sidecar explicitly through
+  `state_file: .worktree-state.json`.
+- `wtcraft state` is the atomic CLI write path for lifecycle and assignment
+  updates. `status --json` now derives `ready`/`evidence_stale` by binding
+  passing check and verify results to the current task/worktree snapshot.
+- `wtcraft check` reports a `specification_changed` violation when Scope,
+  Off-limits, or Verification no longer match the digest recorded by
+  `wtcraft new` or `wtcraft state --stage planned`, so widening Scope no longer
+  turns a failing check into a pass. The digest lives in the per-worktree Git
+  directory and is advisory, not an authorization boundary.
+- `status --json` reports `state_valid`, `legacy_frontmatter_ignored`, and
+  `specification_changed`. `status`, `state`, `check`, and `verify` warn when
+  task frontmatter still sets lifecycle fields the sidecar overrides, and
+  `doctor` flags a missing sidecar ignore rule and pre-sidecar harness guidance.
+- Evidence snapshots bind only the Scope, Off-limits, and Verification items of
+  the specification, so checkbox ticks and Context edits keep evidence fresh.
+  Untracked symlinks and nested repositories are bound without hashing errors.
+- Sidecars in any layout other than one field per line are rejected before a
+  write; temporary state files are removed on exit and never counted as task
+  changes; agent and handoff names with control characters are refused.
 - `wtcraft init-ci` installs the trusted-change-authorization check into a
   repository: the `pull_request_target` workflow plus the evaluator it runs, at
   `.wtcraft/policy_git_adapter.py` and `.wtcraft/policy_evaluator.py`. The
@@ -37,6 +59,10 @@ Versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   an explicit negation.
 
 ### Changed
+- `wtcraft new` creates both local task files and migrates absorbed legacy
+  lifecycle/result frontmatter into the sidecar. `check` and `verify` record
+  their latest results in JSON without mutating the task specification;
+  `status` retains read compatibility with sidecar-less legacy tasks.
 - `capabilities --json` reports `init-ci`. Additive within protocol v1.
 
 ## [0.4.4] - 2026-08-12

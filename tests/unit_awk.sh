@@ -108,9 +108,58 @@ EOF
   fi
 }
 
+test_task_state_json_roundtrip() {
+  local tmpdir="$1"
+  local file="${tmpdir}/.worktree-state.json"
+
+  write_task_state "$file" "feat/example" "planned" "executor" "codex" "ready" "" ""
+  python3 -m json.tool "$file" >/dev/null
+  [ "$(state_get "$file" "stage")" = "planned" ]
+
+  local unusual_agent='co"dex\cli'
+  state_set_string "$file" "agent" "$unusual_agent"
+  state_set_number "$file" "attempt" 3
+  python3 -m json.tool "$file" >/dev/null
+  [ "$(state_get "$file" "agent")" = "$unusual_agent" ]
+  [ "$(state_get "$file" "attempt")" = "3" ]
+  state_valid "$file"
+}
+
+test_state_valid_rejects_other_layouts() {
+  local tmpdir="$1"
+  local file="${tmpdir}/.worktree-state.json"
+
+  write_task_state "$file" "feat/example" "planned" "executor" "codex" "ready" "" ""
+  python3 - "$file" <<'PY'
+import json, sys
+path = sys.argv[1]
+with open(path) as fh:
+    data = json.load(fh)
+with open(path, "w") as fh:
+    json.dump(data, fh, separators=(",", ":"))
+PY
+  if state_valid "$file"; then
+    echo "[FAIL] state_valid accepted a single-line sidecar"
+    exit 1
+  fi
+
+  write_task_state "$file" "feat/example" "planned" "executor" "codex" "ready" "" ""
+  grep -v '"attempt"' "$file" >"${file}.missing"
+  if state_valid "${file}.missing"; then
+    echo "[FAIL] state_valid accepted a sidecar without attempt"
+    exit 1
+  fi
+
+  printf '  "future_field": "a \\" , b",\n' >"${file}.extra"
+  { head -n 1 "$file"; cat "${file}.extra"; tail -n +2 "$file"; } >"${file}.with-extra"
+  state_valid "${file}.with-extra"
+}
+
 run_in_temp_repo test_extract_frontmatter
 run_in_temp_repo test_set_frontmatter
 run_in_temp_repo test_collect_section_items
 run_in_temp_repo test_collect_verification_commands
+run_in_temp_repo test_task_state_json_roundtrip
+run_in_temp_repo test_state_valid_rejects_other_layouts
 
 echo "[PASS] unit_awk"

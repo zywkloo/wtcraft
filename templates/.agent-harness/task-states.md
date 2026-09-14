@@ -1,57 +1,75 @@
-# Task Stage State Machine
+# Task lifecycle state
 
-The `stage:` frontmatter field in `.worktree-task.md` is the authoritative
-lifecycle state of a worktree task. Tools (`wtcraft status`, observers,
-alarms) read `stage`; the older `status:` field is kept as a coarse legacy
-indicator and is used as a fallback when `stage` is absent.
+`.worktree-task.md` is the stable, human-readable task specification. It
+declares `state_file: .worktree-state.json`; mutable lifecycle and result facts
+live in that JSON sidecar.
 
-## Frontmatter fields
+The separation is semantic, not a security boundary. Both files are local and
+advisory. Protected authorization, when configured, comes from the repository's
+policy authority rather than either worktree file.
 
+## State fields
+
+The sidecar records:
+
+```json
+{
+  "schema_version": 1,
+  "task_id": "feat/example-task",
+  "stage": "planned",
+  "role": "executor",
+  "agent": "codex",
+  "attempt": 0,
+  "check_result": null,
+  "check_snapshot": null,
+  "verify_result": null,
+  "verify_snapshot": null
+}
 ```
-stage: planned        # FSM state — see lifecycle below
-role: executor        # pipeline role currently responsible for the task
-status: ready         # legacy coarse state (kept for back-compat)
-```
 
-`role` values match the keys in `role-models.yml`
-(planner / executor / verifier / finisher).
+`wtcraft state`, `wtcraft check`, and `wtcraft verify` are the sidecar's only
+writers. Lifecycle and result fields live exclusively in the sidecar; the task
+specification carries the task definition alone.
 
 ## Lifecycle
 
-```
+```text
 planned → executing → verifying → approved → finishing → done
                           │
-                          └→ replan → planned   (loopback)
+                          └→ replan → planned
 ```
 
-## Transition table
+The current CLI restricts stage and role vocabulary but does not yet enforce
+the complete transition table. The roles retain these ownership conventions:
 
-Each transition has exactly one owning role — only that role may write the
-task file at that point. This single-writer rule is also the concurrency
-protocol: at any moment the file has one legal writer, so no locking is
-needed.
+| transition | owner |
+|---|---|
+| create/replan → `planned` | planner |
+| `planned` → `executing` | executor |
+| `executing` → `verifying` | executor |
+| `verifying` → `replan` | verifier |
+| `verifying` → `approved` | human gate, recorded by finisher |
+| `approved` → `finishing` | finisher |
+| `finishing` → `done` | finisher |
 
-| transition            | owner    | trigger                                      |
-|-----------------------|----------|----------------------------------------------|
-| (create) → planned    | planner  | contract written (`/planwt`, `wtcraft new`)  |
-| planned → executing   | executor | work starts in the worktree                  |
-| executing → verifying | executor | implementation complete, verification run    |
-| verifying → replan    | verifier | verify/check failed, or premises challenged  |
-| verifying → approved  | human    | re-plan checkpoint confirmed (finisher records) |
-| replan → planned      | planner  | contract revised and reissued                |
-| approved → finishing  | finisher | push / PR / cleanup begins                   |
-| finishing → done      | finisher | verification recorded, worktree finishable   |
+Example:
 
-Verifier responsibilities currently live in `finisher.md` (steps 2–4);
-the owner column names the role, not the file.
+```bash
+wtcraft state feat/example-task --stage executing --role executor --agent codex
+```
 
-Any stage change not in this table is an **illegal transition** (see the
-alarm catalog in the wtcraft repo, `docs/backlogs/stage-state-machine.md`).
+## Results and readiness
 
-## Write discipline
+Verification commands remain in `.worktree-task.md`; only their outcomes live
+in the sidecar. `check` and `verify` bind results to a snapshot of the Scope,
+Off-limits, and Verification items they read, plus HEAD, the tracked diff, and
+untracked contents. Ticking a checkbox or editing Context leaves evidence
+fresh.
 
-- Update `stage` with `wtcraft`'s frontmatter helper or an equivalent
-  read-modify-write that lands via temp-file + `mv` (atomic rename), so
-  readers never see a half-written file.
-- Do not edit the task file when you are not the owner of the current
-  stage. If you believe the stage is wrong, report it instead of fixing it.
+`ready` is derived by `wtcraft status --json`. It is true only when both latest
+results pass and both snapshots match the current worktree. A later edit makes
+the evidence stale instead of leaving a writable `ready` claim behind.
+
+Legacy task files that still contain `stage`, `role`, `agent`, `status`,
+`verify_result`, or `verified` remain readable when no sidecar exists. New
+writers must use the sidecar.

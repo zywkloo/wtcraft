@@ -68,7 +68,7 @@ test_file_only_commands_without_git() {
     grep -qF '<!-- wtcraft:lang:start -->' AGENTS.md
 
     "$CLI" unpatch >/dev/null
-    ! grep -qF '<!-- wtcraft:agents:start -->' AGENTS.md
+    ! grep -qF '<!-- wtcraft:agents:start -->' AGENTS.md || exit 1
 
     "$CLI" migrate --yes >/dev/null
   )
@@ -78,7 +78,7 @@ test_local_mode_still_requires_git_without_partial_scaffold() {
   local project="${tmp_root}/local-mode-project"
   mkdir -p "$project"
 
-  ! "$CLI" init --local --repo "$project" >/dev/null 2>&1
+  ! "$CLI" init --local --repo "$project" >/dev/null 2>&1 || exit 1
   test ! -e "${project}/.agent-harness"
   test ! -e "${project}/.claude"
 }

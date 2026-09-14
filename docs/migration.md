@@ -1,5 +1,47 @@
 # Migration Notes
 
+## 0.4.x → next release
+
+### Task specification and state sidecar
+
+New worktree tasks use two ignored local files:
+
+```text
+.worktree-task.md       stable task specification
+.worktree-state.json    mutable lifecycle and latest check/verify results
+```
+
+After upgrading, complete both steps:
+
+1. Run `wtcraft init` (or `wtcraft migrate`) once so `/.worktree-state.json` is
+   added to the repository's local-task ignore rules.
+2. Replace `.agent-harness/`, `.claude/commands/`, and `.agents/skills/` with
+   the copies shipped in this release. `init` preserves existing scaffold
+   files, and guidance written before the sidecar tells agents to write
+   `stage:` into `.worktree-task.md`. Once a sidecar exists, wtcraft ignores
+   those writes.
+
+`wtcraft doctor` warns when either step is missing. `status` reports
+`legacy_frontmatter_ignored`, and `state`, `check`, and `verify` print a
+warning, whenever task frontmatter still sets lifecycle fields that the sidecar
+overrides.
+
+Existing task files need no immediate rewrite. `wtcraft status` reads legacy
+`stage`, `role`, `agent`, `status`, `verify_result`, and `verified` frontmatter
+when no sidecar exists. The next `wtcraft check` or `wtcraft verify` creates a
+sidecar lazily. `wtcraft new` moves any absorbed legacy values into the sidecar
+and removes them from the new task specification.
+
+Tasks created before this release have no plan-time specification digest, so
+`check` reports `specification_changed: null` for them and cannot detect Scope
+widening until the planner runs `wtcraft state <task> --stage planned`.
+
+`wtcraft verify` no longer writes result fields into Markdown. Consumers should
+read `verify_result` / `verified` from `status --json` or directly from the
+declared sidecar.
+
+---
+
 ## 0.2.x → 0.3.x
 
 ### Glob patterns in `check` Scope / Off-limits

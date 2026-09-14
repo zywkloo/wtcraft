@@ -10,8 +10,12 @@ launcher or observer answer:
 - whether it is interactive or headless
 - when it started, last showed activity, and exited
 
-It does not describe task intent or governance approval. Those belong to
-`.worktree-task.md` and [Task State Machine v1](task-state-machine-v1.md).
+It does not describe task intent or governance lifecycle. Intent belongs to
+`.worktree-task.md`; lifecycle/results belong to `.worktree-state.json` and
+[Task State Machine v1](task-state-machine-v1.md).
+
+This protocol is proposed. The current Bash CLI does not create, monitor, or
+read `.worktree-session.json`.
 
 ## Authority and ownership
 
@@ -140,7 +144,7 @@ Examples:
 | `stage: executing` | `state: running` | consistent |
 | `stage: executing` | `state: exited` | warning: executor session exited |
 | `stage: planned` | `state: running` | warning: work started before transition |
-| no task contract | `state: running` | warning: uncontracted session |
+| no task specification | `state: running` | warning: uncontracted session |
 | any active stage | `state: lost` | warning: session identity lost |
 
 The observer reports these conditions. It does not silently repair either file.

@@ -9,8 +9,10 @@ Read:
 
 - `.agent-harness/finisher.md`
 - `worktrees/<name>/.worktree-task.md` for the target worktree
+- `worktrees/<name>/.worktree-state.json` for lifecycle and latest results
 
 Run the task's declared verification, check the changeset against Scope and
-Off-limits, and report results. Then run the re-plan checkpoint from
+Off-limits, and report results. Use `wtcraft state` for lifecycle changes;
+never write them into the task specification. Then run the re-plan checkpoint from
 `finisher.md`: challenge the task's premises (especially Scope, Off-limits, and
 the task boundary) and get explicit user confirmation before any push or PR.

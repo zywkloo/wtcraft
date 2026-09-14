@@ -15,6 +15,22 @@ test_help_init_status() {
   test -f .agents/skills/planwt/SKILL.md
   test -f .agents/skills/finishwt/SKILL.md
   test -f .agents/skills/statuswt/SKILL.md
+  grep -qxF '/.worktree-task.md' .gitignore
+  grep -qxF '/.worktree-state.json' .gitignore
+}
+
+test_init_extends_pre_sidecar_ignore_block_once() {
+  local repo="$1"
+  cd "$repo"
+  # Earlier releases wrote this header without a trailing period.
+  printf '\n# wtcraft local task state\n/.worktree-task.md\n' > .gitignore
+
+  "$CLI" init >/dev/null
+  "$CLI" init >/dev/null
+
+  grep -qxF '/.worktree-state.json' .gitignore
+  [ "$(grep -c '^# wtcraft local task' .gitignore)" -eq 1 ]
+  [ "$(grep -cxF '/.worktree-state.json' .gitignore)" -eq 1 ]
 }
 
 test_init_local_keeps_repo_clean() {
@@ -26,6 +42,7 @@ test_init_local_keeps_repo_clean() {
   test ! -f .gitignore
   grep -qxF '# wtcraft local scaffold' .git/info/exclude
   grep -qxF '/.worktree-task.md' .git/info/exclude
+  grep -qxF '/.worktree-state.json' .git/info/exclude
   grep -qxF '/.agent-harness/' .git/info/exclude
   grep -qxF '/.claude/commands/' .git/info/exclude
   grep -qxF '/.agents/skills/' .git/info/exclude
@@ -80,8 +97,8 @@ test_patch_unpatch_roundtrip() {
 
   # `unpatch` restores the files byte-for-byte (block + separator removed)
   "$CLI" unpatch
-  ! grep -q "wtcraft:claude" CLAUDE.md
-  ! grep -q "wtcraft:agents" AGENTS.md
+  ! grep -q "wtcraft:claude" CLAUDE.md || exit 1
+  ! grep -q "wtcraft:agents" AGENTS.md || exit 1
   diff CLAUDE.orig CLAUDE.md
   diff AGENTS.orig AGENTS.md
 
@@ -90,8 +107,8 @@ test_patch_unpatch_roundtrip() {
   diff CLAUDE.orig CLAUDE.md
 
   # patch/unpatch reject extra arguments
-  ! "$CLI" patch extra 2>/dev/null
-  ! "$CLI" unpatch extra 2>/dev/null
+  ! "$CLI" patch extra 2>/dev/null || exit 1
+  ! "$CLI" unpatch extra 2>/dev/null || exit 1
 }
 
 test_init_local_in_linked_worktree_uses_git_info_exclude() {
@@ -138,6 +155,7 @@ test_new_reports_an_empty_repository_in_wtcraft_terms() {
 run_in_temp_repo test_new_reports_an_empty_repository_in_wtcraft_terms
 
 run_in_temp_repo test_help_init_status
+run_in_temp_repo test_init_extends_pre_sidecar_ignore_block_once
 run_in_temp_repo test_init_local_keeps_repo_clean
 run_in_temp_repo test_init_local_patch_hides_agent_files
 run_in_temp_repo test_patch_agent_files_idempotent

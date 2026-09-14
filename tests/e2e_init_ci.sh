@@ -33,7 +33,7 @@ test_init_ci_installs_check_and_adapter() {
   # base advanced.
   grep -qF 'fetch-depth: 0' "$WORKFLOW"
   # The job must never execute pull-request code.
-  ! grep -qF 'head.sha }}' <(grep -A2 'actions/checkout' "$WORKFLOW")
+  ! grep -qF 'head.sha }}' <(grep -A2 'actions/checkout' "$WORKFLOW") || exit 1
 }
 
 test_init_ci_is_idempotent() {
