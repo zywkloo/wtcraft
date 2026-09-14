@@ -1393,19 +1393,38 @@ warn_ignored_legacy_fields() {
   echo "warning: ${task_file} frontmatter sets ${fields}; .worktree-state.json overrides these fields. Remove them and record lifecycle with 'wtcraft state'." >&2
 }
 
-# Bind check/verify evidence to the complete Git-visible worktree contents,
-# including uncommitted tracked edits and untracked file contents. The two local
-# task files are ignored because they are coordination metadata, not deliverables.
+# task_spec_digest <task_file>
+#
+# Digest of the specification inputs that check and verify consume: the Scope
+# and Off-limits items and the Verification commands. Checkbox state and other
+# Markdown are not inputs, so ticking a step or editing Context leaves the
+# digest unchanged.
+task_spec_digest() {
+  local task_file="$1"
+  {
+    printf 'SCOPE\0'
+    collect_section_items "$task_file" "Scope"
+    printf '\0OFF-LIMITS\0'
+    collect_section_items "$task_file" "Off-limits"
+    printf '\0VERIFICATION\0'
+    collect_verification_commands "$task_file"
+  } | git hash-object --stdin
+}
+
+# Bind check/verify evidence to what they read and judge: the specification
+# inputs, HEAD, uncommitted tracked edits, and untracked contents. The local
+# task files are coordination metadata, not deliverables.
 worktree_snapshot() {
   local wt_path="$1"
+  local spec_digest
+  spec_digest="$(task_spec_digest "${wt_path}/.worktree-task.md")"
   (
     cd "$wt_path"
     {
       printf 'HEAD\0'
       git rev-parse HEAD
-      printf '\0TASK-SPEC\0'
-      git hash-object .worktree-task.md
-      printf '\0TRACKED-DIFF\0'
+      printf '\0TASK-SPEC\0%s\0' "$spec_digest"
+      printf 'TRACKED-DIFF\0'
       git diff --binary HEAD
       printf '\0UNTRACKED\0'
       while IFS= read -r -d '' file; do
@@ -1413,7 +1432,16 @@ worktree_snapshot() {
           .worktree-task.md|.worktree-state.json|.worktree-state.json.*) continue ;;
         esac
         printf '%s\0' "$file"
-        git hash-object "$file"
+        if [ -L "${file%/}" ]; then
+          printf 'symlink\0'
+          readlink "${file%/}"
+        elif [ -d "$file" ]; then
+          # Git lists an untracked nested repository as a single directory.
+          printf 'repository\0'
+          git -C "$file" rev-parse -q --verify HEAD || true
+        else
+          git hash-object "$file"
+        fi
         printf '\0'
       done < <(git ls-files -z --others --exclude-standard)
     } | git hash-object --stdin

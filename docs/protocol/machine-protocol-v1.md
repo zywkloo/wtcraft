@@ -84,7 +84,8 @@ Fields:
 
 `status --json` reads stable metadata from `.worktree-task.md`, mutable facts
 from `.worktree-state.json`, and derives readiness by comparing recorded check
-and verify snapshots with the current task specification and Git worktree. It
+and verify snapshots with the current Scope, Off-limits, and Verification items
+and the Git worktree. It
 does not report live process/session state.
 
 Fatal errors in machine mode return a JSON error object instead of the array.

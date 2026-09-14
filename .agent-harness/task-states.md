@@ -61,8 +61,10 @@ wtcraft state feat/example-task --stage executing --role executor --agent codex
 ## Results and readiness
 
 Verification commands remain in `.worktree-task.md`; only their outcomes live
-in the sidecar. `check` and `verify` bind results to a snapshot of the current
-task specification, HEAD, tracked diff, and untracked contents.
+in the sidecar. `check` and `verify` bind results to a snapshot of the Scope,
+Off-limits, and Verification items they read, plus HEAD, the tracked diff, and
+untracked contents. Ticking a checkbox or editing Context leaves evidence
+fresh.
 
 `ready` is derived by `wtcraft status --json`. It is true only when both latest
 results pass and both snapshots match the current worktree. A later edit makes

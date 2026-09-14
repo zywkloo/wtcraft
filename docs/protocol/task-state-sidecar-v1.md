@@ -84,8 +84,16 @@ are printable text; control characters are rejected.
 
 ## Evidence freshness
 
-A snapshot binds the task specification, HEAD, tracked working-tree diff, and
-untracked file paths and contents. `.worktree-state.json` itself is excluded.
+A snapshot binds what `check` and `verify` read and the worktree they judge:
+
+- the Scope and Off-limits items and the Verification commands of the task
+  specification (other Markdown, such as Context or checkbox ticks, is not
+  part of the snapshot);
+- HEAD and the tracked working-tree diff;
+- untracked paths and their contents. An untracked symlink is bound by its
+  target path, and an untracked nested repository by its HEAD.
+
+`.worktree-state.json` and its temporary files are excluded.
 
 `ready` is not stored. `wtcraft status --json` derives it when both latest
 results are `pass` and both recorded snapshots equal the current snapshot. If

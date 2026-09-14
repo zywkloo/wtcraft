@@ -57,6 +57,11 @@ test_new_verify_check() {
   "$CLI" status --json | grep -q '"check_result":"pass"'
   "$CLI" status --json | grep -q '"attempt":0'
   "$CLI" status --json | grep -q '"ready":true'
+  # Checkbox ticks and Context edits are not evidence inputs.
+  sed -i.bak -e 's/^- \[ \] \[D\] Read/- [x] [D] Read/' \
+    -e 's/^Add only task-specific context.*/Context rewritten after verification./' "$task_file"
+  rm -f "${task_file}.bak"
+  "$CLI" status --json | grep -q '"ready":true'
   mkdir -p "${repo}/worktrees/chore/smoke/src"
   echo "later edit" >"${repo}/worktrees/chore/smoke/src/evidence-stale.ts"
   "$CLI" status --json | grep -q '"ready":false'
@@ -391,6 +396,46 @@ test_ignored_legacy_frontmatter_is_reported() {
   "$CLI" check chore/legacy-write 2>&1 >/dev/null | grep -q 'overrides these fields'
 }
 
+test_snapshot_binds_untracked_symlinks_and_nested_repos() {
+  local repo="$1"
+  cd "$repo"
+  git config user.name "wtcraft-smoke"
+  git config user.email "wtcraft-smoke@example.com"
+  echo "seed" > .wtcraft-seed
+  git add .wtcraft-seed
+  git commit -q -m "seed"
+
+  local current_branch
+  current_branch="$(git branch --show-current)"
+  "$CLI" init
+  git add -A && git commit -q -m "wtcraft init"
+  WTCRAFT_BASE_BRANCH="$current_branch" "$CLI" new chore/links
+
+  local wt="${repo}/worktrees/chore/links"
+  local task_file="${wt}/.worktree-task.md"
+  sed -i.bak -e 's|pnpm tsc --noEmit|echo ok|' -e 's|^- src/example.ts$|- src/|' "$task_file"
+  rm -f "${task_file}.bak"
+  "$CLI" state chore/links --stage planned
+
+  mkdir -p "${wt}/src" "${repo}/target-a" "${repo}/target-b"
+  ln -s "${repo}/target-a" "${wt}/src/link"
+  git init -q "${wt}/src/nested"
+  git -C "${wt}/src/nested" -c user.name=nested -c user.email=nested@example.com \
+    commit -q --allow-empty -m nested
+
+  local errors
+  errors="$("$CLI" verify chore/links 2>&1 >/dev/null)"
+  errors="${errors}$("$CLI" check chore/links 2>&1 >/dev/null)"
+  errors="${errors}$("$CLI" status --json 2>&1 >/dev/null)"
+  case "$errors" in
+    *"Unable to hash"*) echo "[FAIL] snapshot could not hash an untracked entry: ${errors}" >&2; exit 1 ;;
+  esac
+  "$CLI" status --json | grep -q '"ready":true'
+
+  ln -sfn "${repo}/target-b" "${wt}/src/link"
+  "$CLI" status --json | grep -q '"evidence_stale":true'
+}
+
 test_state_rejects_invalid_sidecar_without_leftovers() {
   local repo="$1"
   cd "$repo"
@@ -501,6 +546,7 @@ run_in_temp_repo test_check_rejects_task_state_changes
 run_in_temp_repo test_status_reads_legacy_frontmatter_without_sidecar
 run_in_temp_repo test_new_absorbs_legacy_plan_into_sidecar
 run_in_temp_repo test_ignored_legacy_frontmatter_is_reported
+run_in_temp_repo test_snapshot_binds_untracked_symlinks_and_nested_repos
 run_in_temp_repo test_state_rejects_invalid_sidecar_without_leftovers
 run_in_temp_repo test_new_defaults_to_master_or_main
 run_in_temp_repo test_new_prefers_origin_head_and_accepts_base_override

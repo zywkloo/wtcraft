@@ -44,7 +44,9 @@ and handoff coordination, timestamps, and the latest check/verification result.
 atomic replacement. Agents are instructed not to edit it directly.
 
 Check and verification results are bound to a worktree snapshot covering the
-task specification, HEAD, tracked diff, and untracked contents. Readiness is a
+Scope, Off-limits, and Verification items of the task specification, HEAD,
+tracked diff, and untracked contents. Other Markdown, including checkbox state,
+is not an evidence input. Readiness is a
 derived projection: both results must pass and match the current snapshot. It
 is not a writable lifecycle stage.
 
