@@ -11,10 +11,20 @@ New worktree tasks use two ignored local files:
 .worktree-state.json    mutable lifecycle and latest check/verify results
 ```
 
-Run `wtcraft init` (or `wtcraft migrate`) once after upgrading so
-`/.worktree-state.json` is added to the repository's local-task ignore rules.
-Existing scaffold files are preserved; refresh customized harness guidance
-manually if you want agents to use `wtcraft state`.
+After upgrading, complete both steps:
+
+1. Run `wtcraft init` (or `wtcraft migrate`) once so `/.worktree-state.json` is
+   added to the repository's local-task ignore rules.
+2. Replace `.agent-harness/`, `.claude/commands/`, and `.agents/skills/` with
+   the copies shipped in this release. `init` preserves existing scaffold
+   files, and guidance written before the sidecar tells agents to write
+   `stage:` into `.worktree-task.md`. Once a sidecar exists, wtcraft ignores
+   those writes.
+
+`wtcraft doctor` warns when either step is missing. `status` reports
+`legacy_frontmatter_ignored`, and `state`, `check`, and `verify` print a
+warning, whenever task frontmatter still sets lifecycle fields that the sidecar
+overrides.
 
 Existing task files need no immediate rewrite. `wtcraft status` reads legacy
 `stage`, `role`, `agent`, `status`, `verify_result`, and `verified` frontmatter

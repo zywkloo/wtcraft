@@ -19,6 +19,20 @@ test_help_init_status() {
   grep -qxF '/.worktree-state.json' .gitignore
 }
 
+test_init_extends_pre_sidecar_ignore_block_once() {
+  local repo="$1"
+  cd "$repo"
+  # Earlier releases wrote this header without a trailing period.
+  printf '\n# wtcraft local task state\n/.worktree-task.md\n' > .gitignore
+
+  "$CLI" init >/dev/null
+  "$CLI" init >/dev/null
+
+  grep -qxF '/.worktree-state.json' .gitignore
+  [ "$(grep -c '^# wtcraft local task' .gitignore)" -eq 1 ]
+  [ "$(grep -cxF '/.worktree-state.json' .gitignore)" -eq 1 ]
+}
+
 test_init_local_keeps_repo_clean() {
   local repo="$1"
   cd "$repo"
@@ -141,6 +155,7 @@ test_new_reports_an_empty_repository_in_wtcraft_terms() {
 run_in_temp_repo test_new_reports_an_empty_repository_in_wtcraft_terms
 
 run_in_temp_repo test_help_init_status
+run_in_temp_repo test_init_extends_pre_sidecar_ignore_block_once
 run_in_temp_repo test_init_local_keeps_repo_clean
 run_in_temp_repo test_init_local_patch_hides_agent_files
 run_in_temp_repo test_patch_agent_files_idempotent

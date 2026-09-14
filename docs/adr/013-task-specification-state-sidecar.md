@@ -56,6 +56,11 @@ is not a writable lifecycle stage.
 - `wtcraft new` migrates absorbed legacy frontmatter into a new sidecar and
   removes the mutable fields from the resulting task specification.
 - `check` and `verify` create a sidecar lazily for an existing legacy task.
+- Once a sidecar exists, lifecycle/result frontmatter is ignored. `status`
+  reports `legacy_frontmatter_ignored` and `state`, `check`, and `verify` warn,
+  so writes from pre-sidecar harness guidance are visible instead of silently
+  dropped. `doctor` flags a missing sidecar ignore rule and harness guidance
+  that predates `wtcraft state`.
 
 ## Consequences
 

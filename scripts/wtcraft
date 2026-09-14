@@ -707,7 +707,8 @@ cmd_init() {
       if ! grep -qxF "$task_rule" "$gitignore" 2>/dev/null; then
         if [ ! -f "$gitignore" ] ||
            { ! grep -qxF '# wtcraft local task files' "$gitignore" 2>/dev/null &&
-             ! grep -qxF '# wtcraft local task state.' "$gitignore" 2>/dev/null; }; then
+             ! grep -qxF '# wtcraft local task state.' "$gitignore" 2>/dev/null &&
+             ! grep -qxF '# wtcraft local task state' "$gitignore" 2>/dev/null; }; then
           printf '\n# wtcraft local task files\n' >>"$gitignore"
         fi
         printf '%s\n' "$task_rule" >> "$gitignore"
@@ -1368,6 +1369,30 @@ ensure_task_state_notice() {
   ' "$file" >"$tmp" && mv "$tmp" "$file"
 }
 
+# legacy_lifecycle_fields <task_file>
+#
+# Print the lifecycle/result keys still set in the task frontmatter, space
+# separated. Once a sidecar exists these keys are ignored, so harness guidance
+# that still writes them would otherwise change nothing without any notice.
+legacy_lifecycle_fields() {
+  awk '
+    BEGIN { in_fm=0; out="" }
+    /^---$/ { if (in_fm==0) { in_fm=1; next } else exit }
+    in_fm==1 && match($0, /^(agent|stage|role|status|verify_result|verified):/) {
+      out = out (out == "" ? "" : " ") substr($0, 1, RLENGTH - 1)
+    }
+    END { print out }
+  ' "$1"
+}
+
+warn_ignored_legacy_fields() {
+  local task_file="$1"
+  local fields
+  fields="$(legacy_lifecycle_fields "$task_file")"
+  [ -n "$fields" ] || return 0
+  echo "warning: ${task_file} frontmatter sets ${fields}; .worktree-state.json overrides these fields. Remove them and record lifecycle with 'wtcraft state'." >&2
+}
+
 # Bind check/verify evidence to the complete Git-visible worktree contents,
 # including uncommitted tracked edits and untracked file contents. The two local
 # task files are ignored because they are coordination metadata, not deliverables.
@@ -1453,7 +1478,8 @@ cmd_status() {
     local stage="" status_legacy="" role="" agent="" priority="" created="" base=""
     local attempt="" handoff_from="" handoff_to="" check_result="" checked=""
     local verify_result="" verified="" created_at="" updated_at=""
-    local state_present=false state_valid_flag=null ready=false evidence_stale=false
+    local state_present=false state_valid_flag=null legacy_frontmatter_ignored=false
+    local ready=false evidence_stale=false
     if [ "$zombie" = false ] && [ -f "$task" ]; then
       contracted=true
       priority="$(extract_frontmatter "$task" "priority")"
@@ -1468,6 +1494,10 @@ cmd_status() {
           [ "$as_json" = true ] ||
             echo "warning: ${state} does not use the v1 state layout; its lifecycle and results are not shown" >&2
         fi
+      fi
+      if [ "$state_present" = true ] && [ -n "$(legacy_lifecycle_fields "$task")" ]; then
+        legacy_frontmatter_ignored=true
+        [ "$as_json" = true ] || warn_ignored_legacy_fields "$task"
       fi
       if [ "$state_valid_flag" = true ]; then
         stage="$(state_get "$state" "stage")"
@@ -1515,7 +1545,7 @@ cmd_status() {
       local entry
       entry="{\"repo_root\":$(json_field "$repo_root"),\"worktree\":$(json_field "$wt"),\"branch\":$(json_field "$branch"),\"zombie\":${zombie},\"locked\":${locked},\"contracted\":${contracted}"
       if [ "$contracted" = true ]; then
-        entry="${entry},\"task_file\":$(json_field "$task"),\"state_file\":$(json_field "$state"),\"state_present\":${state_present},\"state_valid\":${state_valid_flag},\"stage\":$(json_field "$stage"),\"role\":$(json_field "$role"),\"agent\":$(json_field "$agent"),\"status\":$(json_field "$status_legacy"),\"attempt\":$(json_number_field "$attempt"),\"handoff_from\":$(json_field "$handoff_from"),\"handoff_to\":$(json_field "$handoff_to"),\"check_result\":$(json_field "$check_result"),\"checked\":$(json_field "$checked"),\"priority\":$(json_field "$priority"),\"created\":$(json_field "$created"),\"base\":$(json_field "$base"),\"verify_result\":$(json_field "$verify_result"),\"verified\":$(json_field "$verified"),\"created_at\":$(json_field "$created_at"),\"updated_at\":$(json_field "$updated_at"),\"ready\":${ready},\"evidence_stale\":${evidence_stale}"
+        entry="${entry},\"task_file\":$(json_field "$task"),\"state_file\":$(json_field "$state"),\"state_present\":${state_present},\"state_valid\":${state_valid_flag},\"legacy_frontmatter_ignored\":${legacy_frontmatter_ignored},\"stage\":$(json_field "$stage"),\"role\":$(json_field "$role"),\"agent\":$(json_field "$agent"),\"status\":$(json_field "$status_legacy"),\"attempt\":$(json_number_field "$attempt"),\"handoff_from\":$(json_field "$handoff_from"),\"handoff_to\":$(json_field "$handoff_to"),\"check_result\":$(json_field "$check_result"),\"checked\":$(json_field "$checked"),\"priority\":$(json_field "$priority"),\"created\":$(json_field "$created"),\"base\":$(json_field "$base"),\"verify_result\":$(json_field "$verify_result"),\"verified\":$(json_field "$verified"),\"created_at\":$(json_field "$created_at"),\"updated_at\":$(json_field "$updated_at"),\"ready\":${ready},\"evidence_stale\":${evidence_stale}"
       fi
       json_entries+=("${entry}}")
       continue
@@ -1603,6 +1633,7 @@ cmd_state() {
     machine_error "$as_json" "state" "unsupported state_file in ${task_file}"
   ensure_task_state "$task_file" "$state_file"
   require_valid_state "$as_json" "state" "$state_file"
+  warn_ignored_legacy_fields "$task_file"
 
   state_begin_update "$state_file"
   if [ -n "$stage" ]; then
@@ -1879,6 +1910,7 @@ cmd_check() {
     machine_error "$as_json" "check" "unsupported state_file in ${task_file}"
   ensure_task_state "$task_file" "$state_file"
   require_valid_state "$as_json" "check" "$state_file"
+  warn_ignored_legacy_fields "$task_file"
 
   local base_branch
   base_branch="$(extract_frontmatter "$task_file" "base")"
@@ -2056,6 +2088,7 @@ cmd_verify() {
     machine_error "$as_json" "verify" "unsupported state_file in ${task_file}"
   ensure_task_state "$task_file" "$state_file"
   require_valid_state "$as_json" "verify" "$state_file"
+  warn_ignored_legacy_fields "$task_file"
 
   local commands=()
   local line
@@ -2224,6 +2257,15 @@ cmd_doctor() {
 
     if [ -f "$repo_root/.worktree-task.template.md" ]; then
       echo "Legacy file detected: .worktree-task.template.md (run 'wtcraft migrate' to fix)"
+    fi
+
+    if [ -f "$repo_root/.agent-harness/executor.md" ]; then
+      if ! git -C "$repo_root" check-ignore -q .worktree-state.json 2>/dev/null; then
+        echo "Warning: .worktree-state.json is not ignored (run 'wtcraft init' to add the rule)"
+      fi
+      if ! grep -qF 'wtcraft state' "$repo_root/.agent-harness/executor.md"; then
+        echo "Warning: .agent-harness/ predates the state sidecar. Its guidance writes lifecycle into .worktree-task.md, which wtcraft ignores once .worktree-state.json exists. Replace it with ${TEMPLATE_DIR}/.agent-harness/"
+      fi
     fi
   else
     echo "Not inside a git repository."

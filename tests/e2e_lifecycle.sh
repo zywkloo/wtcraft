@@ -362,6 +362,35 @@ EOF
   grep -q '"verified": "legacy-time"' "$state_file"
 }
 
+test_ignored_legacy_frontmatter_is_reported() {
+  local repo="$1"
+  cd "$repo"
+  git config user.name "wtcraft-smoke"
+  git config user.email "wtcraft-smoke@example.com"
+  echo "seed" > .wtcraft-seed
+  git add .wtcraft-seed
+  git commit -q -m "seed"
+
+  local current_branch
+  current_branch="$(git branch --show-current)"
+  "$CLI" init
+  git add -A && git commit -q -m "wtcraft init"
+  WTCRAFT_BASE_BRANCH="$current_branch" "$CLI" new chore/legacy-write
+
+  local task_file="${repo}/worktrees/chore/legacy-write/.worktree-task.md"
+  "$CLI" state chore/legacy-write --stage executing
+  "$CLI" status --json | grep -q '"legacy_frontmatter_ignored":false'
+
+  # Pre-sidecar harness guidance still writes the stage into the Markdown.
+  awk '{ print } /^state_file:/ { print "stage: verifying" }' "$task_file" >"${task_file}.tmp"
+  mv "${task_file}.tmp" "$task_file"
+
+  "$CLI" status --json | grep -q '"legacy_frontmatter_ignored":true'
+  "$CLI" status --json | grep -q '"stage":"executing"'
+  "$CLI" status 2>&1 >/dev/null | grep -q 'sets stage; .worktree-state.json overrides'
+  "$CLI" check chore/legacy-write 2>&1 >/dev/null | grep -q 'overrides these fields'
+}
+
 test_state_rejects_invalid_sidecar_without_leftovers() {
   local repo="$1"
   cd "$repo"
@@ -471,6 +500,7 @@ run_in_temp_repo test_check_rejects_task_contract_changes
 run_in_temp_repo test_check_rejects_task_state_changes
 run_in_temp_repo test_status_reads_legacy_frontmatter_without_sidecar
 run_in_temp_repo test_new_absorbs_legacy_plan_into_sidecar
+run_in_temp_repo test_ignored_legacy_frontmatter_is_reported
 run_in_temp_repo test_state_rejects_invalid_sidecar_without_leftovers
 run_in_temp_repo test_new_defaults_to_master_or_main
 run_in_temp_repo test_new_prefers_origin_head_and_accepts_base_override

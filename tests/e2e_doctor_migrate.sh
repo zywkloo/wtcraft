@@ -58,6 +58,27 @@ test_doctor_detects_legacy_file() {
   echo "$output" | grep -q "wtcraft migrate"
 }
 
+test_doctor_warns_about_pre_sidecar_setup() {
+  local repo="$1"
+  cd "$repo"
+  git config user.name "wtcraft-smoke"
+  git config user.email "wtcraft-smoke@example.com"
+  "$CLI" init
+  git add -A && git commit -q -m "init"
+
+  output="$("$CLI" doctor 2>&1)"
+  ! printf '%s' "$output" | grep -qE 'not ignored|predates the state sidecar' || exit 1
+
+  # A repository initialized before the sidecar: no ignore rule, and harness
+  # guidance that writes lifecycle into the task Markdown.
+  grep -vxF '/.worktree-state.json' .gitignore >.gitignore.old
+  mv .gitignore.old .gitignore
+  printf '# Executor Role\n\nSet `stage: executing` in .worktree-task.md.\n' >.agent-harness/executor.md
+  output="$("$CLI" doctor 2>&1)"
+  echo "$output" | grep -q '.worktree-state.json is not ignored'
+  echo "$output" | grep -q 'predates the state sidecar'
+}
+
 test_migrate_yes_deletes_legacy() {
   local repo="$1"
   cd "$repo"
@@ -115,6 +136,7 @@ run_in_temp_repo test_version_prints_semver
 test_doctor_outside_repo ""
 run_in_temp_repo test_doctor_inside_repo
 run_in_temp_repo test_doctor_detects_legacy_file
+run_in_temp_repo test_doctor_warns_about_pre_sidecar_setup
 run_in_temp_repo test_migrate_yes_deletes_legacy
 run_in_temp_repo test_migrate_yes_no_legacy
 run_in_temp_repo test_migrate_non_interactive_skips_without_yes

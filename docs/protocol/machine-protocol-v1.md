@@ -74,6 +74,9 @@ Fields:
 - `task_file`, `state_file`, and `state_present` when contracted
 - `state_valid`: `true`/`false` when a sidecar is present, `null` otherwise;
   lifecycle and result fields are `null` when it is `false`
+- `legacy_frontmatter_ignored`: `true` when a sidecar exists and the task
+  frontmatter still sets `stage`, `role`, `agent`, `status`, `verify_result`,
+  or `verified`; the sidecar values are reported and those fields are ignored
 - `stage`, `role`, `agent`, `status`, `attempt`, `handoff_from`, `handoff_to`
 - `check_result`, `checked`, `verify_result`, `verified`
 - `created_at`, `updated_at`, `priority`, `created`, `base`
