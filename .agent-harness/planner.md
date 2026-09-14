@@ -24,10 +24,12 @@ You are the planner for a bounded worktree task.
 
 You own the `planned` and `replan` stages (see `.agent-harness/task-states.md`).
 
-- Keep lifecycle fields out of `.worktree-task.md`; it is the stable task
-  specification and declares `state_file: .worktree-state.json`.
+- `.worktree-task.md` is the stable task specification. Its frontmatter holds
+  task identity, `created`, `base`, `priority`, and
+  `state_file: .worktree-state.json`; lifecycle lives in that sidecar.
 - When you create or reissue a specification, run
-  `wtcraft state <task> --stage planned --role executor`.
+  `wtcraft state <task> --stage planned --role executor`. This also records
+  the specification digest that `wtcraft check` compares against.
 - When picking up a `replan` task, revise the specification against the
-  verifier's findings, then reset the sidecar stage to `planned`.
-- Do not edit `.worktree-state.json` directly.
+  verifier's findings, then run `wtcraft state <task> --stage planned` again.
+- Record lifecycle through `wtcraft state`, the sidecar's write path.

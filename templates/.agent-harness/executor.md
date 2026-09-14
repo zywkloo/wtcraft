@@ -29,7 +29,9 @@ You own the `executing` stage (see `.agent-harness/task-states.md`).
 - Run `wtcraft state <task> --stage executing --role executor` when you start.
 - Run `wtcraft state <task> --stage verifying --role verifier` after
   implementation is complete and Verification commands have been run.
-- Never set `approved`, `finishing`, or `done` — those belong to the human
-  gate and the finisher.
-- Never write lifecycle or result fields into `.worktree-task.md`, and do not
-  edit `.worktree-state.json` directly. The wtcraft commands write it atomically.
+- Your stage writes are `executing` and `verifying`. The human gate and the
+  finisher record `approved`, `finishing`, and `done`.
+- Record every lifecycle change through `wtcraft state`, which writes
+  `.worktree-state.json` atomically. Treat `.worktree-task.md` as read-only
+  input: when Scope or Off-limits is insufficient, report the gap so the
+  planner reissues the specification.

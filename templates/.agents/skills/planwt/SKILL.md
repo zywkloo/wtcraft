@@ -23,13 +23,14 @@ frontmatter fields and body sections.
    - **Body**: Objective, Scope, Steps, Off-limits, Context, Acceptance
      criteria, Dependencies, and Verification per
      `.agent-harness/planner.md`.
-   - State explicitly that lifecycle/results live in the sidecar. Do not put
-     `stage`, `role`, `agent`, `status`, `verify_result`, or `verified` here.
+   - The frontmatter holds exactly these fields. Step 4 records lifecycle and
+     assignment in the sidecar.
 
 3. **Create the worktree**: run `wtcraft new <branch-name>`. It moves the
    `.worktree-task.md` you wrote into the new worktree automatically.
 
 4. **Initialize assignment**: run
-   `wtcraft state <branch-name> --stage planned --role executor --agent <current-agent>`.
+   `wtcraft state <branch-name> --stage planned --role executor --agent <executor-agent>`,
+   where `<executor-agent>` is the CLI that will execute the task.
 
 5. **Report** the worktree path and the next action for the executor.

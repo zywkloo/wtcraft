@@ -1360,9 +1360,9 @@ ensure_task_state_notice() {
       if (fm_markers == 2 && inserted == 0) {
         print ""
         print "<!-- wtcraft:state-sidecar -->"
-        print "> This file is the stable task specification. Mutable lifecycle and check/"
-        print "> verification results live in `.worktree-state.json`; update them through"
-        print "> `wtcraft state`, `wtcraft check`, and `wtcraft verify`, not in this Markdown."
+        print "> This file is the stable task specification. Lifecycle and check/verification"
+        print "> results are recorded exclusively in `.worktree-state.json` by `wtcraft state`,"
+        print "> `wtcraft check`, and `wtcraft verify`."
         inserted=1
       }
     }

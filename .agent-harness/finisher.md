@@ -37,4 +37,4 @@ You own `verifying → replan`, `approved → finishing`, and `finishing → don
 - After the user confirms the re-plan checkpoint, run
   `wtcraft state <task> --stage approved --role finisher`.
 - Use `wtcraft state` to set `finishing`, then `done`, during successful
-  push/PR/cleanup. Never write these fields into the task specification.
+  push/PR/cleanup. The task specification stays unchanged throughout.

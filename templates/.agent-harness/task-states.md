@@ -27,9 +27,9 @@ The sidecar records:
 }
 ```
 
-Use `wtcraft state`, `wtcraft check`, and `wtcraft verify` to update it. Do not
-edit the sidecar directly, and never copy lifecycle/result fields into the task
-specification.
+`wtcraft state`, `wtcraft check`, and `wtcraft verify` are the sidecar's only
+writers. Lifecycle and result fields live exclusively in the sidecar; the task
+specification carries the task definition alone.
 
 ## Lifecycle
 

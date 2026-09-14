@@ -21,7 +21,8 @@ $ARGUMENTS
    - **Body**: fill Objective, Scope, Steps, Off-limits, Context, Acceptance
      criteria, Dependencies, and Verification
      per `.agent-harness/planner.md` rules.
-   - Do not put lifecycle, assignment, or result fields in the Markdown.
+   - The frontmatter holds exactly these fields. Step 5 records lifecycle and
+     assignment in the sidecar.
 
 4. **Create the worktree** by running:
    ```
@@ -30,6 +31,7 @@ $ARGUMENTS
    This will move the `.worktree-task.md` you wrote into the new worktree automatically.
 
 5. **Initialize assignment** with
-   `wtcraft state <branch-name> --stage planned --role executor --agent <current-agent>`.
+   `wtcraft state <branch-name> --stage planned --role executor --agent <executor-agent>`,
+   where `<executor-agent>` is the CLI that will execute the task.
 
 6. **Report** the worktree path and the next action for the executor.
