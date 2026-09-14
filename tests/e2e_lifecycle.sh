@@ -27,7 +27,7 @@ test_new_verify_check() {
   test -f "$state_file"
   python3 -m json.tool "$state_file" >/dev/null
   grep -q '^state_file: .worktree-state.json' "$task_file"
-  ! grep -qE '^(stage|role|agent|status|verify_result|verified):' "$task_file"
+  ! grep -qE '^(stage|role|agent|status|verify_result|verified):' "$task_file" || exit 1
   git -C worktrees/chore/smoke check-ignore -q .worktree-task.md
   git -C worktrees/chore/smoke check-ignore -q .worktree-state.json
   test -z "$(git -C worktrees/chore/smoke status --short -- .worktree-task.md)"
@@ -43,7 +43,7 @@ test_new_verify_check() {
   # verify records results in the sidecar without mutating the specification
   grep -q '"verify_result": "pass"' "$state_file"
   grep -q '"verified": "' "$state_file"
-  ! grep -q '^verify_result:' "$task_file"
+  ! grep -q '^verify_result:' "$task_file" || exit 1
   "$CLI" status | grep -q "pass"
 
   # stage/role columns come from the new contract convention
@@ -82,7 +82,7 @@ test_new_verify_check() {
   grep -q '"attempt": 2' "$state_file"
   "$CLI" status --json | grep -q '"handoff_from":"claude"'
   "$CLI" status --json | grep -q '"handoff_to":"codex"'
-  ! grep -q '^stage:' "$task_file"
+  ! grep -q '^stage:' "$task_file" || exit 1
 
   "$CLI" state chore/smoke --stage done
   grep -q '"status": "done"' "$state_file"
@@ -91,7 +91,7 @@ test_new_verify_check() {
   # a failing verification is recorded as fail
   sed -i.bak "s|echo ok|false|" "$task_file"
   rm -f "${task_file}.bak"
-  ! "$CLI" verify chore/smoke
+  ! "$CLI" verify chore/smoke || exit 1
   set +e
   verify_json="$("$CLI" verify --json chore/smoke 2>/dev/null)"
   verify_exit=$?
@@ -103,7 +103,7 @@ test_new_verify_check() {
 
   # check sees untracked files: out-of-scope file fails, in-scope passes
   echo "rogue" > "${repo}/worktrees/chore/smoke/rogue.txt"
-  ! "$CLI" check chore/smoke
+  ! "$CLI" check chore/smoke || exit 1
   set +e
   check_json="$("$CLI" check --json chore/smoke 2>/dev/null)"
   check_exit=$?
@@ -158,7 +158,7 @@ PY
 
   # check sees uncommitted edits to tracked files: out-of-scope edit fails
   echo "tweak" >> "${repo}/worktrees/chore/smoke/.wtcraft-seed"
-  ! "$CLI" check chore/smoke
+  ! "$CLI" check chore/smoke || exit 1
   git -C "${repo}/worktrees/chore/smoke" checkout -- .wtcraft-seed
   "$CLI" check chore/smoke
 }
@@ -249,7 +249,7 @@ test_check_rejects_task_contract_changes() {
     git commit -q -m "accidentally commit task contract"
   )
 
-  ! "$CLI" check chore/task-contract 2>/dev/null
+  ! "$CLI" check chore/task-contract 2>/dev/null || exit 1
 }
 
 test_check_rejects_task_state_changes() {
@@ -273,7 +273,7 @@ test_check_rejects_task_state_changes() {
     git commit -q -m "accidentally commit task state"
   )
 
-  ! "$CLI" check chore/task-state 2>/dev/null
+  ! "$CLI" check chore/task-state 2>/dev/null || exit 1
 }
 
 test_status_reads_legacy_frontmatter_without_sidecar() {
@@ -356,7 +356,7 @@ EOF
   grep -q '^task_id: chore/legacy-plan' "$task_file"
   grep -q '^state_file: .worktree-state.json' "$task_file"
   grep -q '<!-- wtcraft:state-sidecar -->' "$task_file"
-  ! grep -qE '^(stage|role|agent|status|verify_result|verified):' "$task_file"
+  ! grep -qE '^(stage|role|agent|status|verify_result|verified):' "$task_file" || exit 1
   grep -q '"agent": "claude"' "$state_file"
   grep -q '"verify_result": "pass"' "$state_file"
   grep -q '"verified": "legacy-time"' "$state_file"

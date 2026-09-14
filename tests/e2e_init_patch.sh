@@ -83,8 +83,8 @@ test_patch_unpatch_roundtrip() {
 
   # `unpatch` restores the files byte-for-byte (block + separator removed)
   "$CLI" unpatch
-  ! grep -q "wtcraft:claude" CLAUDE.md
-  ! grep -q "wtcraft:agents" AGENTS.md
+  ! grep -q "wtcraft:claude" CLAUDE.md || exit 1
+  ! grep -q "wtcraft:agents" AGENTS.md || exit 1
   diff CLAUDE.orig CLAUDE.md
   diff AGENTS.orig AGENTS.md
 
@@ -93,8 +93,8 @@ test_patch_unpatch_roundtrip() {
   diff CLAUDE.orig CLAUDE.md
 
   # patch/unpatch reject extra arguments
-  ! "$CLI" patch extra 2>/dev/null
-  ! "$CLI" unpatch extra 2>/dev/null
+  ! "$CLI" patch extra 2>/dev/null || exit 1
+  ! "$CLI" unpatch extra 2>/dev/null || exit 1
 }
 
 test_init_local_in_linked_worktree_uses_git_info_exclude() {
