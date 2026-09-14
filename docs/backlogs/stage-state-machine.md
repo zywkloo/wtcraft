@@ -1,5 +1,10 @@
 # Stage state machine + unified progress view
 
+> Historical design note: ADR-013 supersedes the shared-file portion of this
+> proposal. `.worktree-task.md` is now the stable task specification and
+> `.worktree-state.json` holds mutable lifecycle/results. `wtcraft state` is the
+> write path; PID/session monitoring and a unified dashboard remain deferred.
+
 > Canonical lifecycle contract:
 > [Task State Machine v1](../protocol/task-state-machine-v1.md). This backlog
 > retains observer design notes and future enforcement work.

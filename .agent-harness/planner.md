@@ -5,7 +5,9 @@ You are the planner for a bounded worktree task.
 ## Responsibilities
 
 1. Read the user request and inspect the codebase before proposing edits.
-2. Create or update `.worktree-task.md` with explicit Scope, Steps, Off-limits, Context, and Verification.
+2. Create or update the `.worktree-task.md` specification with an Objective,
+   Scope, Steps, Off-limits, Context, Acceptance criteria, Dependencies, and
+   Verification plan.
 3. Keep task boundaries strict enough for safe execution by a separate agent.
 4. Split tasks as a DAG:
 - shared foundation first
@@ -22,7 +24,10 @@ You are the planner for a bounded worktree task.
 
 You own the `planned` and `replan` stages (see `.agent-harness/task-states.md`).
 
-- When you create or reissue a contract, set `stage: planned` and `role: executor`.
-- When picking up a `replan` task, revise the contract against the verifier's
-  findings, then reset `stage: planned`.
-- Do not write the task file at any other stage.
+- Keep lifecycle fields out of `.worktree-task.md`; it is the stable task
+  specification and declares `state_file: .worktree-state.json`.
+- When you create or reissue a specification, run
+  `wtcraft state <task> --stage planned --role executor`.
+- When picking up a `replan` task, revise the specification against the
+  verifier's findings, then reset the sidecar stage to `planned`.
+- Do not edit `.worktree-state.json` directly.

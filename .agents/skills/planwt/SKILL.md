@@ -1,6 +1,6 @@
 ---
 name: planwt
-description: Use when starting a bounded wtcraft worktree task — orchestrates the planning workflow (infer a branch, write the .worktree-task.md contract, create the worktree via `wtcraft new`)
+description: Use when starting a bounded wtcraft worktree task — writes the task specification, creates the worktree, and initializes its state sidecar
 ---
 
 # Plan a wtcraft worktree task
@@ -17,13 +17,19 @@ frontmatter fields and body sections.
    Format: `<type>/<short-slug>` (e.g. `feat/oauth-login`, `fix/null-check`, `docs/readme-update`).
 
 2. **Write `.worktree-task.md`** in the repo root:
-   - **Frontmatter**: `branch` (from step 1), `created` (today), `base`
-     (default `develop`, or `main` when `WTCRAFT_BASE_BRANCH=main`), `agent`,
-     `status: ready`, `priority`.
-   - **Body**: Scope, Steps, Off-limits, Context, and Verification per
+   - **Frontmatter**: `task_id` and `branch` (from step 1), `created` (today),
+     `base` (default `develop`, or `main` when `WTCRAFT_BASE_BRANCH=main`),
+     `priority`, and `state_file: .worktree-state.json`.
+   - **Body**: Objective, Scope, Steps, Off-limits, Context, Acceptance
+     criteria, Dependencies, and Verification per
      `.agent-harness/planner.md`.
+   - State explicitly that lifecycle/results live in the sidecar. Do not put
+     `stage`, `role`, `agent`, `status`, `verify_result`, or `verified` here.
 
 3. **Create the worktree**: run `wtcraft new <branch-name>`. It moves the
    `.worktree-task.md` you wrote into the new worktree automatically.
 
-4. **Report** the worktree path and the next action for the executor.
+4. **Initialize assignment**: run
+   `wtcraft state <branch-name> --stage planned --role executor --agent <current-agent>`.
+
+5. **Report** the worktree path and the next action for the executor.

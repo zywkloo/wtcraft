@@ -3,13 +3,13 @@
 > **Git-native agent governance core.**
 >
 > `wtcraft` is a lightweight governance core for worktree-based agent
-> workflows. It defines task contracts, tracks lifecycle state, and exposes
-> deterministic scope and verification checks for CLIs, agents, and graphical
-> clients.
+> workflows. It defines task specifications, keeps lifecycle/results in a
+> separate JSON sidecar, and exposes deterministic scope and verification
+> checks for CLIs, agents, and graphical clients.
 >
 > Together with the companion [wteval](https://github.com/zywkloo/wteval) lab,
 > it establishes a closed loop for trustworthy agent execution:
-> - **wtcraft** (Runtime Governance): Enforces worktree boundaries and runs declared acceptance commands.
+> - **wtcraft** (Runtime Governance): Checks worktree boundaries and runs declared acceptance commands.
 > - **wteval** (Offline Evaluation): Evaluates whether those acceptance checks catch defects via mutation testing, and benchmarks agent capability *(experimental open-source lab; not published to package platforms)*.
 
 [![npm version](https://img.shields.io/npm/v/wtcraft.svg?logo=npm&maxAge=300)](https://www.npmjs.com/package/wtcraft)
@@ -25,14 +25,17 @@
 ## Design principle: let the model write the exam, not grade it
 
 A human or Planner agent first inspects the repository and writes task-specific
-Scope, Off-limits, and Verification entries into `.worktree-task.md`. This is
-where an LLM's contextual judgment is useful: choosing checks that fit the
-language, build system, and change.
+Scope, Off-limits, and Verification entries into `.worktree-task.md`. This
+stable file is the task specification and points to `.worktree-state.json` for
+mutable lifecycle and result facts. The specification is where an LLM's
+contextual judgment is useful: choosing checks that fit the language, build
+system, and change.
 
 Grading stays outside the implementing agent. `wtcraft check` mechanically
 compares the Git changeset with the declared boundaries, while `wtcraft verify`
 is language-agnostic: it runs the exact Verification commands and records their
-exit codes. It does not ask a judge model whether the work "looks correct."
+exit codes in the JSON sidecar. It does not ask a judge model whether the work
+"looks correct."
 
 That separation does **not** prove the Planner wrote a strong exam. A missing,
 weak, or flaky check can still produce misleading evidence. The companion
@@ -64,9 +67,10 @@ wtcraft init                            # scaffold harness; no Git required
 wtcraft init --local                    # scaffold locally; ignore via .git/info/exclude
 wtcraft patch                           # append routing stubs to CLAUDE.md / AGENTS.md
 wtcraft lang install --lang zh-CN       # enforce output language in CLAUDE.md
-wtcraft new feat/my-task                # create worktree + task contract
+wtcraft new feat/my-task                # create worktree + task spec/state
 wtcraft new --base origin/main feat/x   # override the base branch/ref explicitly
-wtcraft status                          # list active worktree contracts
+wtcraft status                          # list joined task spec/state facts
+wtcraft state feat/my-task --stage executing --role executor --agent codex
 wtcraft capabilities --json             # discover machine-protocol features
 wtcraft status --json --repo /repo      # machine-readable status for a target repo
 wtcraft check <worktree-name-or-path>   # verify Scope / Off-limits
@@ -76,6 +80,19 @@ wtcraft verify <worktree-name-or-path>  # run Verification commands
 `wtcraft new` resolves its base in this order: `--base`, then
 `WTCRAFT_BASE_BRANCH`, then `origin/HEAD`, then local `main`, local `master`,
 local `develop`, and finally the current branch.
+
+Each task uses two ignored local files:
+
+```text
+.worktree-task.md       goal, Scope, Off-limits, acceptance, Verification plan
+.worktree-state.json    lifecycle, assignment, latest check/verify results
+```
+
+The specification declares `state_file: .worktree-state.json` and explains the
+split to agents. Both files are advisory local coordination data, not a sandbox
+or protected authorization boundary. `ready` is derived only when passing check
+and verification evidence match the current specification and worktree
+snapshot.
 
 After running `wtcraft init`, you can use these slash commands in Claude Code:
 - `/planwt <task description>`: Plan task + create worktree
@@ -109,7 +126,7 @@ run token telemetry.
 <!-- wtcraft:models:start -->
 * **Orchestrator (e.g., Gemini 3.6 Flash)**: An optional coordination profile for environment and Git logistics. `wtcraft` does not launch, route, or monitor this role.
 
-* **Planner (e.g., Claude Opus 5)**: A suggested planning profile that writes the local task contract (`.worktree-task.md`) with Scope, Off-limits, and Verification sections.
+* **Planner (e.g., Claude Opus 5)**: A suggested planning profile that writes the local task specification (`.worktree-task.md`) with Scope, Off-limits, and Verification sections.
 
 * **Executor (e.g., GPT-5.5)**: A suggested implementation profile working in a dedicated Git worktree. `wtcraft check` detects out-of-scope changes when invoked; it does not sandbox the agent runtime.
 
@@ -128,10 +145,11 @@ run token telemetry.
 | `wtcraft patch` | `[--repo <path>]` | Alias for `init --patch-agent-files`. Appends routing stubs to `CLAUDE.md` / `AGENTS.md`. |
 | `wtcraft unpatch` | `[--repo <path>]` | Remove the routing stub from `CLAUDE.md` / `AGENTS.md`. |
 | `wtcraft lang` | `install\|remove [--repo <path>]` | Add or remove language enforcement rules (e.g. `install --lang zh-CN`). |
-| `wtcraft new` | `[--repo <path>] [--base <branch>] <type/name>` | Create a worktree and local `.worktree-task.md` contract. |
+| `wtcraft new` | `[--repo <path>] [--base <branch>] <type/name>` | Create a worktree with a local task specification and state sidecar. |
 | `wtcraft status` | `[--json] [--repo <path>]` | List active worktree tasks and their status. `--json` is the machine-readable status surface. |
+| `wtcraft state` | `[--json] [--repo <path>] <task> [updates]` | Atomically update lifecycle/assignment facts in `.worktree-state.json`. |
 | `wtcraft check` | `[--json] [--repo <path>] <worktree-path-or-name>` | Verify the worktree's changes stay within Scope / Off-limits boundaries. |
-| `wtcraft verify` | `[--json] [--repo <path>] <worktree-path-or-name>` | Run the Verification commands declared in the worktree's contract. |
+| `wtcraft verify` | `[--json] [--repo <path>] <worktree-path-or-name>` | Run the Verification commands declared in the task specification. |
 | `wtcraft capabilities` | `--json` | Report supported machine-protocol features for external launchers. |
 | `wtcraft --version` | — | Print the installed CLI version. |
 | `wtcraft help` | `[command]` | Show usage. |
@@ -145,7 +163,7 @@ handoff, task boundaries, and deterministic checks rather than agent runtime
 control.
 
 - **Git-Native Task Isolation:** Keep parallel task changes separated with `git worktree`.
-- **Task Contracts:** Make agent handoffs explicit with a per-task whitelist in `.worktree-task.md`.
+- **Task Specifications:** Make agent handoffs explicit with a per-task whitelist in `.worktree-task.md`.
 - **Deterministic Checks:** Detect out-of-scope files and run declared verification commands on demand.
 - **Machine-Readable Facts:** Expose status, scope results, and verification results as stable JSON.
 
@@ -153,9 +171,9 @@ No hosted platform or custom agent runtime is required. You can use Aider,
 Cursor, Claude, or another coding agent because the checks operate on Git and
 the worktree changeset.
 
-The current local task contract is mutable and is not, by itself, a security
-boundary. A reviewed policy envelope and protected required check are planned
-for the next milestone; see the [Roadmap](./docs/roadmap.md).
+The local task specification and state sidecar are mutable and are not, by
+themselves, a security boundary. Protected authorization uses a separately
+reviewed policy envelope and required check; see the [Roadmap](./docs/roadmap.md).
 
 ## Docs & Ecosystem
 

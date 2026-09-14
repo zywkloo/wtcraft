@@ -23,3 +23,4 @@ node_modules/
 
 # wtcraft local task state.
 /.worktree-task.md
+/.worktree-state.json

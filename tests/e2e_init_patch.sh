@@ -15,6 +15,8 @@ test_help_init_status() {
   test -f .agents/skills/planwt/SKILL.md
   test -f .agents/skills/finishwt/SKILL.md
   test -f .agents/skills/statuswt/SKILL.md
+  grep -qxF '/.worktree-task.md' .gitignore
+  grep -qxF '/.worktree-state.json' .gitignore
 }
 
 test_init_local_keeps_repo_clean() {
@@ -26,6 +28,7 @@ test_init_local_keeps_repo_clean() {
   test ! -f .gitignore
   grep -qxF '# wtcraft local scaffold' .git/info/exclude
   grep -qxF '/.worktree-task.md' .git/info/exclude
+  grep -qxF '/.worktree-state.json' .git/info/exclude
   grep -qxF '/.agent-harness/' .git/info/exclude
   grep -qxF '/.claude/commands/' .git/info/exclude
   grep -qxF '/.agents/skills/' .git/info/exclude

@@ -108,9 +108,26 @@ EOF
   fi
 }
 
+test_task_state_json_roundtrip() {
+  local tmpdir="$1"
+  local file="${tmpdir}/.worktree-state.json"
+
+  write_task_state "$file" "feat/example" "planned" "executor" "codex" "ready" "" ""
+  python3 -m json.tool "$file" >/dev/null
+  [ "$(state_get "$file" "stage")" = "planned" ]
+
+  local unusual_agent='co"dex\cli'
+  state_set_string "$file" "agent" "$unusual_agent"
+  state_set_number "$file" "attempt" 3
+  python3 -m json.tool "$file" >/dev/null
+  [ "$(state_get "$file" "agent")" = "$unusual_agent" ]
+  [ "$(state_get "$file" "attempt")" = "3" ]
+}
+
 run_in_temp_repo test_extract_frontmatter
 run_in_temp_repo test_set_frontmatter
 run_in_temp_repo test_collect_section_items
 run_in_temp_repo test_collect_verification_commands
+run_in_temp_repo test_task_state_json_roundtrip
 
 echo "[PASS] unit_awk"

@@ -1,5 +1,33 @@
 # Migration Notes
 
+## 0.4.x → next release
+
+### Task specification and state sidecar
+
+New worktree tasks use two ignored local files:
+
+```text
+.worktree-task.md       stable task specification
+.worktree-state.json    mutable lifecycle and latest check/verify results
+```
+
+Run `wtcraft init` (or `wtcraft migrate`) once after upgrading so
+`/.worktree-state.json` is added to the repository's local-task ignore rules.
+Existing scaffold files are preserved; refresh customized harness guidance
+manually if you want agents to use `wtcraft state`.
+
+Existing task files need no immediate rewrite. `wtcraft status` reads legacy
+`stage`, `role`, `agent`, `status`, `verify_result`, and `verified` frontmatter
+when no sidecar exists. The next `wtcraft check` or `wtcraft verify` creates a
+sidecar lazily. `wtcraft new` moves any absorbed legacy values into the sidecar
+and removes them from the new task specification.
+
+`wtcraft verify` no longer writes result fields into Markdown. Consumers should
+read `verify_result` / `verified` from `status --json` or directly from the
+declared sidecar.
+
+---
+
 ## 0.2.x → 0.3.x
 
 ### Glob patterns in `check` Scope / Off-limits

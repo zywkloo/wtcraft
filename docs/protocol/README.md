@@ -9,6 +9,8 @@ core:
   ownership, transitions, and recovery
 - [Task State Machine v1](task-state-machine-v1.md): declared governance
   lifecycle, legal writers, transitions, invariants, and observer alarms
+- [Task State Sidecar v1](task-state-sidecar-v1.md): JSON lifecycle/result
+  persistence, writers, compatibility, and evidence freshness
 - [Contract Test Specification](contract-tests.md): shared fixture format,
   comparison rules, minimum coverage, and Bash/Rust compatibility gates
 
@@ -19,16 +21,20 @@ clients.
 ## Relationship
 
 ```text
-.worktree-task.md          .worktree-session.json          git facts
-declared governance        observed local runtime          actual changes
-          \                         |                         /
-           \                        |                        /
-            +-------- observer reconciliation ------------+
-                               |
-                       machine protocol v1
-                               |
-                    CLI / wtflow / future clients
+.worktree-task.md     .worktree-state.json       git facts
+task specification   lifecycle + latest results actual changes
+          \                    |                    /
+           +---------- status/reconciliation ------+
+                              |
+                      machine protocol v1
+                              |
+                   CLI / future clients
 ```
+
+The task specification describes what should be done. The sidecar records what
+has happened. Both are advisory local files; neither is a protected policy or
+sandbox. Session/process monitoring remains a separate proposed concern and is
+not required by the shipped task-state path.
 
 No source silently repairs another source. Reconciliation produces named,
 rule-backed results for humans and clients to act on.

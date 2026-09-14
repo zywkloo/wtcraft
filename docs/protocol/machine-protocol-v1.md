@@ -3,10 +3,9 @@
 `wtcraft` is a human-first CLI. Machine mode is opt-in via `--json` and is
 intended for external launchers such as `wtflow`.
 
-This protocol transports the canonical
-[Session Model v1](session-model-v1.md) and
-[Task State Machine v1](task-state-machine-v1.md) facts without making a
-frontend authoritative for either model.
+This protocol transports task-specification, lifecycle/result sidecar, and Git
+facts without making a frontend authoritative for them. Session observation is
+documented separately and remains proposed.
 
 ## Goals
 
@@ -33,6 +32,7 @@ wtcraft capabilities --json
 Registry commands accept `--repo <path>`:
 
 - `wtcraft status --json --repo /path/to/repo`
+- `wtcraft state --json --repo /path/to/repo feat/my-task --stage executing`
 - `wtcraft check --json --repo /path/to/repo feat/my-task`
 - `wtcraft verify --json --repo /path/to/repo feat/my-task`
 - `wtcraft new --repo /path/to/repo feat/my-task`
@@ -71,16 +71,27 @@ Fields:
 - `zombie`
 - `locked`
 - `contracted`
-- `task_file` when contracted
-- `stage`, `role`, `agent`, `status`, `priority`, `created`, `base`
-- `verify_result`, `verified`
+- `task_file`, `state_file`, and `state_present` when contracted
+- `stage`, `role`, `agent`, `status`, `attempt`, `handoff_from`, `handoff_to`
+- `check_result`, `checked`, `verify_result`, `verified`
+- `created_at`, `updated_at`, `priority`, `created`, `base`
+- derived `ready` and `evidence_stale`
 
-`status --json` reports raw task-contract and Git facts only. It does not
-carry reconciled `alarms` or live session state. Cross-source reconciliation is
-`observe --json` (below); per-worktree runtime state lives in the launcher-owned
-`.worktree-session.json` ([Session Model v1](session-model-v1.md)).
+`status --json` reads stable metadata from `.worktree-task.md`, mutable facts
+from `.worktree-state.json`, and derives readiness by comparing recorded check
+and verify snapshots with the current task specification and Git worktree. It
+does not report live process/session state.
 
 Fatal errors in machine mode return a JSON error object instead of the array.
+
+### `state --json`
+
+Success shape: JSON object containing `worktree`, `task_file`, `state_file`, and
+the resulting `stage`, `role`, `agent`, and `attempt` values.
+
+`state` is the single CLI write path for assignment and lifecycle coordination.
+It validates the vocabulary and atomically replaces the JSON sidecar, but does
+not claim that local state is protected authorization.
 
 ### `check --json`
 
@@ -98,6 +109,8 @@ Example:
   "repo_root": "/repo",
   "worktree": "/repo/worktrees/feat/task",
   "task_file": "/repo/worktrees/feat/task/.worktree-task.md",
+  "state_file": "/repo/worktrees/feat/task/.worktree-state.json",
+  "snapshot": "0123456789abcdef",
   "base": "main",
   "changed_files": ["rogue.txt"],
   "scope": ["src/"],
@@ -136,6 +149,8 @@ Fields:
 - `repo_root`
 - `worktree`
 - `task_file`
+- `state_file`
+- `snapshot`
 - `verify_result`
 - `verified`
 - `results`: one object per verification command
@@ -155,9 +170,10 @@ re-implement reconciliation and drift apart.
 `status --json` answers "what are the raw facts." `observe --json` answers
 "what is wrong," by reconciling three sources the core already has access to:
 
-1. task-contract facts (`.worktree-task.md`, as in `status --json`)
-2. session facts (`.worktree-session.json`, [Session Model v1](session-model-v1.md))
-3. Git facts
+1. task-specification facts (`.worktree-task.md`)
+2. task lifecycle/result facts (`.worktree-state.json`)
+3. proposed session facts (`.worktree-session.json`, [Session Model v1](session-model-v1.md))
+4. Git facts
 
 It emits one object per worktree carrying the `status --json` fields plus a
 session summary and an `alarms[]` array. Each alarm is a fact, not a
@@ -188,26 +204,21 @@ Rationale for keeping this in the core rather than each client:
   subtly wrong; the core should own it once
 - clients stay thin renderers, which is the whole point of the machine protocol
 
-Transport split: the Bash reference core ships `observe --json` as a one-shot
-command (same lifecycle as `status`/`check`/`verify`; it may shell out to read
-`.worktree-session.json`). Push delivery — a long-lived process that streams
+Transport split: `observe --json` is not shipped by the Bash reference core.
+A future one-shot command may read `.worktree-session.json`. Push delivery — a
+long-lived process that streams
 changes over SSE — is intentionally **not** a Bash-core concern. It is deferred
 to the extracted Rust core ([ADR-006](../adr/006-rust-core-extraction.md)),
-where a daemon and filesystem watching are appropriate. Until then, a client
-that wants near-live updates watches `.worktree-task.md` and
-`.worktree-session.json` mtimes itself and re-invokes the one-shot command; the
-contract-test fixtures keep the interim and future implementations in parity.
+where a daemon and filesystem watching are appropriate. Until an actual client
+requires this, wtcraft does not prescribe polling or ship process monitoring.
 
 Why the boundary sits here: the one-shot is *level-triggered* — it reports
 current state on demand. Streaming would add *edge-triggered* delivery (report
 the transition, not just the state) plus continuous liveness, both of which need
 a service runtime (persistent process, filesystem/process event subscriptions, a
 transport) that the Bash core deliberately does not grow. Only the **delivery**
-differs: the `observe --json` object schema is the permanent contract that both
-the Bash one-shot and a future Rust observer must produce identically. A client
-discovers the available delivery through `capabilities --json` and binds to the
-same schema either way. Nail the schema now; the transport is swappable later
-without touching clients.
+differs. Any future observer must be capability-discovered rather than inferred
+from this proposal.
 
 ## Error objects
 

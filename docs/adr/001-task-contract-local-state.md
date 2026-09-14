@@ -2,7 +2,9 @@
 
 ## Status
 
-Accepted — implemented in PR #25.
+Accepted — implemented in PR #25. Superseded in part by ADR-013: the Markdown
+is now the task specification, while mutable lifecycle/results use a JSON
+sidecar. The local/ignored/never-commit decision still applies to both files.
 
 ## Context
 

@@ -8,6 +8,13 @@ Versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ## [Unreleased]
 
 ### Added
+- `.worktree-state.json` separates mutable lifecycle, assignment, handoff, and
+  latest check/verification results from the stable `.worktree-task.md` task
+  specification. New specifications declare the sidecar explicitly through
+  `state_file: .worktree-state.json`.
+- `wtcraft state` is the atomic CLI write path for lifecycle and assignment
+  updates. `status --json` now derives `ready`/`evidence_stale` by binding
+  passing check and verify results to the current task/worktree snapshot.
 - `wtcraft init-ci` installs the trusted-change-authorization check into a
   repository: the `pull_request_target` workflow plus the evaluator it runs, at
   `.wtcraft/policy_git_adapter.py` and `.wtcraft/policy_evaluator.py`. The
@@ -37,6 +44,10 @@ Versions follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   an explicit negation.
 
 ### Changed
+- `wtcraft new` creates both local task files and migrates absorbed legacy
+  lifecycle/result frontmatter into the sidecar. `check` and `verify` record
+  their latest results in JSON without mutating the task specification;
+  `status` retains read compatibility with sidecar-less legacy tasks.
 - `capabilities --json` reports `init-ci`. Additive within protocol v1.
 
 ## [0.4.4] - 2026-08-12

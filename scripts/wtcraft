@@ -26,6 +26,7 @@ Usage:
   wtcraft lang install [--repo <path>] [--lang <code>]
   wtcraft lang remove [--repo <path>]
   wtcraft status [--json] [--repo <path>]
+  wtcraft state [--json] [--repo <path>] <worktree> [--stage <stage>] [--role <role>] [--agent <agent>]
   wtcraft new [--repo <path>] <type/name>
   wtcraft check [--json] [--repo <path>] <worktree-path-or-name>
   wtcraft verify [--json] [--repo <path>] <worktree-path-or-name>
@@ -185,24 +186,44 @@ usage_status() {
   cat <<'EOF'
 wtcraft status [--json] [--repo <path>]
 
-  List all linked worktrees with their task contract state. Worktrees are
+  List all linked worktrees with their task specification and sidecar state. Worktrees are
   enumerated via `git worktree list`, so any layout is covered (in-repo
   worktrees/, sibling dirs, agent-created arbitrary paths).
 
   --json emits one object per worktree: worktree, branch, zombie, locked,
-  contracted, and (when contracted) task_file, stage (with legacy status
-  fallback applied), role, agent, status, priority, created, base,
-  verify_result, verified. Absent fields are null. Intended as the stable
-  machine interface for external observers/GUIs.
+  contracted, and (when contracted) task_file, state_file, stage (with legacy
+  task-frontmatter fallback applied), role, agent, status, attempt, handoff,
+  check/verify results and timestamps, priority, created, base, ready, and
+  evidence_stale. Absent fields are null. Intended as the stable machine
+  interface for external observers/GUIs.
   --repo <path> explicitly targets a repository; registry commands normalize
   linked worktrees to the repository's primary worktree root.
 
-  Columns: task file, stage (falls back to legacy `status:` for contracts
-  that predate the stage convention — see .agent-harness/task-states.md),
-  role, agent, priority, verification result.
+  Columns: task file, stage, role, agent, priority, verification result.
+  Lifecycle and results come from `.worktree-state.json`; legacy task
+  frontmatter remains a read-only fallback during migration.
 
   Worktrees without a `.worktree-task.md` are listed as `uncontracted`;
   registry entries whose directory was deleted show as `zombie`.
+EOF
+}
+
+usage_state() {
+  cat <<'EOF'
+wtcraft state [--json] [--repo <path>] <worktree-path-or-name> [updates]
+
+  Update mutable coordination facts in `.worktree-state.json`. This command
+  never rewrites `.worktree-task.md`, which remains the task specification.
+
+  Updates (at least one required):
+    --stage <stage>          planned|executing|verifying|replan|approved|finishing|done
+    --role <role>            planner|executor|verifier|finisher|none
+    --agent <agent>          Assigned CLI/provider name
+    --attempt <number>       Non-negative attempt counter
+    --handoff-from <agent>   Previous CLI/provider, or "none" to clear
+    --handoff-to <agent>     Next CLI/provider, or "none" to clear
+
+  This is local coordination state, not an authorization or security boundary.
 EOF
 }
 
@@ -211,7 +232,7 @@ usage_new() {
 wtcraft new [--repo <path>] [--base <branch>] <type/name>
 
   Create a new git worktree from the base branch and seed it with a
-  .worktree-task.md contract file.
+  `.worktree-task.md` task specification plus `.worktree-state.json` sidecar.
 
   Arguments:
     <type/name>   Branch and worktree path (e.g. feat/auth-refactor)
@@ -238,9 +259,9 @@ usage_check() {
 wtcraft check [--json] [--repo <path>] <worktree-path-or-name>
 
   Compare files changed in the worktree against the Scope and Off-limits
-  sections of the .worktree-task.md contract. Covers commits since the base
-  branch, staged/unstaged edits, and untracked files. The task contract
-  itself (.worktree-task.md) is exempt.
+  sections of the `.worktree-task.md` task specification. Covers commits since
+  the base branch, staged/unstaged edits, and untracked files. Local task files
+  are exempt when untracked; force-committing either one is a violation.
 
   Scope pattern syntax:
     - Exact file path:      src/index.ts
@@ -262,12 +283,12 @@ usage_verify() {
 wtcraft verify [--json] [--repo <path>] <worktree-path-or-name>
 
   Run verification commands listed in the Verification section of the
-  .worktree-task.md contract. Each command runs inside the worktree directory.
+  `.worktree-task.md` task specification. Each command runs inside the worktree directory.
 
   Output includes per-command timing, exit codes, and a summary table.
-  The result is written back to the task file frontmatter as
-  `verify_result: pass|fail` and `verified: <timestamp>`, which
-  `wtcraft status` reports in its Verified column.
+  The result, timestamp, and worktree snapshot are written to
+  `.worktree-state.json`, which `wtcraft status` reports without mutating the
+  task specification.
 
   Exit codes:
     0   All commands passed
@@ -332,6 +353,7 @@ cmd_help() {
     unpatch) usage_unpatch ;;
     lang)    usage_lang ;;
     status)  usage_status ;;
+    state)   usage_state ;;
     new)     usage_new ;;
     check)   usage_check ;;
     verify)  usage_verify ;;
@@ -666,6 +688,7 @@ cmd_init() {
     local local_rule
     for local_rule in \
       '/.worktree-task.md' \
+      '/.worktree-state.json' \
       '/.agent-harness/' \
       '/.claude/commands/' \
       '/.agents/skills/' \
@@ -677,11 +700,19 @@ cmd_init() {
       fi
     done
   else
-    # Ensure .worktree-task.md is ignored in the user's repo
+    # Ensure local task specification/state files are ignored in the user's repo.
     local gitignore="${repo_root}/.gitignore"
-    if [ ! -f "$gitignore" ] || ! grep -qxF '/.worktree-task.md' "$gitignore"; then
-      printf '\n# wtcraft local task state\n/.worktree-task.md\n' >> "$gitignore"
-    fi
+    local task_rule
+    for task_rule in '/.worktree-task.md' '/.worktree-state.json'; do
+      if ! grep -qxF "$task_rule" "$gitignore" 2>/dev/null; then
+        if [ ! -f "$gitignore" ] ||
+           { ! grep -qxF '# wtcraft local task files' "$gitignore" 2>/dev/null &&
+             ! grep -qxF '# wtcraft local task state.' "$gitignore" 2>/dev/null; }; then
+          printf '\n# wtcraft local task files\n' >>"$gitignore"
+        fi
+        printf '%s\n' "$task_rule" >> "$gitignore"
+      fi
+    done
   fi
 
   cat <<'EOF'
@@ -1011,6 +1042,13 @@ json_field() {
   fi
 }
 
+json_number_field() {
+  case "$1" in
+    ""|*[!0-9]*) printf 'null' ;;
+    *) printf '%s' "$1" ;;
+  esac
+}
+
 json_error_object() {
   local command="$1"
   local code="$2"
@@ -1058,6 +1096,210 @@ json_object_array() {
     fi
   done
   printf '%s]' "$out"
+}
+
+utc_now() {
+  date -u +"%Y-%m-%dT%H:%M:%SZ"
+}
+
+task_state_path() {
+  local task_file="$1"
+  local declared
+  declared="$(extract_frontmatter "$task_file" "state_file")"
+  if [ -n "$declared" ] && [ "$declared" != ".worktree-state.json" ]; then
+    return 1
+  fi
+  printf '%s/.worktree-state.json' "$(dirname "$task_file")"
+}
+
+# Read one scalar from the flat, wtcraft-owned state document. State v1 keeps
+# these coordination fields flat so the Bash reference implementation needs no
+# jq/Python runtime dependency. Writers still emit valid JSON atomically.
+state_get() {
+  local file="$1"
+  local key="$2"
+  [ -f "$file" ] || return 0
+  awk -v key="$key" '
+    $0 ~ "^[[:space:]]*\\\"" key "\\\"[[:space:]]*:" {
+      value=$0
+      sub("^[[:space:]]*\\\"" key "\\\"[[:space:]]*:[[:space:]]*", "", value)
+      sub(/,[[:space:]]*$/, "", value)
+      if (value == "null") exit
+      if (substr(value, 1, 1) == "\"" && substr(value, length(value), 1) == "\"") {
+        value=substr(value, 2, length(value)-2)
+      }
+      out=""
+      for (i=1; i<=length(value); i++) {
+        c=substr(value, i, 1)
+        if (c == "\\" && i < length(value)) {
+          n=substr(value, ++i, 1)
+          if (n == "\"" || n == "\\" || n == "/") out=out n
+          else out=out "\\" n
+        } else out=out c
+      }
+      print out
+      exit
+    }
+  ' "$file"
+}
+
+state_set_json() {
+  local file="$1"
+  local key="$2"
+  local value="$3"
+  local tmp
+  tmp="$(mktemp "${file}.tmp.XXXXXX")"
+  if ! WTCRAFT_STATE_JSON_VALUE="$value" awk -v key="$key" '
+    BEGIN { written=0; value=ENVIRON["WTCRAFT_STATE_JSON_VALUE"] }
+    $0 ~ "^[[:space:]]*\\\"" key "\\\"[[:space:]]*:" {
+      comma = ($0 ~ /,[[:space:]]*$/) ? "," : ""
+      print "  \"" key "\": " value comma
+      written=1
+      next
+    }
+    { print }
+    END { if (written==0) exit 2 }
+  ' "$file" >"$tmp"; then
+    rm -f "$tmp"
+    die "missing state field '${key}' in ${file}"
+  fi
+  mv "$tmp" "$file"
+}
+
+state_set_string() {
+  local file="$1"
+  local key="$2"
+  local value="$3"
+  state_set_json "$file" "$key" "$(json_field "$value")"
+}
+
+state_set_number() {
+  local file="$1"
+  local key="$2"
+  local value="$3"
+  state_set_json "$file" "$key" "$value"
+}
+
+state_working_copy() {
+  local state_file="$1"
+  local working
+  working="$(mktemp "${state_file}.update.XXXXXX")"
+  cp "$state_file" "$working"
+  printf '%s' "$working"
+}
+
+write_task_state() {
+  local state_file="$1"
+  local task_id="$2"
+  local stage="$3"
+  local role="$4"
+  local agent="$5"
+  local status_legacy="$6"
+  local verify_result="$7"
+  local verified="$8"
+  local now tmp
+  now="$(utc_now)"
+  tmp="$(mktemp "${state_file}.tmp.XXXXXX")"
+  {
+    printf '{\n'
+    printf '  "schema_version": 1,\n'
+    printf '  "task_id": %s,\n' "$(json_field "$task_id")"
+    printf '  "stage": %s,\n' "$(json_field "${stage:-planned}")"
+    printf '  "role": %s,\n' "$(json_field "${role:-executor}")"
+    printf '  "agent": %s,\n' "$(json_field "$agent")"
+    printf '  "status": %s,\n' "$(json_field "${status_legacy:-ready}")"
+    printf '  "attempt": 0,\n'
+    printf '  "handoff_from": null,\n'
+    printf '  "handoff_to": null,\n'
+    printf '  "check_result": null,\n'
+    printf '  "checked": null,\n'
+    printf '  "check_snapshot": null,\n'
+    printf '  "verify_result": %s,\n' "$(json_field "$verify_result")"
+    printf '  "verified": %s,\n' "$(json_field "$verified")"
+    printf '  "verify_snapshot": null,\n'
+    printf '  "created_at": %s,\n' "$(json_field "$now")"
+    printf '  "updated_at": %s\n' "$(json_field "$now")"
+    printf '}\n'
+  } >"$tmp" && mv "$tmp" "$state_file"
+}
+
+ensure_task_state() {
+  local task_file="$1"
+  local state_file="$2"
+  [ -f "$state_file" ] && return 0
+  local task_id stage role agent status_legacy verify_result verified
+  task_id="$(extract_frontmatter "$task_file" "task_id")"
+  [ -n "$task_id" ] || task_id="$(extract_frontmatter "$task_file" "branch")"
+  [ -n "$task_id" ] || task_id="$(basename "$(dirname "$task_file")")"
+  stage="$(extract_frontmatter "$task_file" "stage")"
+  role="$(extract_frontmatter "$task_file" "role")"
+  agent="$(extract_frontmatter "$task_file" "agent")"
+  status_legacy="$(extract_frontmatter "$task_file" "status")"
+  verify_result="$(extract_frontmatter "$task_file" "verify_result")"
+  verified="$(extract_frontmatter "$task_file" "verified")"
+  write_task_state "$state_file" "$task_id" "$stage" "$role" "$agent" \
+    "$status_legacy" "$verify_result" "$verified"
+}
+
+remove_task_state_frontmatter() {
+  local file="$1"
+  local tmp="${file}.tmp"
+  awk '
+    BEGIN { in_fm=0; fm_done=0 }
+    /^---$/ {
+      if (fm_done==0 && in_fm==0) { in_fm=1; print; next }
+      if (in_fm==1) { in_fm=0; fm_done=1; print; next }
+    }
+    in_fm==1 && $0 ~ /^(agent|stage|role|status|verify_result|verified):/ { next }
+    { print }
+  ' "$file" >"$tmp" && mv "$tmp" "$file"
+}
+
+ensure_task_state_notice() {
+  local file="$1"
+  grep -qF '<!-- wtcraft:state-sidecar -->' "$file" && return 0
+  local tmp="${file}.tmp"
+  awk '
+    BEGIN { fm_markers=0; inserted=0 }
+    {
+      print
+      if ($0 == "---") fm_markers++
+      if (fm_markers == 2 && inserted == 0) {
+        print ""
+        print "<!-- wtcraft:state-sidecar -->"
+        print "> This file is the stable task specification. Mutable lifecycle and check/"
+        print "> verification results live in `.worktree-state.json`; update them through"
+        print "> `wtcraft state`, `wtcraft check`, and `wtcraft verify`, not in this Markdown."
+        inserted=1
+      }
+    }
+  ' "$file" >"$tmp" && mv "$tmp" "$file"
+}
+
+# Bind check/verify evidence to the complete Git-visible worktree contents,
+# including uncommitted tracked edits and untracked file contents. The two local
+# task files are ignored because they are coordination metadata, not deliverables.
+worktree_snapshot() {
+  local wt_path="$1"
+  (
+    cd "$wt_path"
+    {
+      printf 'HEAD\0'
+      git rev-parse HEAD
+      printf '\0TASK-SPEC\0'
+      git hash-object .worktree-task.md
+      printf '\0TRACKED-DIFF\0'
+      git diff --binary HEAD
+      printf '\0UNTRACKED\0'
+      while IFS= read -r -d '' file; do
+        [ "$file" = ".worktree-task.md" ] && continue
+        [ "$file" = ".worktree-state.json" ] && continue
+        printf '%s\0' "$file"
+        git hash-object "$file"
+        printf '\0'
+      done < <(git ls-files -z --others --exclude-standard)
+    } | git hash-object --stdin
+  )
 }
 
 cmd_status() {
@@ -1114,27 +1356,64 @@ cmd_status() {
     [[ "$flags" == *locked,* ]] && locked=true
 
     local task="${wt}/.worktree-task.md"
-    local stage="" status_legacy="" role="" agent="" priority="" created="" base="" verify_result="" verified=""
+    local state="${wt}/.worktree-state.json"
+    local stage="" status_legacy="" role="" agent="" priority="" created="" base=""
+    local attempt="" handoff_from="" handoff_to="" check_result="" checked=""
+    local verify_result="" verified="" created_at="" updated_at=""
+    local state_present=false ready=false evidence_stale=false
     if [ "$zombie" = false ] && [ -f "$task" ]; then
       contracted=true
-      stage="$(extract_frontmatter "$task" "stage")"
-      status_legacy="$(extract_frontmatter "$task" "status")"
-      # Legacy contracts predate stage:; fall back to the coarse status field.
-      [ -n "$stage" ] || stage="$status_legacy"
-      role="$(extract_frontmatter "$task" "role")"
-      agent="$(extract_frontmatter "$task" "agent")"
       priority="$(extract_frontmatter "$task" "priority")"
       created="$(extract_frontmatter "$task" "created")"
       base="$(extract_frontmatter "$task" "base")"
-      verify_result="$(extract_frontmatter "$task" "verify_result")"
-      verified="$(extract_frontmatter "$task" "verified")"
+      if [ -f "$state" ]; then
+        state_present=true
+        stage="$(state_get "$state" "stage")"
+        status_legacy="$(state_get "$state" "status")"
+        role="$(state_get "$state" "role")"
+        agent="$(state_get "$state" "agent")"
+        attempt="$(state_get "$state" "attempt")"
+        handoff_from="$(state_get "$state" "handoff_from")"
+        handoff_to="$(state_get "$state" "handoff_to")"
+        check_result="$(state_get "$state" "check_result")"
+        checked="$(state_get "$state" "checked")"
+        verify_result="$(state_get "$state" "verify_result")"
+        verified="$(state_get "$state" "verified")"
+        created_at="$(state_get "$state" "created_at")"
+        updated_at="$(state_get "$state" "updated_at")"
+
+        local check_snapshot verify_snapshot current_snapshot
+        check_snapshot="$(state_get "$state" "check_snapshot")"
+        verify_snapshot="$(state_get "$state" "verify_snapshot")"
+        if { [ -n "$check_snapshot" ] || [ -n "$verify_snapshot" ]; }; then
+          current_snapshot="$(worktree_snapshot "$wt")"
+          if { [ -n "$check_snapshot" ] && [ "$check_snapshot" != "$current_snapshot" ]; } ||
+             { [ -n "$verify_snapshot" ] && [ "$verify_snapshot" != "$current_snapshot" ]; }; then
+            evidence_stale=true
+          fi
+          if [ "$check_result" = "pass" ] && [ "$verify_result" = "pass" ] &&
+             [ "$check_snapshot" = "$current_snapshot" ] &&
+             [ "$verify_snapshot" = "$current_snapshot" ]; then
+            ready=true
+          fi
+        fi
+      else
+        # Read-only compatibility for contracts created before state sidecars.
+        stage="$(extract_frontmatter "$task" "stage")"
+        status_legacy="$(extract_frontmatter "$task" "status")"
+        role="$(extract_frontmatter "$task" "role")"
+        agent="$(extract_frontmatter "$task" "agent")"
+        verify_result="$(extract_frontmatter "$task" "verify_result")"
+        verified="$(extract_frontmatter "$task" "verified")"
+      fi
+      [ -n "$stage" ] || stage="$status_legacy"
     fi
 
     if [ "$as_json" = true ]; then
       local entry
       entry="{\"repo_root\":$(json_field "$repo_root"),\"worktree\":$(json_field "$wt"),\"branch\":$(json_field "$branch"),\"zombie\":${zombie},\"locked\":${locked},\"contracted\":${contracted}"
       if [ "$contracted" = true ]; then
-        entry="${entry},\"task_file\":$(json_field "$task"),\"stage\":$(json_field "$stage"),\"role\":$(json_field "$role"),\"agent\":$(json_field "$agent"),\"status\":$(json_field "$status_legacy"),\"priority\":$(json_field "$priority"),\"created\":$(json_field "$created"),\"base\":$(json_field "$base"),\"verify_result\":$(json_field "$verify_result"),\"verified\":$(json_field "$verified")"
+        entry="${entry},\"task_file\":$(json_field "$task"),\"state_file\":$(json_field "$state"),\"state_present\":${state_present},\"stage\":$(json_field "$stage"),\"role\":$(json_field "$role"),\"agent\":$(json_field "$agent"),\"status\":$(json_field "$status_legacy"),\"attempt\":$(json_number_field "$attempt"),\"handoff_from\":$(json_field "$handoff_from"),\"handoff_to\":$(json_field "$handoff_to"),\"check_result\":$(json_field "$check_result"),\"checked\":$(json_field "$checked"),\"priority\":$(json_field "$priority"),\"created\":$(json_field "$created"),\"base\":$(json_field "$base"),\"verify_result\":$(json_field "$verify_result"),\"verified\":$(json_field "$verified"),\"created_at\":$(json_field "$created_at"),\"updated_at\":$(json_field "$updated_at"),\"ready\":${ready},\"evidence_stale\":${evidence_stale}"
       fi
       json_entries+=("${entry}}")
       continue
@@ -1159,6 +1438,101 @@ cmd_status() {
 
   if [ "$found" -eq 0 ]; then
     echo "No linked worktrees found."
+  fi
+}
+
+cmd_state() {
+  local as_json=false
+  local repo_arg="."
+  local target="" stage="" role="" agent="" attempt="" handoff_from="" handoff_to=""
+  local handoff_from_set=false handoff_to_set=false
+  while [ $# -gt 0 ]; do
+    case "$1" in
+      --json) as_json=true; shift ;;
+      --repo) [ $# -ge 2 ] || machine_error "$as_json" "state" "--repo requires a path"; repo_arg="$2"; shift 2 ;;
+      --stage) [ $# -ge 2 ] || machine_error "$as_json" "state" "--stage requires a value"; stage="$2"; shift 2 ;;
+      --role) [ $# -ge 2 ] || machine_error "$as_json" "state" "--role requires a value"; role="$2"; shift 2 ;;
+      --agent) [ $# -ge 2 ] || machine_error "$as_json" "state" "--agent requires a value"; agent="$2"; shift 2 ;;
+      --attempt) [ $# -ge 2 ] || machine_error "$as_json" "state" "--attempt requires a value"; attempt="$2"; shift 2 ;;
+      --handoff-from) [ $# -ge 2 ] || machine_error "$as_json" "state" "--handoff-from requires a value"; handoff_from="$2"; handoff_from_set=true; shift 2 ;;
+      --handoff-to) [ $# -ge 2 ] || machine_error "$as_json" "state" "--handoff-to requires a value"; handoff_to="$2"; handoff_to_set=true; shift 2 ;;
+      --*) machine_error "$as_json" "state" "unknown state option: $1" ;;
+      *)
+        [ -z "$target" ] || machine_error "$as_json" "state" "state expects exactly one worktree target"
+        target="$1"
+        shift
+        ;;
+    esac
+  done
+  [ -n "$target" ] || machine_error "$as_json" "state" "state requires a worktree target"
+  if [ -z "$stage" ] && [ -z "$role" ] && [ -z "$agent" ] && [ -z "$attempt" ] &&
+     [ "$handoff_from_set" = false ] && [ "$handoff_to_set" = false ]; then
+    machine_error "$as_json" "state" "state requires at least one update"
+  fi
+
+  case "$stage" in
+    ""|planned|executing|verifying|replan|approved|finishing|done) ;;
+    *) machine_error "$as_json" "state" "unsupported stage: ${stage}" ;;
+  esac
+  case "$role" in
+    ""|planner|executor|verifier|finisher|none) ;;
+    *) machine_error "$as_json" "state" "unsupported role: ${role}" ;;
+  esac
+  case "$attempt" in
+    "") ;;
+    *[!0-9]*) machine_error "$as_json" "state" "attempt must be a non-negative integer" ;;
+  esac
+
+  local repo_root wt_path task_file state_file
+  repo_root="$(primary_worktree_root "$repo_arg")"
+  [ -n "$repo_root" ] || machine_error "$as_json" "state" "not inside a git repository: ${repo_arg}"
+  resolve_worktree_path "$target" "$repo_root" ||
+    machine_error "$as_json" "state" "${RESOLVE_WORKTREE_ERROR:-worktree not found: $target}"
+  wt_path="$RESOLVED_WORKTREE_PATH"
+  task_file="${wt_path}/.worktree-task.md"
+  [ -f "$task_file" ] || machine_error "$as_json" "state" "missing task file: ${task_file}"
+  state_file="$(task_state_path "$task_file")" ||
+    machine_error "$as_json" "state" "unsupported state_file in ${task_file}"
+  ensure_task_state "$task_file" "$state_file"
+
+  local persisted_state_file="$state_file"
+  state_file="$(state_working_copy "$persisted_state_file")"
+
+  if [ -n "$stage" ]; then
+    state_set_string "$state_file" "stage" "$stage"
+    if [ "$stage" = "done" ]; then
+      state_set_string "$state_file" "status" "done"
+    else
+      state_set_string "$state_file" "status" "ready"
+    fi
+  fi
+  [ -z "$role" ] || state_set_string "$state_file" "role" "$role"
+  [ -z "$agent" ] || state_set_string "$state_file" "agent" "$agent"
+  [ -z "$attempt" ] || state_set_number "$state_file" "attempt" "$attempt"
+  if [ "$handoff_from_set" = true ]; then
+    [ "$handoff_from" = "none" ] && handoff_from=""
+    state_set_string "$state_file" "handoff_from" "$handoff_from"
+  fi
+  if [ "$handoff_to_set" = true ]; then
+    [ "$handoff_to" = "none" ] && handoff_to=""
+    state_set_string "$state_file" "handoff_to" "$handoff_to"
+  fi
+  state_set_string "$state_file" "updated_at" "$(utc_now)"
+  mv "$state_file" "$persisted_state_file"
+  state_file="$persisted_state_file"
+
+  if [ "$as_json" = true ]; then
+    local current_attempt
+    current_attempt="$(state_get "$state_file" "attempt")"
+    [ -n "$current_attempt" ] || current_attempt=0
+    printf '{"protocol_version":1,"command":"state","ok":true,"worktree":%s,"task_file":%s,"state_file":%s,"stage":%s,"role":%s,"agent":%s,"attempt":%s}\n' \
+      "$(json_field "$wt_path")" "$(json_field "$task_file")" "$(json_field "$state_file")" \
+      "$(json_field "$(state_get "$state_file" "stage")")" \
+      "$(json_field "$(state_get "$state_file" "role")")" \
+      "$(json_field "$(state_get "$state_file" "agent")")" \
+      "$current_attempt"
+  else
+    echo "Updated task state: ${state_file}"
   fi
 }
 
@@ -1208,6 +1582,7 @@ wtcraft branches a worktree off a base branch, which does not exist until the fi
   git -C "$repo_root" worktree add "$wt_path" -b "$branch" "$base_branch"
 
   local task_file="${wt_path}/.worktree-task.md"
+  local state_file="${wt_path}/.worktree-state.json"
 
   # If /planwt already generated a plan in the repo root, absorb it;
   # otherwise seed with the blank template.
@@ -1219,19 +1594,25 @@ wtcraft branches a worktree off a base branch, which does not exist until the fi
 
   local today
   today="$(date +%F)"
+  set_frontmatter "$task_file" "task_id" "$branch"
   set_frontmatter "$task_file" "branch" "$branch"
   set_frontmatter "$task_file" "created" "$today"
   set_frontmatter "$task_file" "base" "$base_branch"
+  set_frontmatter "$task_file" "state_file" ".worktree-state.json"
 
-  # Plans absorbed from /planwt may predate the stage/role convention.
-  [ -n "$(extract_frontmatter "$task_file" "stage")" ] || set_frontmatter "$task_file" "stage" "planned"
-  [ -n "$(extract_frontmatter "$task_file" "role")" ] || set_frontmatter "$task_file" "role" "executor"
+  # Absorb legacy lifecycle/result frontmatter into the sidecar before making
+  # the Markdown a stable task specification.
+  ensure_task_state "$task_file" "$state_file"
+  remove_task_state_frontmatter "$task_file"
+  ensure_task_state_notice "$task_file"
 
   cat <<EOF
 Created worktree:
   ${wt_path}
-Created task contract:
+Created task specification:
   ${task_file}
+Created task state:
+  ${state_file}
 EOF
 }
 
@@ -1387,6 +1768,10 @@ cmd_check() {
     fi
     die "missing task file: ${task_file}"
   fi
+  local state_file
+  state_file="$(task_state_path "$task_file")" ||
+    machine_error "$as_json" "check" "unsupported state_file in ${task_file}"
+  ensure_task_state "$task_file" "$state_file"
 
   local base_branch
   base_branch="$(extract_frontmatter "$task_file" "base")"
@@ -1405,7 +1790,8 @@ cmd_check() {
   if ! {
     git -C "$wt_path" diff --name-only -z "${base_branch}...HEAD" &&
       git -C "$wt_path" diff --name-only -z HEAD &&
-      git -C "$wt_path" ls-files -z --others --exclude-standard
+      git -C "$wt_path" ls-files -z --others --exclude-standard \
+        --exclude=.worktree-task.md --exclude=.worktree-state.json
   } >"$changed_file_list"; then
     rm -f "$changed_file_list"
     machine_error "$as_json" "check" "failed to enumerate changed files against base: ${base_branch}"
@@ -1435,10 +1821,10 @@ cmd_check() {
 
   for f in "${changed_files[@]:-}"; do
     [ -z "$f" ] && continue
-    if [ "$f" = ".worktree-task.md" ]; then
-      local task_msg="Task contract violation: .worktree-task.md is local worktree state and must not be committed or merged."
+    if [ "$f" = ".worktree-task.md" ] || [ "$f" = ".worktree-state.json" ]; then
+      local task_msg="Local task-file violation: ${f} must not be committed or merged."
       [ "$as_json" = false ] && echo "$task_msg"
-      violation_objects+=("{\"kind\":\"task_contract\",\"file\":$(json_field "$f"),\"matched\":null,\"message\":$(json_field "$task_msg")}")
+      violation_objects+=("{\"kind\":\"local_task_file\",\"file\":$(json_field "$f"),\"matched\":null,\"message\":$(json_field "$task_msg")}")
       has_violations=1
       continue
     fi
@@ -1469,19 +1855,33 @@ cmd_check() {
     done
   done
 
+  local summary_result="pass"
+  local exit_code=0
+  if [ "$has_violations" -ne 0 ]; then
+    summary_result="fail"
+    exit_code=2
+  fi
+  local checked_at check_snapshot
+  checked_at="$(utc_now)"
+  check_snapshot="$(worktree_snapshot "$wt_path")"
+  local persisted_state_file="$state_file"
+  state_file="$(state_working_copy "$persisted_state_file")"
+  state_set_string "$state_file" "check_result" "$summary_result"
+  state_set_string "$state_file" "checked" "$checked_at"
+  state_set_string "$state_file" "check_snapshot" "$check_snapshot"
+  state_set_string "$state_file" "updated_at" "$checked_at"
+  mv "$state_file" "$persisted_state_file"
+  state_file="$persisted_state_file"
+
   if [ "$as_json" = true ]; then
-    local summary_result="pass"
-    local exit_code=0
-    if [ "$has_violations" -ne 0 ]; then
-      summary_result="fail"
-      exit_code=2
-    fi
-    printf '{"protocol_version":1,"command":"check","ok":true,"result":"%s","exit_code":%s,"repo_root":%s,"worktree":%s,"task_file":%s,"base":%s,"changed_files":%s,"scope":%s,"off_limits":%s,"violations":%s,"summary":{"violation_count":%s}}\n' \
+    printf '{"protocol_version":1,"command":"check","ok":true,"result":"%s","exit_code":%s,"repo_root":%s,"worktree":%s,"task_file":%s,"state_file":%s,"snapshot":%s,"base":%s,"changed_files":%s,"scope":%s,"off_limits":%s,"violations":%s,"summary":{"violation_count":%s}}\n' \
       "$summary_result" \
       "$exit_code" \
       "$(json_field "$repo_root")" \
       "$(json_field "$wt_path")" \
       "$(json_field "$task_file")" \
+      "$(json_field "$state_file")" \
+      "$(json_field "$check_snapshot")" \
       "$(json_field "$base_branch")" \
       "$(json_string_array "${changed_files[@]:-}")" \
       "$(json_string_array "${scope_items[@]:-}")" \
@@ -1545,6 +1945,10 @@ cmd_verify() {
     fi
     die "missing task file: ${task_file}"
   fi
+  local state_file
+  state_file="$(task_state_path "$task_file")" ||
+    machine_error "$as_json" "verify" "unsupported state_file in ${task_file}"
+  ensure_task_state "$task_file" "$state_file"
 
   local commands=()
   local line
@@ -1608,21 +2012,30 @@ cmd_verify() {
 
   local result="pass"
   [ "$failures" -ne 0 ] && result="fail"
-  local verified_at
-  verified_at="$(date +"%Y-%m-%d %H:%M")"
-  set_frontmatter "$task_file" "verify_result" "$result"
-  set_frontmatter "$task_file" "verified" "$verified_at"
-  [ "$as_json" = false ] && echo "Recorded verify_result: ${result} in ${task_file}"
+  local verified_at verify_snapshot
+  verified_at="$(utc_now)"
+  verify_snapshot="$(worktree_snapshot "$wt_path")"
+  local persisted_state_file="$state_file"
+  state_file="$(state_working_copy "$persisted_state_file")"
+  state_set_string "$state_file" "verify_result" "$result"
+  state_set_string "$state_file" "verified" "$verified_at"
+  state_set_string "$state_file" "verify_snapshot" "$verify_snapshot"
+  state_set_string "$state_file" "updated_at" "$verified_at"
+  mv "$state_file" "$persisted_state_file"
+  state_file="$persisted_state_file"
+  [ "$as_json" = false ] && echo "Recorded verification result in ${state_file}"
 
   if [ "$as_json" = true ]; then
     local final_exit_code=0
     [ "$failures" -ne 0 ] && final_exit_code=3
-    printf '{"protocol_version":1,"command":"verify","ok":true,"result":"%s","exit_code":%s,"repo_root":%s,"worktree":%s,"task_file":%s,"verify_result":%s,"verified":%s,"results":%s,"summary":{"total":%s,"passed":%s,"failed":%s}}\n' \
+    printf '{"protocol_version":1,"command":"verify","ok":true,"result":"%s","exit_code":%s,"repo_root":%s,"worktree":%s,"task_file":%s,"state_file":%s,"snapshot":%s,"verify_result":%s,"verified":%s,"results":%s,"summary":{"total":%s,"passed":%s,"failed":%s}}\n' \
       "$result" \
       "$final_exit_code" \
       "$(json_field "$repo_root")" \
       "$(json_field "$wt_path")" \
       "$(json_field "$task_file")" \
+      "$(json_field "$state_file")" \
+      "$(json_field "$verify_snapshot")" \
       "$(json_field "$result")" \
       "$(json_field "$verified_at")" \
       "$(json_object_array "${result_objects[@]:-}")" \
@@ -1658,7 +2071,7 @@ cmd_capabilities() {
 
   [ "$as_json" = true ] || die "capabilities currently requires --json"
 
-  printf '{"protocol_version":1,"cli_version":%s,"commands":{"status":{"json":true,"success_shape":"array","supports_repo_option":true},"check":{"json":true,"success_shape":"object","supports_repo_option":true,"exit_codes":[0,2]},"verify":{"json":true,"success_shape":"object","supports_repo_option":true,"exit_codes":[0,3]},"init":{"supports_repo_option":true},"init-ci":{"supports_repo_option":true},"new":{"supports_repo_option":true,"supports_base_option":true}},"repository_targeting":{"option":"--repo","registry_commands":["status","check","verify","new"]},"machine_output":{"stdout":"json only in --json mode","stderr":"human diagnostics and child command output","json_errors":true}}\n' \
+  printf '{"protocol_version":1,"cli_version":%s,"commands":{"status":{"json":true,"success_shape":"array","supports_repo_option":true},"state":{"json":true,"success_shape":"object","supports_repo_option":true},"check":{"json":true,"success_shape":"object","supports_repo_option":true,"exit_codes":[0,2]},"verify":{"json":true,"success_shape":"object","supports_repo_option":true,"exit_codes":[0,3]},"init":{"supports_repo_option":true},"init-ci":{"supports_repo_option":true},"new":{"supports_repo_option":true,"supports_base_option":true}},"repository_targeting":{"option":"--repo","registry_commands":["status","state","check","verify","new"]},"machine_output":{"stdout":"json only in --json mode","stderr":"human diagnostics and child command output","json_errors":true}}\n' \
     "$(json_field "$(read_cli_version)")"
 }
 
@@ -1779,6 +2192,7 @@ main() {
     unpatch)     cmd_unpatch "$@" ;;
     lang)        cmd_lang "$@" ;;
     status)      cmd_status "$@" ;;
+    state)       cmd_state "$@" ;;
     new)         cmd_new "$@" ;;
     check)       cmd_check "$@" ;;
     verify)      cmd_verify "$@" ;;

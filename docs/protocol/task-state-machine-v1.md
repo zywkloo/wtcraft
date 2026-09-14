@@ -3,19 +3,24 @@
 ## Purpose
 
 The task state machine defines the declared governance lifecycle of one
-worktree task. Its canonical state lives in `.worktree-task.md` frontmatter.
+worktree task. Its canonical local state lives in `.worktree-state.json`;
+`.worktree-task.md` is the stable task specification.
 
 This model is independent of terminal layout, agent vendor, and session
 launcher. Runtime facts belong to [Session Model v1](session-model-v1.md).
 
 ## Canonical fields
 
-Required lifecycle fields:
+Required lifecycle fields in the JSON sidecar:
 
-```yaml
-stage: planned
-role: executor
-agent: codex
+```json
+{
+  "schema_version": 1,
+  "task_id": "feat/example-task",
+  "stage": "planned",
+  "role": "executor",
+  "agent": "codex"
+}
 ```
 
 - `stage` is the current governance lifecycle state.
@@ -24,14 +29,14 @@ agent: codex
 - `agent` identifies the assigned CLI/provider and is descriptive, not an
   authorization boundary.
 
-The legacy `status` field may be displayed as a fallback when `stage` is
-missing, but it does not participate in transition validation.
+Legacy task frontmatter may be displayed when no sidecar exists, but it is a
+read-only migration fallback and does not participate in new writes.
 
 ## Stages and responsible roles
 
 | Stage | Responsible role | Meaning |
 |---|---|---|
-| `planned` | executor | Contract is ready for execution |
+| `planned` | executor | Task specification is ready for execution |
 | `executing` | executor | Scoped implementation work is active |
 | `verifying` | verifier | Implementation is under verification |
 | `replan` | planner | Verification or scope discovery requires a new plan |
@@ -43,7 +48,7 @@ The responsible role and the owner of a transition are related but distinct.
 For example, the planner creates a `planned` contract and hands responsibility
 to the executor. The transition owner is the only legal writer for that stage
 change; that single-writer rule is the concurrency protocol for
-`.worktree-task.md`.
+`.worktree-state.json`.
 
 ## Allowed transitions
 
@@ -59,19 +64,21 @@ change; that single-writer rule is the concurrency protocol for
 
 No other transition is legal in v1.
 
-Each transition must be deliberate and attributable to its owner. A frontend
-may request a transition, but wtcraft validates it against this table before
-writing.
+Each transition must be deliberate and attributable to its owner. The current
+`wtcraft state` command validates the stage and role vocabularies, but does not
+yet validate previous-stage edges or transition preconditions. Until that core
+validation ships, this table is normative workflow guidance rather than a
+tamper-resistant state machine.
 
 ## Transition preconditions
 
 | Transition | Minimum precondition |
 |---|---|
-| `planned -> executing` | Contract has Scope, Off-limits, and Verification sections |
+| `planned -> executing` | Task specification has Scope, Off-limits, and Verification sections |
 | `executing -> verifying` | Executor handoff is complete |
 | `verifying -> replan` | Verification or review found actionable failure |
 | `verifying -> approved` | Verification passed and required human gate is satisfied |
-| `replan -> planned` | Planner issued the revised contract |
+| `replan -> planned` | Planner issued the revised task specification |
 | `approved -> finishing` | Finisher accepted the approved handoff |
 | `finishing -> done` | Finish checks and required cleanup completed |
 
@@ -86,13 +93,14 @@ enforced yet.
   signal.
 - Scope and Off-limits changes after execution begins require a `replan`
   transition and planner ownership.
-- The task contract is local worktree state and must not be committed.
+- The task specification and state sidecar are local worktree files and must
+  not be committed.
 - Runtime session state never authorizes or performs a task-stage transition.
 
 ## Observer alarms
 
 An observer reconciles declared task state with Git and session facts. Every
-alarm cites a rule in this document or the task contract.
+alarm cites a rule in this document or the task specification.
 
 | Alarm | Trigger | Severity |
 |---|---|---|
@@ -101,16 +109,17 @@ alarm cites a rule in this document or the task contract.
 | `verification-unproven` | `approved`, `finishing`, or `done` lacks passing verification evidence | violation |
 | `role-mismatch` | `role` is not the responsible role for the current stage | warning |
 | `stale-execution` | `executing` has no live session or recent Git activity | warning |
-| `uncontracted` | Worktree/session exists without a task contract | warning |
-| `contract-tampered` | Scope or Off-limits differs from the plan-time snapshot | violation |
+| `uncontracted` | Worktree/session exists without a task specification | warning |
+| `specification-changed` | Scope, Off-limits, or Verification differs from the snapshot bound to current evidence | warning |
 
 The observer reports alarms. Automatic repair is outside v1.
 
 ## Persistence and history
 
-The current stage lives in `.worktree-task.md`. Detecting illegal transitions
-requires previous-state evidence. A future core may keep append-only transition
-events under Git-local wtcraft metadata:
+The current stage lives in `.worktree-state.json`, written atomically through
+`wtcraft state`. Detecting a complete historical transition path requires
+previous-state evidence. A future core may keep append-only transition events
+under Git-local wtcraft metadata:
 
 ```text
 <git-common-dir>/wtcraft/tasks/<task-id>/events.jsonl
@@ -122,8 +131,8 @@ the full historical transition path.
 
 ## Compatibility
 
-- Readers accept missing `stage` and may display legacy `status`.
-- Writers following v1 must write `stage` and `role`.
+- Readers accept a missing sidecar and may display legacy task frontmatter.
+- Writers following v1 write `stage` and `role` to `.worktree-state.json`.
 - Unknown future stages are displayed but treated as unsupported; they must not
   be silently mapped to a known stage.
 - Changing the transition table requires a new state-machine version or an

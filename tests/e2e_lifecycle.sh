@@ -21,10 +21,17 @@ test_new_verify_check() {
   WTCRAFT_BASE_BRANCH="$current_branch" "$CLI" new chore/smoke
 
   local task_file="${repo}/worktrees/chore/smoke/.worktree-task.md"
+  local state_file="${repo}/worktrees/chore/smoke/.worktree-state.json"
   sed -i.bak "s|pnpm tsc --noEmit|echo ok|" "$task_file"
   rm -f "${task_file}.bak"
+  test -f "$state_file"
+  python3 -m json.tool "$state_file" >/dev/null
+  grep -q '^state_file: .worktree-state.json' "$task_file"
+  ! grep -qE '^(stage|role|agent|status|verify_result|verified):' "$task_file"
   git -C worktrees/chore/smoke check-ignore -q .worktree-task.md
+  git -C worktrees/chore/smoke check-ignore -q .worktree-state.json
   test -z "$(git -C worktrees/chore/smoke status --short -- .worktree-task.md)"
+  test -z "$(git -C worktrees/chore/smoke status --short -- .worktree-state.json)"
 
   "$CLI" verify chore/smoke
   "$CLI" check chore/smoke
@@ -33,9 +40,10 @@ test_new_verify_check() {
   "$CLI" check --json chore/smoke | python3 -m json.tool >/dev/null
   "$CLI" check --json chore/smoke | grep -q '"result":"pass"'
 
-  # verify writes its result back into the task contract frontmatter
-  grep -q "^verify_result: pass" "$task_file"
-  grep -q "^verified: " "$task_file"
+  # verify records results in the sidecar without mutating the specification
+  grep -q '"verify_result": "pass"' "$state_file"
+  grep -q '"verified": "' "$state_file"
+  ! grep -q '^verify_result:' "$task_file"
   "$CLI" status | grep -q "pass"
 
   # stage/role columns come from the new contract convention
@@ -45,6 +53,15 @@ test_new_verify_check() {
   # --json is well-formed and carries the same facts
   "$CLI" status --json | python3 -m json.tool >/dev/null
   "$CLI" status --json | grep -q '"stage":"planned"'
+  "$CLI" status --json | grep -q '"state_present":true'
+  "$CLI" status --json | grep -q '"check_result":"pass"'
+  "$CLI" status --json | grep -q '"attempt":0'
+  "$CLI" status --json | grep -q '"ready":true'
+  mkdir -p "${repo}/worktrees/chore/smoke/src"
+  echo "later edit" >"${repo}/worktrees/chore/smoke/src/evidence-stale.ts"
+  "$CLI" status --json | grep -q '"ready":false'
+  "$CLI" status --json | grep -q '"evidence_stale":true'
+  rm "${repo}/worktrees/chore/smoke/src/evidence-stale.ts"
   (cd "${repo}/worktrees/chore/smoke" && "$CLI" status --json | grep -q '"branch":"chore/smoke"')
   (cd / && "$CLI" status --json --repo "$repo" | grep -q '"branch":"chore/smoke"')
   (cd / && "$CLI" check --json --repo "$repo" chore/smoke | grep -q '"result":"pass"')
@@ -57,6 +74,20 @@ test_new_verify_check() {
   "$CLI" status --json | grep -q '"contracted":false'
   git worktree remove --force "${repo}/wt-smoke-wild"
 
+  # lifecycle updates also go to the sidecar, never the task specification
+  "$CLI" state chore/smoke --stage executing --role executor --agent codex --attempt 2
+  "$CLI" state --json chore/smoke --handoff-from claude --handoff-to codex | python3 -m json.tool >/dev/null
+  grep -q '"stage": "executing"' "$state_file"
+  grep -q '"status": "ready"' "$state_file"
+  grep -q '"attempt": 2' "$state_file"
+  "$CLI" status --json | grep -q '"handoff_from":"claude"'
+  "$CLI" status --json | grep -q '"handoff_to":"codex"'
+  ! grep -q '^stage:' "$task_file"
+
+  "$CLI" state chore/smoke --stage done
+  grep -q '"status": "done"' "$state_file"
+  "$CLI" state chore/smoke --stage executing
+
   # a failing verification is recorded as fail
   sed -i.bak "s|echo ok|false|" "$task_file"
   rm -f "${task_file}.bak"
@@ -68,7 +99,7 @@ test_new_verify_check() {
   [ "$verify_exit" -eq 3 ]
   printf '%s' "$verify_json" | python3 -m json.tool >/dev/null
   printf '%s' "$verify_json" | grep -q '"result":"fail"'
-  grep -q "^verify_result: fail" "$task_file"
+  grep -q '"verify_result": "fail"' "$state_file"
 
   # check sees untracked files: out-of-scope file fails, in-scope passes
   echo "rogue" > "${repo}/worktrees/chore/smoke/rogue.txt"
@@ -221,6 +252,116 @@ test_check_rejects_task_contract_changes() {
   ! "$CLI" check chore/task-contract 2>/dev/null
 }
 
+test_check_rejects_task_state_changes() {
+  local repo="$1"
+  cd "$repo"
+  git config user.name "wtcraft-smoke"
+  git config user.email "wtcraft-smoke@example.com"
+  echo "seed" > .wtcraft-seed
+  git add .wtcraft-seed
+  git commit -q -m "seed"
+
+  local current_branch
+  current_branch="$(git branch --show-current)"
+  "$CLI" init
+  git add -A && git commit -q -m "wtcraft init"
+  WTCRAFT_BASE_BRANCH="$current_branch" "$CLI" new chore/task-state
+
+  (
+    cd worktrees/chore/task-state
+    git add -f .worktree-state.json
+    git commit -q -m "accidentally commit task state"
+  )
+
+  ! "$CLI" check chore/task-state 2>/dev/null
+}
+
+test_status_reads_legacy_frontmatter_without_sidecar() {
+  local repo="$1"
+  cd "$repo"
+  git config user.name "wtcraft-smoke"
+  git config user.email "wtcraft-smoke@example.com"
+  echo "seed" > .wtcraft-seed
+  git add .wtcraft-seed
+  git commit -q -m "seed"
+
+  local current_branch
+  current_branch="$(git branch --show-current)"
+  "$CLI" init
+  git add -A && git commit -q -m "wtcraft init"
+  WTCRAFT_BASE_BRANCH="$current_branch" "$CLI" new chore/legacy
+
+  local task_file="${repo}/worktrees/chore/legacy/.worktree-task.md"
+  rm "${repo}/worktrees/chore/legacy/.worktree-state.json"
+  awk '
+    { print }
+    /^state_file:/ {
+      print "stage: executing"
+      print "role: executor"
+      print "agent: claude"
+      print "status: ready"
+      print "verify_result: pass"
+      print "verified: legacy-time"
+    }
+  ' "$task_file" >"${task_file}.tmp"
+  mv "${task_file}.tmp" "$task_file"
+
+  "$CLI" status --json | grep -q '"state_present":false'
+  "$CLI" status --json | grep -q '"stage":"executing"'
+  "$CLI" status --json | grep -q '"agent":"claude"'
+  "$CLI" status --json | grep -q '"verified":"legacy-time"'
+}
+
+test_new_absorbs_legacy_plan_into_sidecar() {
+  local repo="$1"
+  cd "$repo"
+  git config user.name "wtcraft-smoke"
+  git config user.email "wtcraft-smoke@example.com"
+  echo "seed" > .wtcraft-seed
+  git add .wtcraft-seed
+  git commit -q -m "seed"
+
+  local current_branch
+  current_branch="$(git branch --show-current)"
+  "$CLI" init
+  git add -A && git commit -q -m "wtcraft init"
+  cat >.worktree-task.md <<EOF
+---
+branch: chore/legacy-plan
+agent: claude
+stage: planned
+role: executor
+status: ready
+created: 2026-01-01
+priority: medium
+base: ${current_branch}
+verify_result: pass
+verified: legacy-time
+---
+
+## Scope
+- src/
+
+## Off-limits
+- docs/
+
+## Verification
+- [ ] echo ok
+EOF
+
+  WTCRAFT_BASE_BRANCH="$current_branch" "$CLI" new chore/legacy-plan
+  local task_file="${repo}/worktrees/chore/legacy-plan/.worktree-task.md"
+  local state_file="${repo}/worktrees/chore/legacy-plan/.worktree-state.json"
+
+  grep -q '^task_id: chore/legacy-plan' "$task_file"
+  grep -q '^state_file: .worktree-state.json' "$task_file"
+  grep -q '<!-- wtcraft:state-sidecar -->' "$task_file"
+  ! grep -qE '^(stage|role|agent|status|verify_result|verified):' "$task_file"
+  grep -q '"agent": "claude"' "$state_file"
+  grep -q '"verify_result": "pass"' "$state_file"
+  grep -q '"verified": "legacy-time"' "$state_file"
+}
+
 test_new_defaults_to_master_or_main() {
   local repo="$1"
   cd "$repo"
@@ -277,6 +418,9 @@ run_in_temp_repo test_new_verify_check
 run_in_temp_repo test_machine_mode_fatal_errors_are_json
 run_in_temp_repo test_status_preserves_newline_worktree_paths
 run_in_temp_repo test_check_rejects_task_contract_changes
+run_in_temp_repo test_check_rejects_task_state_changes
+run_in_temp_repo test_status_reads_legacy_frontmatter_without_sidecar
+run_in_temp_repo test_new_absorbs_legacy_plan_into_sidecar
 run_in_temp_repo test_new_defaults_to_master_or_main
 run_in_temp_repo test_new_prefers_origin_head_and_accepts_base_override
 

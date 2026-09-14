@@ -11,7 +11,7 @@ and external adoption were not checked in this review.
 
 `wtcraft` is a local, Git-native verification harness for worktree tasks.
 It does not try to replace coding agents, editors, CI, or hosting platforms.
-It provides task contracts, deterministic changeset checks, lifecycle facts,
+It provides task specifications, deterministic changeset checks, lifecycle facts,
 and evidence that other tools can consume.
 
 ## Phase 0: Bootstrap (Done)
@@ -45,8 +45,8 @@ Status: completed
 Goal: good day-to-day workflow for a single developer using multiple agents.
 
 Deliverables:
-- [x] `wtcraft new <type/name>`: create worktree from base branch + seed task contract
-- [x] `wtcraft verify <worktree>`: run verification commands from task contract
+- [x] `wtcraft new <type/name>`: create worktree from base branch + seed task specification
+- [x] `wtcraft verify <worktree>`: run verification commands from task specification
 - [x] cleaner parser for task sections
 - [x] minimal test fixtures for parser and scope checks
 - [x] docs for Claude/Codex role split:
@@ -129,7 +129,7 @@ verifiable verdict at a protected merge boundary.
 Trust model:
 
 ```text
-local task working state
+local task specification + state sidecar
         |
         v
 reviewed policy envelope
@@ -179,7 +179,7 @@ Remaining before v0.5, in priority order:
    adapter and local `verify --json` separate for v0.5. Explain their entry
    points and claims consistently in help, README, release notes, and evidence.
    A shared CLI wrapper may follow a demonstrated usability need; it must not
-   make mutable local contracts authoritative.
+   make mutable local task specifications authoritative.
 
 A passing protected check proves changeset authorization. Ordinary CI continues
 owning test, lint, and build outcomes. Evidence keeps the reviewed plan with
@@ -211,8 +211,12 @@ Optional bypassable hooks and lifecycle commands follow repeated user demand.
 
 Possible deliverables:
 
+- [x] separate stable `.worktree-task.md` specifications from mutable
+      `.worktree-state.json` lifecycle/results
+- [x] provide an atomic `wtcraft state` write path with restricted stage/role
+      vocabulary and legacy-frontmatter fallback
 - [ ] freeze the lifecycle vocabulary and keep `orchestrator` outside the task FSM
-- [ ] `wtcraft stage <task> <new-stage>` with legal-transition validation
+- [ ] add legal-transition validation to the state write path
 - [ ] derive `responsible_role` and report role mismatch
 - [ ] `wtcraft next` returns allowed transitions, responsible role, and blockers only
 - [ ] language-neutral contract fixtures for lifecycle behavior
@@ -229,7 +233,7 @@ Two independent evidence tracks order this phase:
 - **Authorization adoption:** does a real repository retain the protected check,
   and is its setup and policy-maintenance burden acceptable? Phase 6 dogfooding
   records setup time, false denials, and repeated use.
-- **Contract effectiveness:** does showing an agent a task contract improve
+- **Specification effectiveness:** does showing an agent a task specification improve
   verified outcomes? The bounded experiment in
   [agent-capability-eval.md](backlogs/agent-capability-eval.md) runs in `wteval`.
   First complete a 5–10-task paired pilot with one fixed agent configuration,

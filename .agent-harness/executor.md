@@ -20,16 +20,16 @@ Recommended models for this role are maintained in `.agent-harness/role-models.y
 under the `executor` key. Check that file for current primary and fallback models.
 
 The executor role is model-agnostic — these are recommendations, not hard
-requirements. Follow the Scope and Verification contract regardless of model.
+requirements. Follow the task specification regardless of model.
 
 ## Stage Handoff
 
 You own the `executing` stage (see `.agent-harness/task-states.md`).
 
-- Set `stage: executing` when you start work.
-- Set `stage: verifying` after implementation is complete and Verification
-  commands have been run.
+- Run `wtcraft state <task> --stage executing --role executor` when you start.
+- Run `wtcraft state <task> --stage verifying --role verifier` after
+  implementation is complete and Verification commands have been run.
 - Never set `approved`, `finishing`, or `done` — those belong to the human
   gate and the finisher.
-- Update the task file atomically (write a temp file, then `mv`); never
-  leave it half-written.
+- Never write lifecycle or result fields into `.worktree-task.md`, and do not
+  edit `.worktree-state.json` directly. The wtcraft commands write it atomically.
