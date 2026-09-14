@@ -32,6 +32,10 @@ when no sidecar exists. The next `wtcraft check` or `wtcraft verify` creates a
 sidecar lazily. `wtcraft new` moves any absorbed legacy values into the sidecar
 and removes them from the new task specification.
 
+Tasks created before this release have no plan-time specification digest, so
+`check` reports `specification_changed: null` for them and cannot detect Scope
+widening until the planner runs `wtcraft state <task> --stage planned`.
+
 `wtcraft verify` no longer writes result fields into Markdown. Consumers should
 read `verify_result` / `verified` from `status --json` or directly from the
 declared sidecar.

@@ -100,4 +100,5 @@ results are `pass` and both recorded snapshots equal the current snapshot. If
 recorded evidence targets different contents, `evidence_stale` is true.
 
 Snapshots demonstrate freshness of local evidence, not protected review or
-authorization.
+authorization. The plan-time specification digest that `check` compares is a
+separate record kept in the per-worktree Git directory, not in the sidecar.

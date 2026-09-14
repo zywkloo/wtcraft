@@ -92,7 +92,9 @@ The specification declares `state_file: .worktree-state.json` and explains the
 split to agents. Both files are advisory local coordination data, not a sandbox
 or protected authorization boundary. `ready` is derived only when passing check
 and verification evidence match the current specification and worktree
-snapshot.
+snapshot. `wtcraft check` also fails with `specification_changed` when Scope,
+Off-limits, or Verification no longer match the digest recorded at planning;
+the planner re-records it with `wtcraft state <task> --stage planned`.
 
 After running `wtcraft init`, you can use these slash commands in Claude Code:
 - `/planwt <task description>`: Plan task + create worktree

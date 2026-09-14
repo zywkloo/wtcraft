@@ -46,7 +46,23 @@ atomic replacement. Agents are instructed not to edit it directly.
 Check and verification results are bound to a worktree snapshot covering the
 Scope, Off-limits, and Verification items of the task specification, HEAD,
 tracked diff, and untracked contents. Other Markdown, including checkbox state,
-is not an evidence input. Readiness is a
+is not an evidence input.
+
+### Plan-time specification digest
+
+`wtcraft new` and `wtcraft state --stage planned` record a digest of the Scope
+and Off-limits items and the Verification commands at
+`$(git rev-parse --git-path wtcraft/spec.digest)`, inside the per-worktree Git
+directory. `wtcraft check` compares the live specification with it and reports
+a `specification_changed` violation when they differ. Widening Scope to cover
+an out-of-scope change therefore no longer turns a failing check into a pass.
+A task without a recorded digest reports `specification_changed: null`.
+
+The digest is outside the worktree but not protected: an executor can
+re-record it by setting the stage to `planned`. It turns a silent specification
+edit into a visible lifecycle reset; it is not an authorization boundary. The
+evidence snapshot answers a different question: it records what the latest
+check and verify saw, whereas the digest records what the planner issued. Readiness is a
 derived projection: both results must pass and match the current snapshot. It
 is not a writable lifecycle stage.
 

@@ -77,6 +77,8 @@ Fields:
 - `legacy_frontmatter_ignored`: `true` when a sidecar exists and the task
   frontmatter still sets `stage`, `role`, `agent`, `status`, `verify_result`,
   or `verified`; the sidecar values are reported and those fields are ignored
+- `specification_changed`: `true`/`false` against the digest recorded at
+  planning, or `null` when the task has none
 - `stage`, `role`, `agent`, `status`, `attempt`, `handoff_from`, `handoff_to`
 - `check_result`, `checked`, `verify_result`, `verified`
 - `created_at`, `updated_at`, `priority`, `created`, `base`
@@ -117,6 +119,7 @@ Example:
   "task_file": "/repo/worktrees/feat/task/.worktree-task.md",
   "state_file": "/repo/worktrees/feat/task/.worktree-state.json",
   "snapshot": "0123456789abcdef",
+  "specification_changed": false,
   "base": "main",
   "changed_files": ["rogue.txt"],
   "scope": ["src/"],
@@ -136,6 +139,12 @@ Example:
 ```
 
 Exit codes:
+
+Violation `kind` is `scope`, `off_limits`, `local_task_file`, or
+`specification_changed`. The last is reported when Scope, Off-limits, or
+Verification differs from the digest recorded by `new` or
+`state --stage planned`; `specification_changed` is `null` when no digest
+exists.
 
 - `0`: no violations
 - `2`: one or more violations

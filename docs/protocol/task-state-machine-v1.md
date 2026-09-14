@@ -92,7 +92,10 @@ enforced yet.
 - Work that changes tracked or untracked files before `executing` is a bypass
   signal.
 - Scope and Off-limits changes after execution begins require a `replan`
-  transition and planner ownership.
+  transition and planner ownership. `wtcraft check` enforces this locally by
+  comparing the specification with the digest recorded at planning. The check
+  is advisory: anyone who can run `wtcraft state --stage planned` can re-record
+  the digest, which also resets the stage to `planned`.
 - The task specification and state sidecar are local worktree files and must
   not be committed.
 - Runtime session state never authorizes or performs a task-stage transition.
@@ -110,7 +113,7 @@ alarm cites a rule in this document or the task specification.
 | `role-mismatch` | `role` is not the responsible role for the current stage | warning |
 | `stale-execution` | `executing` has no live session or recent Git activity | warning |
 | `uncontracted` | Worktree/session exists without a task specification | warning |
-| `specification-changed` | Scope, Off-limits, or Verification differs from the snapshot bound to current evidence | warning |
+| `specification-changed` | Scope, Off-limits, or Verification items differ from the digest recorded at planning (`wtcraft new` or `wtcraft state --stage planned`); reported by `wtcraft check` | violation |
 
 The observer reports alarms. Automatic repair is outside v1.
 

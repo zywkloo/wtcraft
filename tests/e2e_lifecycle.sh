@@ -24,6 +24,8 @@ test_new_verify_check() {
   local state_file="${repo}/worktrees/chore/smoke/.worktree-state.json"
   sed -i.bak "s|pnpm tsc --noEmit|echo ok|" "$task_file"
   rm -f "${task_file}.bak"
+  # The planner reissues the edited specification.
+  "$CLI" state chore/smoke --stage planned
   test -f "$state_file"
   python3 -m json.tool "$state_file" >/dev/null
   grep -q '^state_file: .worktree-state.json' "$task_file"
@@ -96,6 +98,7 @@ test_new_verify_check() {
   # a failing verification is recorded as fail
   sed -i.bak "s|echo ok|false|" "$task_file"
   rm -f "${task_file}.bak"
+  "$CLI" state chore/smoke --stage planned
   ! "$CLI" verify chore/smoke || exit 1
   set +e
   verify_json="$("$CLI" verify --json chore/smoke 2>/dev/null)"
@@ -436,6 +439,59 @@ test_snapshot_binds_untracked_symlinks_and_nested_repos() {
   "$CLI" status --json | grep -q '"evidence_stale":true'
 }
 
+test_check_reports_specification_changed_since_planning() {
+  local repo="$1"
+  cd "$repo"
+  git config user.name "wtcraft-smoke"
+  git config user.email "wtcraft-smoke@example.com"
+  echo "seed" > .wtcraft-seed
+  git add .wtcraft-seed
+  git commit -q -m "seed"
+
+  local current_branch
+  current_branch="$(git branch --show-current)"
+  "$CLI" init
+  git add -A && git commit -q -m "wtcraft init"
+  WTCRAFT_BASE_BRANCH="$current_branch" "$CLI" new chore/spec
+
+  local wt="${repo}/worktrees/chore/spec"
+  local task_file="${wt}/.worktree-task.md"
+  local digest_file
+  digest_file="$(git -C "$wt" rev-parse --git-path wtcraft/spec.digest)"
+  case "$digest_file" in
+    /*) ;;
+    *) digest_file="${wt}/${digest_file}" ;;
+  esac
+  test -f "$digest_file"
+  "$CLI" check chore/spec
+  "$CLI" status --json | grep -q '"specification_changed":false'
+
+  # An out-of-scope change fails, and widening Scope to cover it still fails.
+  echo "rogue" > "${wt}/rogue.txt"
+  ! "$CLI" check chore/spec >/dev/null || exit 1
+  awk '{ print } /^- src\/example.ts$/ { print "- rogue.txt" }' "$task_file" >"${task_file}.tmp"
+  mv "${task_file}.tmp" "$task_file"
+  local output exit_code
+  set +e
+  output="$("$CLI" check --json chore/spec 2>/dev/null)"
+  exit_code=$?
+  set -e
+  [ "$exit_code" -eq 2 ]
+  printf '%s' "$output" | grep -q '"kind":"specification_changed"'
+  printf '%s' "$output" | grep -q '"specification_changed":true'
+  ! printf '%s' "$output" | grep -q '"kind":"scope"' || exit 1
+  "$CLI" status --json | grep -q '"specification_changed":true'
+
+  # The planner reissues the specification by recording a new digest.
+  "$CLI" state chore/spec --stage planned
+  "$CLI" check chore/spec
+  "$CLI" status --json | grep -q '"specification_changed":false'
+
+  # A task without a recorded digest is not judged.
+  rm "$digest_file"
+  "$CLI" check --json chore/spec | grep -q '"specification_changed":null'
+}
+
 test_state_rejects_invalid_sidecar_without_leftovers() {
   local repo="$1"
   cd "$repo"
@@ -547,6 +603,7 @@ run_in_temp_repo test_status_reads_legacy_frontmatter_without_sidecar
 run_in_temp_repo test_new_absorbs_legacy_plan_into_sidecar
 run_in_temp_repo test_ignored_legacy_frontmatter_is_reported
 run_in_temp_repo test_snapshot_binds_untracked_symlinks_and_nested_repos
+run_in_temp_repo test_check_reports_specification_changed_since_planning
 run_in_temp_repo test_state_rejects_invalid_sidecar_without_leftovers
 run_in_temp_repo test_new_defaults_to_master_or_main
 run_in_temp_repo test_new_prefers_origin_head_and_accepts_base_override
